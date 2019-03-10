@@ -1,11 +1,11 @@
 # Kopano4s
 [Kopano mail & collaboration SW](https://kopano.com/) integration for the [Synology NAS](https://www.synology.com/) using [Docker](https://hub.docker.com) wrapped in a [SPK for Synology Package Manager](https://www.synology.com/en-global/knowledgebase/DSM/tutorial/Service_Application/How_to_install_applications_with_Package_Center).
-##Intro
+## Intro
 Kopano is an open e-mail and groupware platform that can be used as an alternative for MS Exchange. It comes via pre-packaged binaries (e.g. Debian/Ubuntu DPKG,) to ease installation. With Webmeetings and Mattermost Kopano enters into Unified Communications.
 
 Kopano4S is available as free Community edition based on nightly builds or as Supported edition which reuires as subscriptoon serial-number (SNR).
 A project overview incl. FAQ's, installation, migration advise, screenshots etc are found on [Z-Hub.io](https://wiki.z-hub.io/display/K4S).
-##Structure
+## Structure
 This repository reflects the Synology Package files [SPK](https://www.synology.com/en-global/knowledgebase/DSM/tutorial/Service_Application/How_to_install_applications_with_Package_Center) hosted on the the [Community Package Hub](https://www.cphub.net/?p=k4s) with Synology and [Docker](https://hub.docker.com/r/tosoboso/) specific components. 
 As per Synology SPK convention the directories ui (admin-gui), merge (iles, cfg etc. to merge in) and log (empty) are in a tar file package.tgz. 
 
@@ -32,4 +32,6 @@ As per Synology SPK convention the directories ui (admin-gui), merge (iles, cfg 
 
 5. Customizing-Skripts (in merge/custom)
 * 
+
+## Kopano Specifics
 
