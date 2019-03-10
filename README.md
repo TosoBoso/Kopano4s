@@ -9,10 +9,19 @@ This repository reflects the Synology Package files [SPK](https://www.synology.c
 * INFO (name of package, version, description etc., dependencies, beta yes when report_url is activeated)
 * CHANGELOG (the changelog where you aslo see the live before hosted on github plus outline of roadmap)
 * LICENSE (License as shown when installing the package on Synology; this part is under GNU and Kopano under Affero)
-* PACKAGE_ICON.PNG / PACKAGE_ICON_120.PNG (the icons shown by Synology Package manager and on SPK repository cph.net)
+* PACKAGE_ICON.PNG / PACKAGE_ICON_120.PNG (the icons shown by Synology Package manager and on SPK repository)
+
 2. SPK-WIZARD_UIFILES
 * install_uifile & uninstall_uifile (json formatted files representing GUI menu parameters "PKGWIZ_*" passed to spk-scripts)
+
 3. SPK-Scripts
-*
+* common (all script functions and certain configuration is collected here to keep the other scripts readable)
+* preinst (check for environment incl. valid downloads and SNRs, loading of Docker-image via Synology Docker-GUI)
+* postinst (main install logic also for upgrades, gets wizzard-cfg, sets cfg, database, directories, mounts, softlinks)
+* postuninst (main un-install logic for removing database, directories, softlinks, docker container, images)
+* preupgrade (actions before upgrading, essentially saving logs, etc-files and dropping old docker images)
+* start-stop-status (package control sues by Synology GUI and on cmd-cline interacting with Dcoker container)
+* preuninst & postupgrade (empty as not needed for k4s, but exisits to satisfy the synology (un-)install structure)
+
 4. Docker-Container-Skripts (in scripts/container)
 '
