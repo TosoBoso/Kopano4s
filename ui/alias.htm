@@ -1,0 +1,66 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+	<head>
+		<title>Kopano4S Administration - Alias & BCC</title>
+		<meta charset="utf-8">
+		<link rel="stylesheet" type="text/css" href="dsm.css"/>
+		<style> .hide { display: none; } </style>
+	</head>
+	<body>
+	<!--:menu:-->
+	&nbsp;V-Alias:&nbsp;<button onclick="newAlias()">New</button>&nbsp;<button onclick="updateAlias()">Update</button>
+	&nbsp;<button onclick="deleteAlias()">Delete</button>&nbsp;&nbsp;BCC-Fwd: Receiver
+	&nbsp;<button onclick="newRcpBcc()">New</button>&nbsp;<button onclick="updateRcpBcc()">Update</button>
+	&nbsp;<button onclick="deleteRcpBcc()">Delete</button>&nbsp;Sender
+	&nbsp;<button onclick="newSdrBcc()">New</button>&nbsp;<button onclick="updateSdrBcc()">Update</button>
+	&nbsp;<button onclick="deleteSdrBcc()">Delete</button>&nbsp;
+	&nbsp;Bounce:&nbsp;<button onclick="modifyBounce()">Modify</button>
+	<hr>
+	<section id="frmAlias" class="hide">
+	<form action="index.cgi" method="get">
+		<input type="hidden" name="page" value="alias"/><input type="hidden" name="form" value="alias"/>
+		&nbsp;Alias in virtual domain setup*:&nbsp;<input type="text" name="valias" size="25" value=""/>&nbsp;
+		&nbsp;Recipient:&nbsp;<input type="text" name="aliasrcpt" size="25" value=""/>&nbsp;
+		<input type="submit" id="btnModAlias" name="action" value="Add"/>
+	<hr>
+	</form></section>
+	<section id="frmRcpBcc" class="hide">
+	<form action="index.cgi" method="get">
+		<input type="hidden" name="page" value="alias"/><input type="hidden" name="form" value="rcpBcc"/>
+		&nbsp;Inbox-Receiver:&nbsp;<input type="text" name="inrcp" size="25" value=""/>&nbsp;
+		&nbsp;BCC-Recipient:&nbsp;<input type="text" name="rcprcp" size="25" value=""/>&nbsp;
+		<input type="submit" id="btnModRcpBcc" name="action" value="Add"/>
+	<hr>
+	</form></section>
+	<section id="frmSdrBcc" class="hide">
+	<form action="index.cgi" method="get">
+		<input type="hidden" name="page" value="alias"/><input type="hidden" name="form" value="sdrBcc"/>
+		&nbsp;Outbox-Sender:&nbsp;<input type="text" name="outsdr" size="25" value=""/>&nbsp;
+		&nbsp;BCC-Recipient:&nbsp;<input type="text" name="sdrrcp" size="25" value=""/>&nbsp;
+		<input type="submit" id="btnModSdrBcc" name="action" value="Add"/>
+	<hr>
+	</form></section>
+	<section id="frmBonce" class="hide">
+	<form action="index.cgi" method="get">
+		<input type="hidden" name="page" value="alias"/><input type="hidden" name="form" value="bounce"/>
+		&nbsp;Bounce-Line:&nbsp;<input type="text" name="bline1" size="50" value=""/>&nbsp;&nbsp;to be replaced by:&nbsp;
+		<input type="text" name="bline2" size="50" value=""/>&nbsp;&nbsp;
+		<input type="submit" id="btnModBounce" name="action" value="Update"/>
+	<hr>
+	</form></section>
+	<textarea name="aliastxt" rows="5" cols="111"> <!--:aliastxt:--></textarea>
+	<br>&nbsp;<br>
+	<textarea name="bcctxt" rows="5" cols="111"> <!--:bcctxt:--></textarea>
+	<br>&nbsp;<br>
+	<textarea name="bouncetxt" rows="9" cols="111"> <!--:bouncetxt:--></textarea>
+	<p><b><u>Tips:</u></b>&nbsp;Please use full mail-addresses for aliases and BBC since Kopano4s runs on virtual domains (recipient as K-User is not sufficient).</p>
+	<!-- style for bottom position -->
+	<div style='position:absolute;bottom:0;padding:0px 0px;'>
+		<textarea name="status" rows="1" cols="111"> <!--:status:--> </textarea>
+	</div>
+	<!-- end of style and section main body right hand side to navigation -->
+	</div>
+	<!--:debug:-->
+	<!--:jscript:-->
+	</body>
+<html>

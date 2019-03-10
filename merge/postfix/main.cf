@@ -1,0 +1,110 @@
+# set domain -> hostname -> origin as fqdn to avoid abuse
+mydomain = mydomain.me
+myhostname = mail.mydomain.me
+myorigin = $mydomain
+# closed relay: allow localhost for clients sending; add your local nw if needed, extra entries are to deal with IPv6
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128 192.168.0.0/16
+smtp_host_lookup = dns, native
+inet_interfaces = all
+inet_protocols = all
+smtpd_banner = $myorigin ESMTP Postfix Kopano4s
+
+# overwrite max message size default 10M->15M; mailbox_size_limit must not be smaller hence 0
+mailbox_size_limit = 0
+message_size_limit = 15728640
+
+# header and body checks plus bounce file
+bounce_template_file = /etc/kopano/postfix/bounce.cf
+header_checks = regexp:/etc/kopano/postfix/header_checks
+body_checks = regexp:/etc/kopano/postfix/body_checks
+
+# use alias for system default and virtual valiases for kopano aliases
+alias_maps = hash:/etc/aliases
+virtual_alias_maps = hash:/etc/kopano/postfix/valiases
+sender_bcc_maps = hash:/etc/kopano/postfix/sender_bcc
+recipient_bcc_maps = hash:/etc/kopano/postfix/recipient_bcc
+
+# use virtual domains from cfg file; 1st entry is eq mydomain
+virtual_mailbox_domains = /etc/kopano/postfix/vdomains
+virtual_transport = lmtp:127.0.0.1:2003
+
+# anti-spam: no relaying and request valid helo to block spam-bots (helo restrictions optional and n/a for localhost sending)
+smtpd_helo_required = yes
+#smtpd_helo_restrictions = permit_mynetworks reject_invalid_helo_hostname reject_non_fqdn_helo_hostname reject_unknown_helo_hostname
+
+# anti-spam: have real-time dns based black-lists: dnsbl.sorbs.net, sbl.spamhaus.org and postgrey on 10023 (optional)
+smtpd_client_restrictions = permit_mynetworks
+#reject_rbl_client dnsbl.sorbs.net
+smtpd_recipient_restrictions = permit_mynetworks check_recipient_access hash:/etc/kopano/postfix/recipient_access reject_invalid_hostname reject_unauth_destination reject_unknown_recipient_domain
+#reject_rbl_client sbl.spamhaus.org
+#check_policy_service inet:[127.0.0.1]:10023
+
+# anti-spam: amavis-new via 1024 as content filter to integrate spamassassin and clamav (optional)
+#content_filter = lmtp-amavis:[127.0.0.1]:10024
+
+# anti-spam: mail-from unknown-sender and blocklist optionally reject by domain mx entry check
+smtpd_sender_restrictions = reject_unknown_address check_sender_access hash:/etc/kopano/postfix/sender_access
+#reject_unknown_sender_domain
+
+# misc settings
+# See http://www.postfix.org/COMPATIBILITY_README.html -- default to 2 on fresh installs
+compatibility_level = 2
+# appending .domain is the MUA's job.
+append_dot_mydomain = no
+# can also notify postmaster for rejects (bounce, 2bounce) spam (policy)
+notify_classes = resource software protocol
+# bounce 2bounce policy
+delay_warning_time = 4h
+unknown_local_recipient_reject_code = 450
+maximal_queue_lifetime = 7d
+minimal_backoff_time = 1000s
+maximal_backoff_time = 8000s
+recipient_delimiter = +
+biff = no
+readme_directory = no
+smtp_helo_timeout = 60s
+smtpd_recipient_limit = 16
+smtpd_soft_error_limit = 3
+smtpd_hard_error_limit = 12
+smtpd_data_restrictions = reject_unauth_pipelining reject_multi_recipient_bounce
+# sender limit e.g. to avoid endless spam if hacked
+#smtpd_sasl_sender_rate_limit = 99
+
+# relay from provider when running dynamic IP; now we need sasl_auth and potentially smarthost sender_relay
+#relayhost = smtp.example.com
+#smtp_sasl_auth_enable = yes
+#smtp_sasl_password_maps = hash:/etc/kopano/postfix/sasl_passwd
+#smtp_sasl_security_options = noanonymous
+#smtp_sender_dependent_authentication = yes
+#sender_dependent_relayhost_maps = hash:/etc/kopano/postfix/sender_relay
+
+# tls encryption outbound for relayhosting (mind smtp without d)
+#smtp_use_tls = yes
+#smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+#smtp_tls_mandatory_protocols  = !SSLv2,!SSLv3,!TLSv1
+#smtp_tls_protocols            = !SSLv2,!SSLv3,!TLSv1
+# only needed when authenticating with cert for relayhosting
+#smtp_tls_cert_file = /etc/kopano/ssl/svrcertbundle.pem
+#smtp_tls_key_file = /etc/kopano/ssl/server.key
+
+# tls encryption opportunistic: announce STARTTLS support to remote clients
+#smtpd_use_tls = yes
+#tls_random_source = dev:/dev/urandom
+#smtpd_tls_cert_file = /etc/kopano/ssl/svrcertbundle.pem
+#smtpd_tls_key_file = /etc/kopano/ssl/server.key
+#smtpd_tls_security_level = may
+#smtpd_tls_mandatory_exclude_ciphers = aNULL, RC4
+#smtpd_tls_exclude_ciphers = NULL, RC4
+# Configure the allowed cipher list
+#smtpd_tls_mandatory_ciphers=high
+#tls_high_cipherlist=EDH+CAMELLIA:EDH+aRSA:EECDH+aRSA+AESGCM:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH:+CAMELLIA256:+AES256:+CAMELLIA128:+AES128:+SSLv3:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!DSS:!RC4:!SEED:!ECDSA:CAMELLIA256-SHA:AES256-SHA:CAMELLIA128-SHA:AES128-SHA
+# enable EECDH key exchange for Forward Security
+#smtpd_tls_eecdh_grade=ultra
+#smtpd_tls_security_level = may
+# disable old SSL v2/3 / TLS v1 
+#smtpd_tls_protocols = !SSLv2, !SSLv3,!TLSv1
+#smtpd_tls_mandatory_protocols = !SSLv2, !SSLv3,!TLSv1
+#smtpd_tls_loglevel = 1
+# stay on fingerprint sha1 as issues with sha2 in build (need to find package)
+#smtpd_tls_fingerprint_digest = sha1
+#smtpd_tls_received_header = yes

@@ -1,0 +1,31 @@
+{
+   ".url": 
+   {
+      "SYNO.SDS._ThirdParty.App.kopano4s":
+      {
+         "type": "legacy",
+         "title": "Kopano4S-Admin",
+         "desc": "UI for Kopano administration",
+         "icon": "images/Kopano4s_{0}.png",
+         "allUsers": false, 
+         "allowMultiInstance": false,
+         "grantPrivilege": "local",
+         "width": 1240,
+         "height": 680,
+         "url": "webman/3rdparty/Kopano4s/index.cgi"
+      },
+      "SYNO.SDS._ThirdParty.App.k4swebapp": 
+      {
+         "type": "url",
+         "allUsers": false,
+         "title": "Kopano-WebApp",
+         "desc": "UI for Kopano WebApp",
+         "icon": "images/Kopano4s_{0}.png",
+         "allUsers": false, 
+         "texts": "texts",
+         "protocol": "https", 
+         "url": "/",
+         "port": "9443"
+      }
+   }
+}

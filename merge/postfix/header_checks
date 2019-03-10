@@ -1,0 +1,13 @@
+/^Received-SPF: softfail/ REJECT
+/^X-Originating-IP:/ IGNORE Remove sensitive information from email headers
+/^Received:.*\[192\.168\..*/ IGNORE Remove sensitive information from email headers
+/^Received:.*\[10\..*/ IGNORE Remove sensitive information from email headers
+/^Received:.*\[169\..*/ IGNORE Remove sensitive information from email headers
+/^Received:.*\[172\..*/ IGNORE Remove sensitive information from email headers
+/^Received:.*\[127\.0\.0\.1/ IGNORE Remove sensitive information from email headers
+/^Received:.*with ESMTPSA/ IGNORE Remove sensitive information from email headers
+/^X-Mailer:/ IGNORE Remove sensitive information from email headers
+/^User-Agent:/ IGNORE Remove sensitive information from email headers
+/^Mime-Version:/ IGNORE Remove sensitive information from email headers
+/name ?= "?.*\. (bat|com)"?/ REJECT Attachments
+/[:alpha:]<!--.*-->[:alpha:]/ REJECT Suspicious embedded HTML comments
