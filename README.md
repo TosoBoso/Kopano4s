@@ -1,7 +1,7 @@
 # Kopano4s
 [Kopano mail & collaboration SW](https://kopano.com/) integration for the [Synology NAS](https://www.synology.com/) using [Docker](https://hub.docker.com) wrapped in a [SPK for Synology Package Manager](https://www.synology.com/en-global/knowledgebase/DSM/tutorial/Service_Application/How_to_install_applications_with_Package_Center).
 ## Intro
-Kopano is an open e-mail and groupware platform that can be used as an alternative for MS Exchange. IIt comes via Docker using pre-packaged binaries (e.g. Debian/Ubuntu DPKG) to ease installation. With Webmeetings and Mattermost Kopano enters into Unified Communications.
+Kopano is an open e-mail and groupware platform that can be used as an alternative for MS Exchange. It comes via Docker using pre-packaged binaries (e.g. Debian/Ubuntu DPKG) to ease installation. With Webmeetings and Mattermost Kopano enters into Unified Communications.
 
 Kopano4S is available as free Community edition based on nightly builds or as Supported edition which reuires as subscriptoon serial-number (SNR).
 A project overview incl. FAQ's, installation, migration advise, screenshots etc are found on [Z-Hub.io](https://wiki.z-hub.io/display/K4S).
@@ -28,10 +28,33 @@ As per Synology SPK convention the directories ui (admin-gui), merge (iles, cfg 
 * preuninst & postupgrade (empty as not needed for k4s, but exisits to satisfy the synology (un-)install structure)
 
 4. Docker-Container-Skripts (in scripts/container)
-*
+* Dockerfile (the main docker build file with intermediate container building debian repo relative to selected edition)
+* init.sh (the heart of kopano4s services control incl. initialisation, restart, acl reset logic; see help)
+* kopano-postfix.sh (core script to control postfix which is exposed to admin-UI. Postfix in not part of Kopano build)
+* kopano-fetchmail.sh (core script to control postfix which is exposed to admin-UI. Postfix in not part of Kopano build)
 
-5. Customizing-Skripts (in merge/custom)
+5. Wrapper-Container-Skripts (in scripts/wrapper)
+* kopano-userlist.sh & kopano-grouplist.sh (helper scritpts for admin-UI to list users and groups)
+* kopano-devicelist.sh (helper scritpts for admin-UI to list mobile devices vi z-push-admin similar to Kopano mdm) 
+* kopano-status.sh & kopano-restart.sh (entry to init.sh container script to perform the respective functions)
+* kopano-cmdline.sh (also via alias k4s the script to get into the kopano4s containers command-line)
+* all other kopano-* cmd-line scripts in container need to get passed via Docker exec command and a return; simple magic
+
+6. Addon-Skripts (in scripts/addon)
+* kopano4s-backup.sh (alternative to Kopano's brick level backup as full backup using mysqldump and tar for attachments)
+* kopano4s-replication.sh (database replication control script to syncronize Kopano4s for disaster recovery)
+* kopano4s-init.sh (helper script to resfresh with new images; also downgrade / defresh ossible and reset container or ACLs)
+* kopano4s-optionals.sh (helper script to en/disableoptinal Kopano komponents for use on cmd-line or admin-UI)
+* kopano4s-hubtag.sh (helper script to get latest tag from Docker Hub TosoBoso repository Kopano4s with cmd-line or admin-UI)
+* kopano4s-autoblock.sh (access to Synology IP autoblock function to facilitate a fail2ban which is work in progress)
+* kopano4s-migration-zarafa.sh (automated migration from synolog zarafa(4h) via Kopano-migration edition which is WIP)
+
+7. Customizing-Skripts (in merge/custom)
 * 
+
+8. UI-Perl-Skripts, JS, HTML, Images (in ui)
+* 
+
 
 ## Synology Specifics
 * Admin-UI via Perl and Java-Script
