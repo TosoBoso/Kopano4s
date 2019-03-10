@@ -1,7 +1,7 @@
 # Kopano4s
 [Kopano mail & collaboration SW](https://kopano.com/) integration for the [Synology NAS](https://www.synology.com/) using [Docker](https://hub.docker.com) wrapped in a [SPK for Synology Package Manager](https://www.synology.com/en-global/knowledgebase/DSM/tutorial/Service_Application/How_to_install_applications_with_Package_Center).
 ## Intro
-Kopano is an open e-mail and groupware platform that can be used as an alternative for MS Exchange. It comes via pre-packaged binaries (e.g. Debian/Ubuntu DPKG,) to ease installation. With Webmeetings and Mattermost Kopano enters into Unified Communications.
+Kopano is an open e-mail and groupware platform that can be used as an alternative for MS Exchange. IIt comes via Docker using pre-packaged binaries (e.g. Debian/Ubuntu DPKG) to ease installation. With Webmeetings and Mattermost Kopano enters into Unified Communications.
 
 Kopano4S is available as free Community edition based on nightly builds or as Supported edition which reuires as subscriptoon serial-number (SNR).
 A project overview incl. FAQ's, installation, migration advise, screenshots etc are found on [Z-Hub.io](https://wiki.z-hub.io/display/K4S).
@@ -33,5 +33,16 @@ As per Synology SPK convention the directories ui (admin-gui), merge (iles, cfg 
 5. Customizing-Skripts (in merge/custom)
 * 
 
-## Kopano Specifics
+## Synology Specifics
+* Admin-UI via Perl and Java-Script
+* Reverse Proxy as webapp virtual directory
+* Synology IP autoblock as customized fail2ban
 
+## Kopano Docker Specifics 
+* Client access via Outlook (mapi/active-sync), mobile device (z-push active sync)
+* Pasing real-IP into container to enable sensible access log and error-log for fail2ban
+* Unig docker tiny init and init.d scripts to control the services ('multi-microservices approach')
+
+## Future Planning Roadmap
+* Decomposing single container in multiple for core, mail, web, meet ('almost-single-microservices approach')
+* Ajax in Admin UI nhanceing responsiveness, lokk and feel etc.
