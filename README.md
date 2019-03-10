@@ -7,7 +7,7 @@ Kopano4S is available as free Community edition based on nightly builds or as Su
 A project overview incl. FAQ's, installation, migration advise, screenshots etc are found on [Z-Hub.io](https://wiki.z-hub.io/display/K4S).
 ## Structure
 This repository reflects the Synology Package files [SPK](https://www.synology.com/en-global/knowledgebase/DSM/tutorial/Service_Application/How_to_install_applications_with_Package_Center) hosted on the the [Community Package Hub](https://www.cphub.net/?p=k4s) with Synology and [Docker](https://hub.docker.com/r/tosoboso/) specific components. 
-As per Synology SPK convention the directories ui (admin-gui), merge (iles, cfg etc. to merge in) and log (empty) are in a tar file package.tgz. 
+As per Synology SPK convention the directories ui (admin-gui), merge (files, cfg etc. to merge in) and log (empty) are in a tar file package.tgz. 
 
 1. SPK-core files in root:  
 * INFO (name of package, version, description etc., dependencies, beta yes when report_url is activeated)
@@ -32,6 +32,7 @@ As per Synology SPK convention the directories ui (admin-gui), merge (iles, cfg 
 * init.sh (the heart of kopano4s services control incl. initialisation, restart, acl reset logic; see help)
 * kopano-postfix.sh (core script to control postfix which is exposed to admin-UI. Postfix in not part of Kopano build)
 * kopano-fetchmail.sh (core script to control postfix which is exposed to admin-UI. Postfix in not part of Kopano build)
+* dpkg-remove (list of debian packages that can be removed pot image build to keep the Docker image / container lean)
 
 5. Wrapper-Container-Skripts (in scripts/wrapper)
 * kopano-userlist.sh & kopano-grouplist.sh (helper scritpts for admin-UI to list users and groups)
@@ -49,10 +50,16 @@ As per Synology SPK convention the directories ui (admin-gui), merge (iles, cfg 
 * kopano4s-autoblock.sh (access to Synology IP autoblock function to facilitate a fail2ban which is work in progress)
 * kopano4s-migration-zarafa.sh (automated migration from synolog zarafa(4h) via Kopano-migration edition which is WIP)
 
-7. Customizing-Skripts (in merge/custom)
-* 
+7. Merge-Files (in merge and sub.dirs postfix, web, z-push)
+* postbuild.sh (target: /etc/kopano/custom for user to have additional steps performed to the container post build from image)
+* dpkg-add (debian packages e.g. vim-tiny that can be added to the container post build from image and be customized by user)
+* server.cfg.init, default.init, dagent.cfg.init (target: /etc/kopano configuration files customized and different to Kopano distro)
+* kinit.tgz (init.d services control files; as Kopano no longer ships init.d files focusing on systemd which Docker does not 'like')
+* fetchmailrc (target: /etc/kopano templte file for fetchmail)
 
-8. UI-Perl-Skripts, JS, HTML, Images (in ui)
+8. UI-Perl-Skripts, JS, HTML, Pics (in ui and ui/images)
+* 
+* 
 * 
 
 
