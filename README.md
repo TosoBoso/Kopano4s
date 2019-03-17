@@ -63,9 +63,13 @@ As per Synology SPK convention the directories ui (admin-gui), merge (files, cfg
 * fetchmailrc (target: /etc/kopano templte file for fetchmail)
 
 8. UI-Perl-Skripts, JS, HTML, Pics (in ui and ui/images)
-* 
-* 
-* 
+* config (Synology soecific file for the UI to define URLs and icons like webapp and the name of admin UI index.cgi)
+* index.cgi (main perl script which reads in html and js sources adding them to the output)
+* syno_cgi.pl (helper file for validating token and login of admin and base logic for html-get paramaters)
+* dsm.css, images (stylesheet file and images sub-directory)
+* menu.htm (menu structure for all pages redered by index.cgi)
+* alias, cfg, cmd, devices, fetch, intro, log, queue, report, smtp, spamav, tools, user.htm (pages redered by index.cgi with layout, fileds, combos etc.)
+* alias, cfg, cmd, devices, fetch, intro, log, queue, report, smtp, spamav, tools, user.js (JavaScript files to respective pages)
 
 ## Synology Specifics
 ### Package Target Areas & Testing
@@ -78,10 +82,10 @@ The same applies for testing the perl ui vi sudo perl index.cgi which has to be 
 ### Synology IP autoblock as customized fail2ban
 
 ## Kopano Docker Specifics 
-* Client access via Outlook (mapi/active-sync), mobile device (z-push active sync)
-* Pasing real-IP into container to enable sensible access log and error-log for fail2ban
-* Unig docker tiny init and init.d scripts to control the services ('multi-microservices approach')
+### Client access via Outlook (mapi/active-sync), mobile device (z-push active sync)
+### Pasing real-IP into container to enable sensible access log and error-log for fail2ban
+### Unig docker tiny init and init.d scripts to control the services ('multi-microservices approach')
 
 ## Future Planning Roadmap
-* Decomposing single container in multiple for core, mail, web, meet ('almost-single-microservices approach')
-* Ajax in Admin UI nhanceing responsiveness, lokk and feel etc.
+### Decomposing single container in multiple for core, mail, web, meet ('almost-single-microservices approach')
+### Ajax in Admin UI nhanceing responsiveness, lokk and feel etc.
