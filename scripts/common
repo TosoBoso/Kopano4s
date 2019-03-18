@@ -1,16 +1,16 @@
 #!/bin/sh
 # ** (c) 2015/16 TosoBoso - common lib for Kopano-4-Synology in Docker container
 # ** set environment
-VER_COMMUNITY_BASE_TAG="Community_base_B-8.7.80_Web-3.5.3_Push-2.4.5"
-VER_SUPPORTED_BASE_TAG="Supported_base_B-8.7.0_Web-3.5.2_Push-2.4.5"
-VER_COMMUNITY_FULL_TAG="Community_B-8.7.80_Web-3.5.3_Push-2.4.5_Meet-0.29.5_Mmost-5.8.0_Files-2.1.6_Docs-5.4"
-VER_SUPPORTED_FULL_TAG="Supported_B-8.7.0_Web-3.5.2_Push-2.4.5_Meet-0.29.5_Mmost-5.8.0_Files-2.1.5_Docs-5.4"
+VER_COMMUNITY_BASE_TAG="Community_base_B-8.7.80_Web-3.5.4_Push-2.4.5"
+VER_SUPPORTED_BASE_TAG="Supported_base_B-8.7.0_Web-3.5.3_Push-2.4.5"
+VER_COMMUNITY_FULL_TAG="Community_B-8.7.80_Web-3.5.4_Push-2.4.5_Meet-0.29.5_Mmost-5.8.0_Files-2.1.6_Docs-5.4"
+VER_SUPPORTED_FULL_TAG="Supported_B-8.7.0_Web-3.5.3_Push-2.4.5_Meet-0.29.5_Mmost-5.8.0_Files-2.1.5_Docs-5.4"
 VER_MIGRATION_TAG="Migration-8.4.5.0_Web-3.4.2_Push-2.3.9"
 COMMUNITY_BASE_SIZE=154
-SUPPORTED_BASE_SIZE=161
+SUPPORTED_BASE_SIZE=154
 MIGRATION_SIZE=141
-COMMUNITY_FULL_SIZE=180
-SUPPORTED_FULL_SIZE=179
+COMMUNITY_FULL_SIZE=173
+SUPPORTED_FULL_SIZE=173
 RELEASE="Beta"
 PKG_NAME=Kopano4s
 ETC_PATH="/usr/syno/etc/packages/$PKG_NAME"
@@ -206,6 +206,8 @@ SAVE_LOG_ETC()
 	cp $LOG /tmp/k4spackage.log
 	mkdir -p $K_SHARE/backup/etc
 	cp -R -f $ETC_PATH/kopano $K_SHARE/backup/etc
+	# remove legacy z-push in kopano-etc
+	if [ -e $K_SHARE/backup/etc/kopano/z-push ] ; then rm -R $K_SHARE/backup/etc/kopano/z-push ; fi
 }
 RESTORE_LOG_ETC()
 {
@@ -846,10 +848,9 @@ INIT_UPDATE()
 	# perform any inits of later realease missin gin install by update mode
 	if [ ! -e $K_SHARE/z-push ] ; then mkdir -p $K_SHARE/z-push && chmod 750 $K_SHARE/z-push ; fi
 	if [ ! -e $ETC_PATH/z-push ] ; then mkdir -p $ETC_PATH/z-push && chmod 750 $ETC_PATH/z-push ; fi
-	# etc-kopano-zpush moved to etc-z-push
+	# etc-kopano-zpush moved to etc-z-push so remove it
 	if [ -e $ETC_PATH/kopano/z-push ] && [ ! -h $ETC_PATH/kopano/z-push ]
 	then
-		local R_ETC=`realpath $ETC_PATH`
 		rm -R $ETC_PATH/kopano/z-push
 	fi
 	ä change to new naming convention for z-push and webapp confs incl. pkugins
@@ -1411,8 +1412,9 @@ SET_DOCKERFILE()
 	local URL_PFETCHM="https://github.com/olia-dev/kopano-webapp-fetchmail/raw/master/builds/fetchmail-1.0.2.zip"
 	if [ "$K_EDITION" == "Supported" ]
 	then
-		URL_CORE="${K_URL_SUP}/core:/final/Debian_9.0"
-		URL_UBCORE="${K_URL_SUP}/core:/final/Ubuntu_18.04/amd64"
+		# currently use 8.7 instead of final since final has the 8.69
+		URL_CORE="${K_URL_SUP}/core:/8.7/Debian_9.0"
+		URL_UBCORE="${K_URL_SUP}/core:/8.7/Ubuntu_18.04/amd64"
 		GET_K_DOWNLOAD_BY_TAG "https://serial:${K_SNR}@${URL_CORE}/all/" "kopano-server-packages_"
 		GET_DOWNLOAD_REL_NR "https://serial:${K_SNR}@${RET_URL}" packages all
 		VTAG="Core-${RET_REL}"
@@ -1593,14 +1595,8 @@ SET_DOCKERFILE()
 	if [ "$K_EDITION" != "Migration" ] ; then sed -i -e "s~#KC-681~~g" /var/packages/Kopano4s/scripts/container/Dockerfile ; fi
 	# now update the ver_tag
 	sed -i -e "s~VER_TAG=.*~VER_TAG=\"$VER_TAG\"~" $ETC_PATH/package.cfg
-	if [ ! -e $DOCKER_PATH/kopano4s ]
-	then
-		mkdir -p $DOCKER_PATH/kopano4s
-	fi
-	if [ ! -e $DOCKER_PATH/kopano4s/container ]
-	then
-		mkdir -p $DOCKER_PATH/kopano4s/container
-	fi
+	mkdir -p $DOCKER_PATH/kopano4s
+	mkdir -p $DOCKER_PATH/kopano4s/container
 	# copy over dockerfile and cfg for packages to remove post build, then conatiner init, robot.png 
 	cp -f /var/packages/Kopano4s/scripts/container/Dockerfile $DOCKER_PATH/kopano4s
 	cp -f /var/packages/Kopano4s/scripts/container/* $DOCKER_PATH/kopano4s/container
@@ -1614,7 +1610,7 @@ SET_DOCKER_ENV()
 {
 	# we are soft-linking the mounts in docker share via etc to deal with Synology Docker GUI issues (mounts "outside")
 	# create soflinks from k-etc-docker-volumes to kopano-share for mounts into docker; create docker path for downloaded image case
-	mkdir -p $DOCKER_PATH/kopano4s
+	$SUDO mkdir -p $DOCKER_PATH/kopano4s
 	$SUDO ln -sf $ETC_PATH/kopano $DOCKER_PATH/kopano4s/etc-kopano
 	$SUDO ln -sf $ETC_PATH/z-push $DOCKER_PATH/kopano4s/etc-z-push
 	$SUDO ln -sf $K_SHARE/amavis $DOCKER_PATH/kopano4s/amavis

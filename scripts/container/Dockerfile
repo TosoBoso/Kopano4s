@@ -40,48 +40,48 @@ WORKDIR /root/repo
 RUN if [ ! -e /usr/share/locale/locale.alias ] ; then ln -s /etc/locale.alias /usr/share/locale/locale.alias ; fi
 RUN sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && dpkg-reconfigure locales 
 # downloading packages (community in tar, supported plain) and packing everything into a local apt repository incl. deb [trusted=yes]
-RUN	wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate $URL_Z_PUSH && \
-#COMMUNITY	wget --no-check-certificate --quiet $URL_CORE -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#SUPPORTED	wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_CORE}/all/ && \
-#SUPPORTED	wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_CORE}/amd64/ && \
+RUN	wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate $URL_Z_PUSH
+#COMMUNITY	RUN wget --no-check-certificate --quiet $URL_CORE -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#SUPPORTED	RUN wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_CORE}/all/
+#SUPPORTED	RUN wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_CORE}/amd64/
 # for php 7.2 replace debians php mapi.so by Ubuntus
-#COMMUNITY	if [ "$PHP_VER" != "7.0" ] ; then wget --no-check-certificate --quiet $URL_UBCORE -O- | tar xz -C /root/repo/dists --strip-components=1 ; fi && \
-#COMMUNITY	if [ "$PHP_VER" != "7.0" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/php7-mapi* && cp /root/repo/dists/php7-mapi* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi && \
-#SUPPORTED	if [ "$PHP_VER" != "7.0" ] ; then rm php7-mapi* && wget --quiet -p -r -nc -nd -l 1 -e robots=off -A "php7-mapi*" --no-check-certificate https://serial:${K_SNR}@${URL_UBCORE}/ ; fi && \
-#COMMUNITY	wget --no-check-certificate --quiet $URL_WEBAPP -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#SUPPORTED	wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_WEBAPP} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#COMMUNITY	wget --no-check-certificate --quiet $URL_MDM -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#SUPPORTED	wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_MDM} && \
-#COMMUNITY	wget --no-check-certificate --quiet $URL_SMIME -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#SUPPORTED	wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_SMIME} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
+#COMMUNITY	RUN if [ "$PHP_VER" != "7.0" ] ; then wget --no-check-certificate --quiet $URL_UBCORE -O- | tar xz -C /root/repo/dists --strip-components=1 ; fi
+#COMMUNITY	RUN if [ "$PHP_VER" != "7.0" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/php7-mapi* && cp /root/repo/dists/php7-mapi* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi
+#SUPPORTED	RUN if [ "$PHP_VER" != "7.0" ] ; then rm php7-mapi* && wget --quiet -p -r -nc -nd -l 1 -e robots=off -A "php7-mapi*" --no-check-certificate https://serial:${K_SNR}@${URL_UBCORE}/ ; fi
+#COMMUNITY	RUN wget --no-check-certificate --quiet $URL_WEBAPP -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#SUPPORTED	RUN wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_WEBAPP} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#COMMUNITY	RUN wget --no-check-certificate --quiet $URL_MDM -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#SUPPORTED	RUN wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_MDM}
+#COMMUNITY	RUN wget --no-check-certificate --quiet $URL_SMIME -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#SUPPORTED	RUN wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_SMIME} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
 # for php 7.2 replace debians php smine.so by Ubuntus
-#COMMUNITY	if [ "$PHP_VER" != "7.0" ] ; then wget --no-check-certificate --quiet $URL_UBSMIME -O- | tar xz -C /root/repo/dists --strip-components=1 ; fi && \
-#COMMUNITY	if [ "$PHP_VER" != "7.0" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/*plugin-smime* && cp /root/repo/dists/*plugin-smime* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi && \
-#SUPPORTED	if [ "$PHP_VER" != "7.0" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/*plugin-smime* ; fi && \
-#SUPPORTED	if [ "$PHP_VER" != "7.0" ] ; then wget --quiet -p -r -nc -nd -l 1 -e robots=off -A 'kopano-webapp-plugin-smime*' --no-check-certificate https://serial:${K_SNR}@${URL_UBSMIME}/ ; fi && \
-#SUP_FULL	wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_WEBMEET} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#COM_FULL	wget --no-check-certificate --quiet $URL_WEBMEET -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#SUP_FULL	wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_MATMOST} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#COM_FULL	wget --no-check-certificate --quiet $URL_MATMOST -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#SUP_FULL	wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_FILES} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#COM_FULL	wget --no-check-certificate --quiet $URL_FILES -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && \
-#SUP_FULL	wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_DOCED}/all/ && \
-#SUP_FULL	wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_DOCED}/amd64/ && \
-#COM_FULL	wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate $URL_DOCED/all/ && \
-#COM_FULL	wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate $URL_DOCED/amd64/ && \
-mv -f *.deb /root/repo/dists/kopano/main/binary-amd64 && \
+#COMMUNITY	RUN if [ "$PHP_VER" != "7.0" ] ; then wget --no-check-certificate --quiet $URL_UBSMIME -O- | tar xz -C /root/repo/dists --strip-components=1 ; fi
+#COMMUNITY	RUN if [ "$PHP_VER" != "7.0" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/*plugin-smime* && cp /root/repo/dists/*plugin-smime* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi
+#SUPPORTED	RUN if [ "$PHP_VER" != "7.0" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/*plugin-smime* ; fi
+#SUPPORTED	RUN if [ "$PHP_VER" != "7.0" ] ; then wget --quiet -p -r -nc -nd -l 1 -e robots=off -A 'kopano-webapp-plugin-smime*' --no-check-certificate https://serial:${K_SNR}@${URL_UBSMIME}/ ; fi
+#SUP_FULL	RUN wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_WEBMEET} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#COM_FULL	RUN wget --no-check-certificate --quiet $URL_WEBMEET -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#SUP_FULL	RUN wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_MATMOST} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#COM_FULL	RUN wget --no-check-certificate --quiet $URL_MATMOST -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#SUP_FULL	RUN wget --no-check-certificate --quiet https://serial:${K_SNR}@${URL_FILES} -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#COM_FULL	RUN wget --no-check-certificate --quiet $URL_FILES -O- | tar xz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1
+#SUP_FULL	RUN wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_DOCED}/all/
+#SUP_FULL	RUN wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate https://serial:${K_SNR}@${URL_DOCED}/amd64/
+#COM_FULL	RUN wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate $URL_DOCED/all/
+#COM_FULL	RUN wget --quiet -p -r -nc -nd -l 1 -e robots=off -A deb --no-check-certificate $URL_DOCED/amd64/
+RUN mv -f *.deb /root/repo/dists/kopano/main/binary-amd64
 # now get non core kopano plugins from github and familiethimm.de: passwd, fetchmail, google2fa
-mkdir -p /root/repo/plugins && wget --no-check-certificate --quiet $URL_PASSWD -O /root/repo/plugins/passwd.zip && \
-unzip /root/repo/plugins/passwd.zip -d /root/repo/plugins/passwd && sed -i -e "s~>1.3~>1.5~" /root/repo/plugins/passwd/manifest.xml && rm /root/repo/plugins/passwd.zip && \
-wget --no-check-certificate --quiet $URL_G2FA -O /root/repo/plugins/google2fa.zip && \
-unzip /root/repo/plugins/google2fa.zip -d /root/repo/plugins && rm /root/repo/plugins/google2fa.zip && \
-mv /root/repo/plugins/google2fa/config_default.php /root/repo/plugins/google2fa/config.php && \
-#sed -i -e "s~define('PLUGIN_GOOGLE2FA_ENABLE'.*~define('PLUGIN_GOOGLE2FA_ENABLE', false);"~ /root/repo/plugins/google2fa/config.php && \
-sed -i -e "s~define('PLUGIN_GOOGLE2FA_WHITELIST'.*~define('PLUGIN_GOOGLE2FA_WHITELIST', '192.168.0.0/16,127.0.0.1');"~ /root/repo/plugins/google2fa/config.php && \
-wget --no-check-certificate --quiet $URL_PFETCHM -O /root/repo/plugins/fetchmail.zip && \
-unzip /root/repo/plugins/fetchmail.zip -d /root/repo/plugins && rm /root/repo/plugins/fetchmail.zip && \
-mv /root/repo/plugins/fetchmail/example.config.php /root/repo/plugins/fetchmail/config.php && \
-mv /root/repo/plugins/fetchmail/kopano_fetchmail.service.example /root/repo/plugins/fetchmail/kopano_fetchmail.service
+RUN mkdir -p /root/repo/plugins && wget --no-check-certificate --quiet $URL_PASSWD -O /root/repo/plugins/passwd.zip && \
+	unzip /root/repo/plugins/passwd.zip -d /root/repo/plugins/passwd && sed -i -e "s~>1.3~>1.5~" /root/repo/plugins/passwd/manifest.xml && rm /root/repo/plugins/passwd.zip
+RUN wget --no-check-certificate --quiet $URL_G2FA -O /root/repo/plugins/google2fa.zip && \
+	unzip /root/repo/plugins/google2fa.zip -d /root/repo/plugins && rm /root/repo/plugins/google2fa.zip && \
+	mv /root/repo/plugins/google2fa/config_default.php /root/repo/plugins/google2fa/config.php && \
+	#sed -i -e "s~define('PLUGIN_GOOGLE2FA_ENABLE'.*~define('PLUGIN_GOOGLE2FA_ENABLE', false);"~ /root/repo/plugins/google2fa/config.php && \
+	sed -i -e "s~define('PLUGIN_GOOGLE2FA_WHITELIST'.*~define('PLUGIN_GOOGLE2FA_WHITELIST', '192.168.0.0/16,127.0.0.1');"~ /root/repo/plugins/google2fa/config.php
+RUN wget --no-check-certificate --quiet $URL_PFETCHM -O /root/repo/plugins/fetchmail.zip && \
+	unzip /root/repo/plugins/fetchmail.zip -d /root/repo/plugins && rm /root/repo/plugins/fetchmail.zip && \
+	mv /root/repo/plugins/fetchmail/example.config.php /root/repo/plugins/fetchmail/config.php && \
+	mv /root/repo/plugins/fetchmail/kopano_fetchmail.service.example /root/repo/plugins/fetchmail/kopano_fetchmail.service
 RUN	echo "** create trusted local repository to comply with stretch-security which takes some time.." && \
 	apt-ftparchive generate -c=/root/repo/aptftp.conf /root/repo/aptgenerate.conf && \
 	apt-ftparchive release -c=/root/repo/aptftp.conf /root/repo/dists/kopano/main >/root/repo/dists/kopano/main/Release
@@ -247,6 +247,9 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	mkdir -p /etc/kopano/custom && echo '#!/bin/sh' > /etc/kopano/custom/cron.hourly && echo "# put your kopnao cron jobs here" >> /etc/kopano/custom/cron.hourly && \	
 	cp /etc/kopano/custom/cron.hourly /etc/kopano/custom/cron.daily && cp /etc/kopano/custom/cron.daily /etc/kopano/custom/cron.weekly && chmod 750 /etc/kopano/custom/cron.* && chown root.kopano /etc/kopano/custom/cron.* && \
 	ln -sf /etc/kopano/custom/cron.hourly /etc/cron.hourly/kopano && ln -sf /etc/kopano/custom/cron.daily /etc/cron.daily/kopano && ln -sf /etc/kopano/custom/cron.weekly /etc/cron.weekly/kopano && \
+# prevent syslog logrotate warnings
+	sed -i -e 's/\(printerror "could not determine current runlevel"\)/#\1/' /usr/sbin/invoke-rc.d && \
+	sed -i -e 's/^\(POLICYHELPER=\).*/\1/' /usr/sbin/invoke-rc.d && \
 # create logrotate in /etc/logrotate.d/ for amavis, daemon, fetchmail, messages, mail.*, php7*, spamassassin
 	echo "/var/log/kopano/amavis.log {" > /etc/logrotate.d/amavis && \
 	echo "su amavis kopano\nweekly\nmissingok\nrotate 4\ncompress\ndelaycompress\n}" >> /etc/logrotate.d/amavis && \
@@ -275,7 +278,7 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	sed -i -e "s~www-data adm~root kopano~"  /etc/logrotate.d/nginx && \
 	sed -i -e "s~/var/log/syslog~/var/log/kopano/syslog~"  /etc/logrotate.d/rsyslog && \
 	sed -i -e "s~{~{\n\tsu root kopano~"  /etc/logrotate.d/rsyslog && \
-	# expose postfix, nginx and other log files to kopano folder
+# expose postfix, nginx and other log files to kopano folder
 	ln -sf /var/log/kopano/mail.log /var/log/mail.log && ln -sf /var/log/kopano/mail.info /var/log/mail.info  && \
 	ln -sf /var/log/kopano/mail.warn /var/log/mail.warn && ln -sf /var/log/kopano/mail.err /var/log/mail.err && \
 	if [ -e /var/log/clamav ] ; then rm -R /var/log/clamav ; fi  && ln -sf /var/log/kopano /var/log/clamav && \

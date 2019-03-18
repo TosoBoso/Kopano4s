@@ -144,12 +144,19 @@ esac
 
 if [ "$MOB" == "ON" ]
 then
-	$SUDO rm -R /etc/kopano/z-push/state
-	$SUDO mkdir -p  /etc/kopano/z-push/state
+#find /usr/share/kopano-webapp -type d -exec chmod 750 "{}" ";"
+	# remove legacy z-push incl. state in kopano-etc and backup area
+	if [ -e $K_SHARE/backup/etc/kopano/z-push ] ; then rm -R $K_SHARE/backup/etc/kopano/z-push ; fi
+	if [ -e /etc/kopano/z-push ] && [ -h /etc/kopano/z-push ] ; then $SUDO rm /etc/kopano/z-push ; fi
+	if [ -e /etc/kopano/z-push ] && [ ! -h /etc/kopano/z-push ] ; then $SUDO rm -R /etc/kopano/z-push ; fi
+	# delete all subdirectories of z-push aka mindepth 1
+	SDIR=`find $K_SHARE/z-push -mindepth 1 -maxdepth 1 -type d -exec basename "{}" ";"`
+	for S in $SDIR ; do $SUDO rm -R $K_SHARE/z-push/$S ; done 
+	find $K_SHARE/z-push -type f -exec $SUDO rm "{}" ";"
 	if [ "$ACL" == "OFF" ]
 	then
-		$SUDO chown -R http.kopano /etc/kopano/z-push/state
-		$SUDO chmod 770 /etc/kopano/z-push/state
+		$SUDO chown -R http.kopano $K_SHARE/z-push
+		$SUDO chmod 770 $K_SHARE/z-push
 	fi
 fi
 if [ "$SSL" == "ON" ]

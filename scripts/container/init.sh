@@ -347,7 +347,7 @@ set_acl()
 	chown -R root.www-data /var/www/html && chmod 750 /var/www/html && chmod 640 /var/www/html/*.html
 	chown -R root.www-data /usr/share/kopano-webapp
 	chown -R root.www-data /usr/share/z-push
-	chown -R root.kopano /var/log/kopano
+	chown -R kopano.kopano /var/log/kopano
 	chown amavis.kopano /var/log/kopano/amavis.log
 	chown www-data.kopano /var/log/kopano/webapp-usr.log
 	chown -R www-data.kopano /var/log/kopano/z-push/
@@ -1199,9 +1199,9 @@ case $1 in
 			RET="Sys:"
 			if s_srv_on rsyslog
 			then
-				RET="$RET, Syslog Running"
+				RET="$RET Syslog Running"
 			else
-				RET="$RET, Syslog Not Running"
+				RET="$RET Syslog Not Running"
 			fi
 			if s_srv_on cron
 			then
@@ -1255,7 +1255,6 @@ case $1 in
 				HEALTH_C_TIMER=0
 				if ! k_srv_on kopano-spooler ; then service kopano-spooler start ; fi
 				if ! k_srv_on kopano-dagent ; then service kopano-dagent start ; fi
-				if ! k_srv_on kopano-search ; then service kopano-search start ; fi
 				if ! s_srv_on rsyslog ; then service rsyslog start ; fi
 				if ! s_srv_on cron ; then service cron start ; fi
 				if ! m_srv_on postfix ; then service postfix start ; fi

@@ -7,4 +7,4 @@ then
 	exit 1
 fi
 KDUMP_PATH="/volume1/kopano/backup"
-echo "work in progress"
+echo "work in progress planned for next release stable k4s v.1.0.1"
