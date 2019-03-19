@@ -1,0 +1,15 @@
+sudo: required
+language: bash
+services:
+- docker
+before_install:
+  - sudo apt update && sudo apt install -y fakeroot
+install:
+  - ./build_spk.sh
+deploy:
+  provider: releases
+  api_key: $GITHUB_OAUTH_TOKEN
+  file: kopano4s*.spk
+  skip_cleanup: true
+  on:
+    tags: true
