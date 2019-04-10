@@ -36,10 +36,10 @@ if ! [ -x "$(command -v git)" ]; then
 fi
 
 if ! [ -x "$(command -v fakeroot)" ]; then
-	echo 'WARNING: fakeroot is not installed.' >&2
-	FAKEROOT=$(command -v fakeroot)
+	echo 'Fakeroot is not installed; using sudo, you might need to give pwd at initial call when archive wil be build..' >&2
+	FAKEROOT="sudo"
 else
-	FAKEROOT=""
+	FAKEROOT=$(command -v fakeroot)
 fi
 
 # Arbeitsverzeichnis auslesen und hineinwechseln:
