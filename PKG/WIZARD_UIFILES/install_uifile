@@ -37,7 +37,7 @@
 		"subitems": 
 		[{
 			"key": "PKGWIZ_K_SNR",
-			"desc": "SerialNr (commercial functions)",
+			"desc": "SerialNr (commercial subscription)",
 			"defaultValue": "",
 			"validator":{"allowBlank":true}
 		}]
@@ -51,7 +51,7 @@
 			"defaultValue": false
 		 },{
 			"key": "PKGWIZ_K_SUP",
-			"desc": "Kopano Supported edition (SNR required) instead of Community edition using nightly builds.",
+			"desc": "Kopano Supported edition (SNR required) instead of default: recent edition 3-9 months old.",
 			"defaultValue": false
 		 },{
 			"key": "PKGWIZ_K_MIG",

@@ -3,9 +3,12 @@ language: bash
 services:
 - docker
 before_install:
-  - sudo apt update && sudo apt install -y fakeroot
+  - sudo apt update && sudo apt install -y fakeroot shellcheck 
 install:
   - ./build_spk.sh
+#script:
+  # fail if any of these files have warnings via shellcheck
+#  - grep -rIl '^#![[:blank:]]*/bin/\(bash\|sh\|zsh\)' --exclude-dir=.git --exclude=*.sw? | xargs shellcheck
 deploy:
   provider: releases
   api_key: $GITHUB_OAUTH_TOKEN

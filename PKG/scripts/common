@@ -1,17 +1,21 @@
 #!/bin/sh
-# ** (c) 2015/16 TosoBoso - common lib for Kopano-4-Synology in Docker container
+# ** (c) 2017-19 TosoBoso - common lib for Kopano-4-Synology in Docker container
 # ** set environment
+# Default is from 28.11./13.12.2018 and Migration from 15.12./15.12.2017
+VER_DEFAULT_TAG="Default-8.6.9.0_Web-3.5.0_Push-2.4.5"
+VER_MIGRATION_TAG="Migration-8.4.5.0_Web-3.4.2_Push-2.3.9"
+VER_SUPPORTED_TAG="Supported-8.7.0_Web-3.5.3_Push-2.4.5"
+
 VER_COMMUNITY_BASE_TAG="Community_base_B-8.7.80_Web-3.5.4_Push-2.4.5"
 VER_SUPPORTED_BASE_TAG="Supported_base_B-8.7.0_Web-3.5.3_Push-2.4.5"
 VER_COMMUNITY_FULL_TAG="Community_B-8.7.80_Web-3.5.4_Push-2.4.5_Meet-0.29.5_Mmost-5.8.0_Files-2.1.6_Docs-5.4"
 VER_SUPPORTED_FULL_TAG="Supported_B-8.7.0_Web-3.5.3_Push-2.4.5_Meet-0.29.5_Mmost-5.8.0_Files-2.1.5_Docs-5.4"
-VER_MIGRATION_TAG="Migration-8.4.5.0_Web-3.4.2_Push-2.3.9"
 COMMUNITY_BASE_SIZE=154
 SUPPORTED_BASE_SIZE=154
 MIGRATION_SIZE=141
 COMMUNITY_FULL_SIZE=173
 SUPPORTED_FULL_SIZE=173
-RELEASE="Beta"
+RELEASE="Stable"
 PKG_NAME=Kopano4s
 ETC_PATH="/usr/syno/etc/packages/$PKG_NAME"
 TARGET_PATH="/var/packages/$PKG_NAME/target"
@@ -38,7 +42,7 @@ then
 	#SYNOPKG_PKG_STATUS="UPGRADE"
 	SYNOPKG_PKG_STATUS="INSTALL"
 fi
-# ** for testing without GUI
+# ** for testing without GUI set wizz-values
 if [ "_$PKGWIZ_DB_NAME" == "_" ]
 then
 	PKGWIZ_K_SUP="false"
@@ -858,7 +862,11 @@ INIT_UPDATE()
 	if [ ! -e $ETC_PATH/kopano/webapp/webapp.conf.php ] ; then mv $ETC_PATH/kopano/webapp/config.php $ETC_PATH/kopano/webapp/webapp.conf.php ; fi
 	PDIR=`find $ETC_PATH/kopano/webapp/config-* -maxdepth 0 | cut -d '-' -f2-`
 	for P in $PDIR ; do mv $ETC_PATH/kopano/webapp/config-$P $ETC_PATH/kopano/webapp/plg.conf-$P ; done
-
+	# adjust mdm to port 9080
+	if [ -e $ETC_PATH/kopano/webapp/plg.conf-mdm.php ] && ! grep -q 9080 $ETC_PATH/kopano/webapp/plg.conf-mdm.php
+	then
+		sed -i -e "s~localhost~localhost:9080~" $ETC_PATH/kopano/webapp/plg.conf-mdm.php
+	fi
 	if ! grep -q k4samavis: /etc/passwd
 	then
 		# ** add kopano group and user to join root for access patterns to rc and log files

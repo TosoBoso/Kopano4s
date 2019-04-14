@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/TosoBoso/Kopano4s.svg?branch=master)](https://travis-ci.org/TosoBoso/Kopano4s)
 # Kopano4s
 [Kopano mail & collaboration SW](https://kopano.com/) integration for the [Synology NAS](https://www.synology.com/) using [Docker](https://hub.docker.com) wrapped in a [SPK for the Package Manager](https://www.synology.com/en-global/knowledgebase/DSM/tutorial/Service_Application/How_to_install_applications_with_Package_Center).
 ## Intro
@@ -8,7 +9,7 @@ A project overview incl. FAQ's, installation, migration advise, screenshots etc 
 
 ## Contributing: How to Clone, Test & Collaborate
 For testing you clone this GitHub repository and via build_spk.sh script build the Synology package file or maintain downloaded SPK via 7zip. 
-For detailed instructions including structure and purpose of each files see CONTRIBUTING.md.
+For detailed instructions including structure and purpose of each files see [CONTRIBUTING.md](https://github.com/TosoBoso/Kopano4s/blob/master/CONTRIBUTING.md).
 
 ## Synology Specifics
 ### Package Target Areas & Testing
