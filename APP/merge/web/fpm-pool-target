@@ -1,4 +1,0 @@
-max_children=100
-start_servers=25
-min_spare_servers=15
-max_spare_servers=35
