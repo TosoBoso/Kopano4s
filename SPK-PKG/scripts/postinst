@@ -1,0 +1,84 @@
+#!/bin/sh
+# ** (c) 2018 vbettag - install for Kopano4Syno in Docker container
+#echo "$(date '+%Y.%m.%d-%H:%M:%S') postinst" >> /tmp/inst.log
+# ** get common procedures, settings, tags and download urls
+MYDIR=$(dirname "$0")
+. "$MYDIR"/common
+if [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ]
+# ** install only modus
+then
+	# ** get config from package wizzard tags, stale vs. beta from INFO and calculate tuning
+	GET_BETA_STABLE
+	GET_WIZZARD_CFG
+	GET_TUNIG_PARAMS
+	# ** inits: create log, user, group, share, mounts, etc, database
+	INIT_LOG
+	INIT_USR_GRP
+	INIT_SHARE_ETC
+	INIT_DATABASE
+	# ** set config options as per install wizzard GUI
+	SET_CFG_OPTIONS
+	SET_OPTIONALS
+	# ** set ssl, locales, sql and tune mariadb sql server 
+	SET_K_CERTIFICATE
+	SET_K_LOCALE
+	SET_SQL_CONF
+	GET_VER_TAG
+	# ** set state and write cfg
+	INSTALL_STATE="installing"
+	SET_PKG_CFG
+# ** upgrade only modus
+else
+	# ** in upgrade mode.. if previous steps failed create dummy config
+	if [ ! -e "$ETC_PATH/package.cfg" ] ; then touch "$ETC_PATH/package.cfg" ; fi
+	GET_PKG_CFG
+	RESTORE_LOG_ETC
+	if [ -z "$INSTALL_STATE" ] || [ "$INSTALL_STATE" != "completed" ]
+	then
+		LOG_MESSAGE "Cannot upgrade a previously uncompleted or legacy install. Please remove the package and re-install. "
+		GUI_MESSAGE "Cannot upgrade a previously uncompleted or legacy install. Please remove the package and re-install. "
+		exit 1
+	fi
+	INIT_UPDATE
+	# any upgrade set beta vs. stable
+	GET_BETA_STABLE
+	GET_VER_TAG
+	# ** save package config again for changed tags and state
+	INSTALL_STATE="upgrading"
+	SET_PKG_CFG
+	# default no image build at upgrade
+	IMAGE_BUILD="OFF"
+fi
+# ** install & upgrade modus
+INIT_SYNOACL
+# put to amavis spamtraining from spamassassin.apache.org/old/publiccorpus
+mv -f "$TARGET_PATH/merge/spamtrain.tgz" "$K_SHARE/amavis"
+# we do not find the latest or predefined tag so we have to build
+if ! CHECK_DOCKER_TAG tosoboso/kopano4s "$VER_TAG"
+then
+	IMAGE_BUILD="ON"
+fi
+if [ "$IMAGE_BUILD" == "ON" ]
+then
+	#echo "$(date '+%Y.%m.%d-%H:%M:%S') postinst build docker" >> /tmp/inst.log
+	STARTTIME=$(date +%s)
+	SET_DOCKERFILE
+	BUILD_DOCKER
+fi
+SET_GUI_NO_DEBUG
+SET_COMMUNITY_BETA
+SET_SVR_CFG_NEW
+SET_SOFTLINKS
+if [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ]
+then
+	# change install state to completed
+	sed -i -e "s~INSTALL_STATE=installing~INSTALL_STATE=completed~" "$ETC_PATH/package.cfg"
+	MSG="Kopano4s install of $VER_TAG completed sucessfully."
+else
+	sed -i -e "s~INSTALL_STATE=upgrading~INSTALL_STATE=completed~" "$ETC_PATH/package.cfg"
+	MSG="Kopano4s upgrade to $VER_TAG completed sucessfully."
+fi
+LOG_MESSAGE "$MSG"
+NOTIFY_MESSAGE "$MSG"
+#echo "$(date '+%Y.%m.%d-%H:%M:%S') postinst done" >> /tmp/inst.log
+exit 0

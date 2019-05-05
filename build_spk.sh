@@ -56,9 +56,9 @@ echo " - INFO: Erstelle den temporären Buildordner und kopiere Sourcen hinein .
 
 git worktree add --force "$build_tmp" "$(git rev-parse --abbrev-ref HEAD)"
 pushd "$build_tmp"
-set_spk_version="latest-$(date +%s)-$(git log -1 --format="%h")"
+set_spk_version="$(date +%Y.%m.%d)-$(git log -1 --format="%h")"
 
-if echo "$taggedversions" | egrep -q "$buildversion"; then
+if echo "$taggedversions" | grep -q "$buildversion"; then
 	echo "git checkout zu $buildversion"
 	git checkout "$buildversion"
 	set_spk_version="$buildversion"
@@ -67,18 +67,16 @@ else
 	echo "Die $(git rev-parse --abbrev-ref HEAD)-branch wird verwendet!"
 fi
 
-# fallback to old app dir
-if [ -d "$build_tmp"/Build ]; then
-	APP=Build
-else
-	APP=APP
-fi
-
-# fallback to old pkg dir
-if [ -d "$build_tmp"/Pack ]; then
-	PKG=Pack
-else
+# fallback to old pkg and app dirs
+if [ -d "$build_tmp"/PKG ]; then
 	PKG=PKG
+else
+	PKG=SPK-PKG
+fi
+if [ -d "$build_tmp"/APP ]; then
+	APP=APP
+else
+	APP=SPK-APP
 fi
 
 build_version=$(grep version "$build_tmp/$PKG/INFO" | awk -F '"' '{print $2}')
@@ -103,9 +101,14 @@ fi
 echo ""
 echo " - INFO: Das Archiv package.tgz wird erstellt..."
 
+# in non-fakeroot sudo mode change to root owner 
+if [ "$FAKEROOT" = 'sudo' ] ; then sudo chown -R root.root "${build_tmp}"/"$APP" ; fi
+cd "${build_tmp}"/"$APP"
 $FAKEROOT tar -C "${build_tmp}"/"$APP" -czf "${build_tmp}"/"$PKG"/package.tgz .
+#"$FAKEROOT" tar -cfvz "${build_tmp}"/"$PKG"/package.tgz *
 
-# Wechsel in den Ablageort von package.tgz bezüglich Aufbau des SPK's
+# Wechsel in den Ablageort von package.tgz bez�glich Aufbau des SPK's
+if [ "$FAKEROOT" = 'sudo' ] ; then sudo chown -R root.root "${build_tmp}"/"$PKG" ; fi
 cd "${build_tmp}"/"$PKG"
 
 # Erstellen des eigentlichen SPK's
@@ -113,6 +116,12 @@ echo ""
 echo " - INFO: Das SPK wird erstellt..."
 
 $FAKEROOT tar -cf "${project}"_"$set_spk_version".spk *
+# in non-fakeroot sudo mode change back ownership
+if [ "$FAKEROOT" = 'sudo' ]
+then
+	USR=$(whoami)
+	sudo chown -R "$USR".users "${build_tmp}" 
+fi
 cp -f "${project}"_"$set_spk_version".spk "${APPDIR}"
 
 echo ""

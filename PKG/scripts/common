@@ -222,6 +222,22 @@ RESTORE_LOG_ETC()
 	fi
 }
 # *** sub-routines GET_ (WIZZARD_CFG / TUNING_PARAMS / K_DOWNLOAD_BY_TAG) ***
+# get from INFO file if we have a stable or beta version
+GET_BETA_STABLE()
+{
+	if [ -e /var/packages/Kopano4s/INFO ]
+	then
+		if grep -q "^report_url" /var/packages/Kopano4s/INFO
+		then
+			K_RELEASE="Beta"
+		else
+			K_RELEASE="Stable"
+		fi
+	else
+		K_RELEASE=$RELEASE
+	fi
+}
+# get the selected edition via gui-wizzard; non selected is in the else tree
 GET_WIZZARD_EDITION()
 {
 	if [ "$PKGWIZ_K_SUP" == "true" ]
@@ -232,7 +248,12 @@ GET_WIZZARD_EDITION()
 		then
 			K_EDITION="Migration"
 		else
-			K_EDITION="Community"
+			if [ "$K_RELEASE" == "Beta" ]
+			then
+				K_EDITION="Community"
+			else
+				K_EDITION="Default"
+			fi
 		fi
 	fi
 }
@@ -460,21 +481,6 @@ GET_WIZZARD_CFG()
 	if [ "_$NOTIFYTARGET" == "_" ] ; then NOTIFYTARGET=$USER ; fi
 	if [ "_$NOTIFYTARGET" == "_" ] ||  [ "$NOTIFYTARGET" == "root" ] ; then NOTIFYTARGET="@administrators" ; fi
 	K_ARCHIVE_IMAP="OFF"
-}
-# get from INFO file if we have a stable or beta version
-GET_BETA_STABLE()
-{
-	if [ -e /var/packages/Kopano4s/INFO ]
-	then
-		if grep -q "^report_url" /var/packages/Kopano4s/INFO
-		then
-			K_RELEASE="Beta"
-		else
-			K_RELEASE="Stable"
-		fi
-	else
-		K_RELEASE=$RELEASE
-	fi
 }
 # returns in RET_URL download path to pattern lie *debian9.0
 GET_K_DOWNLOAD_BY_TAG()

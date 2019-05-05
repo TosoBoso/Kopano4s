@@ -1,0 +1,9 @@
+Kopano4s packaged binaries for Kopano Collaboration Platform incl. Postfix & Fetchmail integration.
+Copyright (c) 2018 vbettag, TosoBoso - Free distribution with all rights reserved. 
+This SPK-Pack is free software: you can redistribute it and/or modify it under the terms of the GNU 
+General Public License as published by the Free Software Foundation, version 3 or any later version.
+The Kopano Collaboration Platform is licensed under the Affero GPLv3. Two Kopano distributions are
+available: Community beta on nighly builds and Supported requiring SNR from Kopano subscription.
+Distribution in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See http://gnu.org/licenses.
+For more details and help see Kopano4S project homepage at http://wiki.z-hub.io/display/K4S.

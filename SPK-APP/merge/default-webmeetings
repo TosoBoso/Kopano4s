@@ -1,0 +1,10 @@
+# Defaults for zarafa-webmeetings initscripts
+MEETINGS_USER='zarafa'
+MEETINGS_GROUP='www-data'
+MEETINGS_CONF='/etc/zarafa/webmeetings.cfg'
+MEETINGS_LOG='/var/log/zarafa/webmeetings.log'
+MEETINGS_ARGS=""
+MEETINGS_RUN_DIR='/var/run'
+MEETINGS_PID="${MEETINGS_RUN_DIR}/zarafa-webmeetings.pid"
+MEETINGS_GOMAXPROCS=1
+MEETINGS_NOFILE=1024

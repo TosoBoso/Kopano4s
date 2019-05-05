@@ -1,0 +1,289 @@
+[{
+	"step_title": "Kopano for Synology Install Basic Settings",
+	"items": 
+	[{
+		"type": "textfield",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_DB_NAME",
+			"desc": "MySQL-Database Name",
+			"defaultValue": "kopano",
+			"validator":{"allowBlank":false}
+		}]
+		},{
+		"type": "password",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_DB_PASSWD",
+			"desc": "MySQL-Password (not stored)",
+			"defaultValue": "",
+			"validator":{"allowBlank":false}
+		}]
+		},{
+		"type": "textfield",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_K_SHARE",
+			"desc": "Shared Folder (files, backup..)",
+			"defaultValue": "/volume1/kopano",
+			"validator":{"allowBlank":false}
+		}]
+		},{
+		"type": "textfield",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_K_SNR",
+			"desc": "SerialNr (commercial subscription)",
+			"defaultValue": "",
+			"validator":{"allowBlank":true}
+		}]
+		},{
+		"type": "multiselect",
+		"desc": "Advanced options. Note: mix of attachments in DB and on FS is not supported. See Wiki for migration.:",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_ATTACHMENT_ON_FS",
+			"desc": "Store mail attachments in file system share instead of database (better MySQL performance).",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_K_SUP",
+			"desc": "Kopano Supported edition (SNR required) instead of default: recent edition 3-9 months old.",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_K_MIG",
+			"desc": "Kopano Migration edition (8.4.5-Web-3.4) to import Zarafa database and upgrade later.",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_BUILD",
+			"desc": "Build Docker locally instead of loading compiled container from TosoBoso's Docker repository.",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_DOCKER_NW_HOST",
+			"desc": "Run Docker container in network settings host instead of bridge (experimental no NAT-ing).",
+			"defaultValue": false
+		}]
+	}]
+},{
+	"step_title": "Kopano for Synology Ports and Services Settings",
+	"items": 
+	[{		
+		"type": "textfield",
+		"desc": "Select http(s), ical port prefix for Nginx Web-Server and ICAL-Server running in container.",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_HTTP_PORT_PREFIX",
+			"desc": "Prefix added to http ports",
+			"defaultValue": "9000",
+			"validator":{"allowBlank":false,"regex":{"expr":"/^[1-9]\\d{0,4}$/"}}
+		 },{
+			"key": "PKGWIZ_ICAL_PORT_PREFIX",
+			"desc": "Prefix added to ical ports",
+			"defaultValue": "8000",
+			"validator":{"allowBlank":false,"regex":{"expr":"/^[1-9]\\d{0,4}$/"}}
+		 },{
+			"key": "PKGWIZ_WRTC_PORT",
+			"desc": "Webmeetings local port",
+			"defaultValue": "8090",
+			"validator":{"allowBlank":false,"regex":{"expr":"/^[1-9]\\d{0,4}$/"}}
+		}]
+		},{
+		"type": "multiselect",
+		"desc": "Select services and features which by default are optional and disabled (e.g. Mac needs ICAL/GW):",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_K_SEARCH",
+			"desc": "Search for full text indexing (comes with I/O penalty; best use on large systems with SSD).",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_K_GATEWAY_ICAL",
+			"desc": "Gateway for IMAP/POP3 and ICAL protocol (optional when using Z-Push Active-Sync).",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_CONF_CHAT",
+			"desc": "Conference, Chat: Webmeetings (Spreed WebRTC), Mattermost (group chat), Presence.",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_FILES_DOC",
+			"desc": "Files, Docs: smb / owncloud files, libre-office document editor plugins.",
+			"defaultValue": false
+		}]
+	}]
+},{
+	"step_title": "Kopano for Synology Mail-Server Settings",
+	"items": 
+	[{
+		"type": "textfield",
+		"desc": "Set Mail-/Web-Server Domains, Reverse Proxy, SSL certificates from Synology and Encryption options.",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_MAIL_DOMAINS",
+			"desc": "Domains (1st=primary)",
+			"defaultValue": "mydomain.me, otherdomain.com",
+			"validator":{"allowBlank":false}
+		 },{
+			"key": "PKGWIZ_TLS_SERVER_NAME",
+			"desc": "Mail-Server-Name",
+			"defaultValue": "mail.mydomain.me",
+			"validator":{"allowBlank":false}
+		 },{
+			"key": "PKGWIZ_MAX_MSG_SIZE",
+			"desc": "Max Message-Size (MB)",
+			"defaultValue": "15",
+			"validator":{"allowBlank":false,"regex":{"expr":"/^[1-9]\\d{0,4}$/"}}
+		 },{
+			"key": "PKGWIZ_BLOCK_ATTACHMENTS",
+			"desc": "Mail Blocked Attachments",
+			"defaultValue": "bat|com|cpl|dll|exe|hta|js|pif|scr|vbs"
+		}]
+		},{
+		"type": "multiselect",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_SYNC_SYNOCERT",
+			"desc": "Sync and refresh Synology SSL default certificate into Kopano container for web-/mail-server.",
+			"defaultValue": true
+		 },{
+			"key": "PKGWIZ_SMTPD_TLS",
+			"desc": "Enable SMTPD-TLS opportunistic encrpytion for Mail-Server on port 25 using above certificates.",
+			"defaultValue": true
+		 },{
+			"key": "PKGWIZ_RPROXY",
+			"desc": "Add webapp & z-push as reverse proxy virtual directories of main domain to use https port 443.",
+			"defaultValue": false
+		}]
+	}]
+},{
+	"step_title": "Kopano for Synology Mail Options (Postfix, Relay, Scanning)",
+	"items": 
+	[{
+		"type": "textfield",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_ALIAS_SYS",
+			"desc": "Mail Alias for Postmaster",
+			"defaultValue": "tom.bond@mydomain.me",
+			"validator":{"allowBlank":false}
+		}]
+		},{
+		"type": "textfield",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_RELAY_SERVER",
+			"desc": "SMTP-Relay Server",
+			"defaultValue": ""
+		}]
+		},{
+		"type": "textfield",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_RELAY_USER",
+			"desc": "SMTP-Relay User",
+			"defaultValue": ""
+		}]
+		},{
+		"type": "password",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_RELAY_PWD",
+			"desc": "SMTP-Relay Password",
+			"defaultValue": ""
+		}]
+		},{
+		"type": "multiselect",
+		"desc": "Options for Postfix (own domain) and Fetchmail (external domain) for scanning Anti-Spam, Anti-Virus.",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_K_AMAVISD",
+			"desc": "Scanning: integrate ClamAV, SpamAssassin via Amavisd-new with Postfix, Fetchmail.",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_K_POSTGREY",
+			"desc": "Postfix: add Postgrey to temp-reject messages for initial sender to trick spamers.",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_SPAM_HELO",
+			"desc": "Postfix: Set reject by helo login restrictions and MX sender domain validation.",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_SPAM_RBL",
+			"desc": "Postfix: DNS based black-listing via sbl.spamhaus.org and dnsbl.sorbs.net filter.",
+			"defaultValue": false
+		}]
+	}]
+},{
+	"step_title": "Kopano for Synology User Language Settings",
+	"items": 
+	[{		
+		"type": "singleselect",
+		"desc": "Select the language to be used when a new user is created (naming of Inbox, Outbox etc.).",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_LANG_EN",
+			"desc": "Englisch",
+			"defaultValue": true
+		 },{
+			"key": "PKGWIZ_LANG_DE",
+			"desc": "German",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_LANG_FR",
+			"desc": "French",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_LANG_ES",
+			"desc": "Spain",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_LANG_IT",
+			"desc": "Italian",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_LANG_NL",
+			"desc": "Netherlands",
+			"defaultValue": false
+		}]
+	}]
+},{
+	"step_title": "Kopano for Synology MariaDB Database Maintenance And Tuning",
+	"items": 
+	[{
+		"type": "multiselect",
+		"desc": "",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_RMASTER",
+			"desc": "Set this MariaDB as replication master (id:101) to sync Kopano database to other MariaDB slave.",
+			"defaultValue": false
+		}]
+		},{
+		"type": "singleselect",
+		"desc": "A dedicated Kopano server should allocate up to 60% of RAM to caches: Kopano cache_cell_size: ~20%, cache_object_size: 100k per user (0.5-2MB), cache_indexedobject_size: 512k per user (2-8MB), MySQL-innodb_buffer_pool_size: ~40%, innodb_log_file_size: 25% of innodb_buffer_pool. <br>Decide your tuning settings considering other NAS processes. -Restart enables MariaDB changes.",
+		"subitems": 
+		[{
+			"key": "PKGWIZ_TUNING_BUFFER_0",
+			"desc": "No tuning: keep original MySQL-buffer-pool and Kopano-cache at 16M (it's your choice)",
+			"defaultValue": true
+		 },{
+			"key": "PKGWIZ_TUNING_BUFFER_20",
+			"desc": "Tuning 20% of total memory to caches: (baseline for 1GB increase buffers by ~6x)",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_TUNING_BUFFER_40",
+			"desc": "Tuning 40% of total memory to caches: (advanced e.g 410M of 1GB allocated)",
+			"defaultValue": false
+		 },{
+			"key": "PKGWIZ_TUNING_BUFFER_60",
+			"desc": "Tuning 60% of total memory to caches: (aggressive e.g 615M of 1GB allocated)",
+			"defaultValue": false
+		}]
+	}]
+}]
