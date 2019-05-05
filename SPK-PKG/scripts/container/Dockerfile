@@ -1,17 +1,21 @@
 # start with itermediate container to build the kopano local repo so we do not expose SNR and URL adn keep the target slim
 # this interim is no slim container as we need to collect locale kopano.mo LC_MESSAGES in /usr/share/locale/lang to copy over
-FROM debian:stretch as k4s-intermediate
+FROM debian:stretch as k4s-repo-intermediate
 ARG	DEFAULT_BUILD
 ARG	MIGRATION_BUILD
-ARG	SUPPORTED_BUILD
+ARG	SUPPORTED_BUILD=1
 ARG	COMMUNITY_BUILD
-ARG	K_SNR=""
-ARG	DOCKER_HOST=""
+ARG	K_SNR
+ARG	DOCKER_HOST
 ARG	PHP_VERSION="7.0"
 ENV TERM=ansi \
 	DEBIAN_FRONTEND=noninteractive \
 	PHP_VER="$PHP_VERSION" \
 	# set dependent on build arguments the urls + if arg switch was set and - is if null; all null is default community
+	EDITION=${DEFAULT_BUILD:+Default} \
+	EDITION=${MIGRATION_BUILD:+Migration} \
+	EDITION=${SUPPORTED_BUILD:+Supported} \
+	EDITION=${EDITION:-Community} \
 	URL_Z_PUSH=${MIGRATION_BUILD:+http://repo.z-hub.io/z-push:/old-final/Debian_9.0/all/} \
 	URL_Z_PUSH=${URL_Z_PUSH:-http://repo.z-hub.io/z-push:/final/Debian_9.0/all/} \
 	URL_CORE=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/} \
@@ -62,7 +66,7 @@ ENV TERM=ansi \
 	URL_PFETCHM="https://github.com/olia-dev/kopano-webapp-fetchmail/raw/master/builds/fetchmail-1.0.2.zip"
 
 # layer 1 steps 3-18 or 19: create trusted local kopano repository
-RUN echo "** use an interim container to build trusted local repo for kopano for tranfer into main container.."
+RUN echo "** use an interim container to build trusted local repo for kopano $EDITION to tranfer into main container.."
 RUN apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends wget apt-utils locales unzip
 # stretch-security: prepare repo standad structure with main for creating hashed packages and release files
 RUN	chmod 711 /root && mkdir -p /root/repo &&  mkdir -p /root/repo/dists && mkdir -p /root/repo/dists/kopano && \ 
@@ -83,6 +87,7 @@ RUN sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && dpkg-reconfigure
 # downloading packages and packing everything into a local apt repository incl. deb [trusted=yes]
 RUN wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A deb $URL_Z_PUSH
 # download tar.gz file via recursive and named file end then extract the gz file to archive
+RUN echo "Core for ${EDITION}: $URL_CORE"
 RUN wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_CORE $URL_CORE && \
 	tar -zxvf *.gz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && rm *.gz
 RUN wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_WEBAPP $URL_WEBAPP && \
@@ -127,7 +132,9 @@ RUN LANGS="de fr es it nl" && for L in $LANGS ; do mkdir -p /root/repo/locale/$L
 	cp /usr/share/locale/$L/LC_MESSAGES/kopano.mo /root/repo/locale/$L/LC_MESSAGES; done
 WORKDIR /root
 RUN rm /root/repo/dists/kopano/main/Contents-amd64.gz && rm /root/repo/packages-amd64.db
-RUN tar -zcvf kopano-repo.tgz repo/
+RUN tar -zcvf k4s-${EDITION}-repo.tgz repo/
+RUN ls /root/k4s-${EDITION}-repo.tgz
+RUN	echo "** completed interim build for ${EDITION} edition **"
 
 # now the main container in which we copy the local repo from interim container
 FROM debian:stretch-slim
@@ -159,7 +166,7 @@ COPY /container/dpkg-remove /root/dpkg-remove
 COPY /container/*.png /root/
 COPY /container/*.sh /usr/local/bin/
 # TB Docker tuning: will be disabled in 2nd as 2 step build pproach to save ~50MB space in container
-COPY --from=k4s-intermediate /root/kopano-repo.tgz /root/kopano-repo.tgz
+COPY --from=k4s-repo-intermediate /root/k4s-${EDITION}-repo.tgz /root/k4s-${EDITION}-repo.tgz
 RUN PASSWD="openssl rand -base64 32"
 # layer 2 step 16 or 17: merging run layers to save space in nested docker file syatem
 RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix, fetchmail, amavisd, spamassassin, clamav, postgrey...." && \ 
@@ -182,9 +189,9 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	# more perl and zip libraries for scanning
 	libnet-dns-perl libmail-spf-perl pyzor razor arj bzip2 cabextract cpio file gzip nomarch pax unzip zoo zip zoo && rm -rf /var/lib/apt/lists/* && \
 # TB Docker tuning: 2 step approach to shrink the Docker image: 1st run collect kopano-repo.tgz in kopano-etc for outside of container
-#	mkdir /etc/kopano && cp /root/kopano-repo.tgz /etc/kopano && \ 
+#	mkdir /etc/kopano && cp /root/k4s-${EDITION}-repo.tgz /etc/kopano && \ 
 # TB Docker tuning: 2nd step provide kopano-repo.tgz via internal webserver in protected tools url and disable COPY --from=k4s-intermediate
-#	wget $PARENT/tools/kopano-repo.tgz && \ 
+#	wget $PARENT/repo/k4s-${EDITION}-repo.tgz && \ 
 # layer 2 step 8 or 9 prepare, download and install kopano
 	echo "** setup kopano: user, downoad, install core, licensed, webmeetings incl. add-ons, z-push incl. autodiscover...." && \
 	groupadd -g 65540 kopano && useradd -u 1030 -g 65540 -p$PASSWD -M kopano && \
@@ -201,7 +208,7 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	chown -R www-data.kopano /var/log/kopano/z-push && chown -R www-data.kopano /etc/z-push && chown -R www-data.www-data /var/lib/z-push && \
 # install kopano, z-push, webapp and plugins using pepo from interim build incl. kopano.mo locales for localized mail-folders
 	chmod 711 /root && echo "deb [trusted=yes] file:/root/repo kopano main" > /etc/apt/sources.list.d/kopano.list && \
-	tar -zxvf /root/kopano-repo.tgz -C /root && rm /root/kopano-repo.tgz && \
+	tar -zxvf /root/k4s-${EDITION}-repo.tgz -C /root && rm /root/k4s-${EDITION}-repo.tgz && \
 # copy config and init.d files as on latest versions they are missing (KC-681); dual-cfg triggers error so not for old Migration
 	if [ "$EDITION" != "Migration" ] ; then cp /root/repo/kinit.d/* /etc/init.d/ && mkdir -p /etc/kopano && cp /root/repo/kopano.cfg/* /etc/kopano ; fi && \
 # presence and webmeetings still have cfg and init shiped so delete them
@@ -359,7 +366,8 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 # entry-script, kopano scripts made executable
 	chmod 700 /usr/local/bin/init.sh && \
 	chmod 700 /usr/local/bin/kopano-postfix.sh && \
-	chmod 700 /usr/local/bin/kopano-fetchmail.sh
+	chmod 700 /usr/local/bin/kopano-fetchmail.sh && \
+	echo "** completed building ${EDITION}-${IMG} **"
 # layer 4 steps 17,18 or 18,19: set workdir for backups later, entrypoint and expose ports
 WORKDIR /var/lib/kopano/backup
 ENTRYPOINT ["/usr/local/bin/init.sh"]

@@ -12,16 +12,16 @@ if [ $# -gt 0 ] && [ "$1" == "docker" ]
 then
 	echo "Switching in sudo mode for Docker. You may need to provide root password at initial call"
 	echo "$(date '+%Y.%m.%d-%H:%M:%S') Starting shellcheck for synology spk scripts.." > check_scripts.out
-	SCRIPTS=$(ls -p ~/repo/Kopano4s/PKG/scripts/ | grep -v /)
+	SCRIPTS=$(ls -p ~/repo/Kopano4s/SPK-PKG/scripts/ | grep -v /)
 	# skipp following source (1090) parsing pure posix (SC2030), unused variables (SC2034), extra $() on arithmetic (SC2004)
-	for S in $SCRIPTS ; do sudo docker run -it -v ~/repo/Kopano4s/PKG/scripts:/mnt -e SHELLCHECK_OPTS="-e SC1090 -e SC2039 -e SC2034 -e SC2004" --rm koalaman/shellcheck "$S" >> check_scripts.out ; done
+	for S in $SCRIPTS ; do sudo docker run -it -v ~/repo/Kopano4s/SPK-PKG/scripts:/mnt -e SHELLCHECK_OPTS="-e SC1090 -e SC2039 -e SC2034 -e SC2004" --rm koalaman/shellcheck "$S" >> check_scripts.out ; done
 	# for *.sh we do not need a loop
 	echo "$(date '+%Y.%m.%d-%H:%M:%S') Starting shellcheck for container scripts.." >> check_scripts.out
-	SCRIPTS=$(ls -p ~/repo/Kopano4s/PKG/scripts/container/*.sh)
-	for S in $SCRIPTS ; do sudo docker run -it -v ~/repo/Kopano4s/PKG/scripts/container:/mnt -e SHELLCHECK_OPTS="-e SC1090 -e SC2039 -e SC2034 -e SC2004" --rm koalaman/shellcheck "$S" >> check_scripts.out ; done
+	SCRIPTS=$(ls -p ~/repo/Kopano4s/SPK-PKG/scripts/container/*.sh)
+	for S in $SCRIPTS ; do sudo docker run -it -v ~/repo/Kopano4s/SPK-PKG/scripts/container:/mnt -e SHELLCHECK_OPTS="-e SC1090 -e SC2039 -e SC2034 -e SC2004" --rm koalaman/shellcheck "$S" >> check_scripts.out ; done
 	echo "$(date '+%Y.%m.%d-%H:%M:%S') Starting shellcheck for add-on scripts.." >> check_scripts.out
-	SCRIPTS=$(ls -p ~/repo/Kopano4s/PKG/scripts/container/*.sh)
-	for S in $SCRIPTS ; do sudo docker run -it -v ~/repo/Kopano4s/PKG/scripts/addon:/mnt -e SHELLCHECK_OPTS="-e SC1090 -e SC2039 -e SC2034 -e SC2004" --rm koalaman/shellcheck "$S" >> check_scripts.out ; done
+	SCRIPTS=$(ls -p ~/repo/Kopano4s/SPK-PKG/scripts/container/*.sh)
+	for S in $SCRIPTS ; do sudo docker run -it -v ~/repo/Kopano4s/SPK-PKG/scripts/addon:/mnt -e SHELLCHECK_OPTS="-e SC1090 -e SC2039 -e SC2034 -e SC2004" --rm koalaman/shellcheck "$S" >> check_scripts.out ; done
 else
 	grep -rIl '^#![[:blank:]]*/bin/\(bash\|sh\|zsh\)' --exclude-dir=.git --exclude=*.sw? | xargs shellcheck > check_scripts.out
 fi
