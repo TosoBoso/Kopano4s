@@ -5,7 +5,7 @@
 EDITION="Supported"
 #EDITION="Default"
 #EDITION="Migration"
-BUILD_PARAMS="--build-arg HTTP_PROXY=7.0"
+BUILD_PARAMS="--build-arg PHP_VERSION=7.0"
 LOGIN=$(whoami)
 if [ "$LOGIN" != "root" ]
 then
