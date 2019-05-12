@@ -777,23 +777,35 @@ init_kopano()
 	fi
 	# now adjustments for webapp plugins like mdm, passwd, fetchmail 
 	# fetchmail webapp-plugin settings
-	if [ -e /etc/kopano/webapp/config-fetchmail.php ]
+	if [ -e /etc/kopano/webapp/plg.conf-fetchmail.php ]
 	then
 		# set MariaDB port 3307 and Docker host parent IP, user & pwd
 		local DB_NAME=`grep ^mysql_database /etc/kopano/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*'`
 		local DB_USER=`grep ^mysql_user /etc/kopano/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*'`
 		local DB_PASS=`grep ^mysql_password /etc/kopano/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*'`
 		local SALT="$(openssl rand -hex 8 | sed 's,/,_,g')"
-		sed -i -e "s~3306~3307~g" /etc/kopano/webapp/config-fetchmail.php
-		sed -i -e "s~define('PLUGIN_FETCHMAIL_DATABASE_HOST'.*~define('PLUGIN_FETCHMAIL_DATABASE_HOST', \"${PARENT}\");~" /etc/kopano/webapp/config-fetchmail.php
-		sed -i -e "s~\"kopano\"~\"$DB_NAME\"~" /etc/kopano/webapp/config-fetchmail.php
-		sed -i -e "s~define('PLUGIN_FETCHMAIL_DATABASE_USER'.*~define('PLUGIN_FETCHMAIL_DATABASE_USER', \"${DB_USER}\");~" /etc/kopano/webapp/config-fetchmail.php
-		sed -i -e "s~password~$DB_PASS~" /etc/kopano/webapp/config-fetchmail.php
-		sed -i -e "s~changethis\!~$SALT~" /etc/kopano/webapp/config-fetchmail.php
+		sed -i -e "s~3306~3307~g" /etc/kopano/webapp/plg.conf-fetchmail.php
+		sed -i -e "s~define('PLUGIN_FETCHMAIL_DATABASE_HOST'.*~define('PLUGIN_FETCHMAIL_DATABASE_HOST', \"${PARENT}\");~" /etc/kopano/webapp/plg.conf-fetchmail.php
+		sed -i -e "s~\"kopano\"~\"$DB_NAME\"~" /etc/kopano/webapp/plg.conf-fetchmail.php
+		sed -i -e "s~define('PLUGIN_FETCHMAIL_DATABASE_USER'.*~define('PLUGIN_FETCHMAIL_DATABASE_USER', \"${DB_USER}\");~" /etc/kopano/webapp/plg.conf-fetchmail.php
+		sed -i -e "s~password~$DB_PASS~" /etc/kopano/webapp/plg.conf-fetchmail.php
+		sed -i -e "s~changethis\!~$SALT~" /etc/kopano/webapp/plg.conf-fetchmail.php
 	fi
-	if [ -e /etc/kopano/webapp/config-mdm.php ] && ! grep -q 9080 /etc/kopano/webapp/config-mdm.php
+	if [ -e /etc/kopano/webapp/plg.conf-google2fa.php ]
 	then
-		sed -i -e "s~localhost~localhost:9080~" /etc/kopano/webapp/config-mdm.php
+		local DB_NAME=`grep ^mysql_database /etc/kopano/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*'`
+		local DB_USER=`grep ^mysql_user /etc/kopano/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*'`
+		local DB_PASS=`grep ^mysql_password /etc/kopano/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*'`
+		local SALT="$(openssl rand -hex 16 | sed 's,/,_,g')"
+		sed -i -e "s~define('PLUGIN_GOOGLE2FA_DATABASE_SERVERNAME'.*~define('PLUGIN_GOOGLE2FA_DATABASE_SERVERNAME', \"${PARENT}:337\");~" /etc/kopano/webapp/plg.conf-google2fa.php
+		sed -i -e "s~define('PLUGIN_GOOGLE2FA_DATABASE_DBNAME'.*~define('PLUGIN_GOOGLE2FA_DATABASE_DBNAME', '$DB_NAME');~" /etc/kopano/webapp/plg.conf-google2fa.php
+		sed -i -e "s~define('PLUGIN_GOOGLE2FA_DATABASE_USERNAME'.*~define('PLUGIN_GOOGLE2FA_DATABASE_USERNAMEE', '$DB_USER');~" /etc/kopano/webapp/plg.conf-google2fa.php
+		sed -i -e "s~define('PLUGIN_GOOGLE2FA_DATABASE_PASSWORD'.*~define('PLUGIN_GOOGLE2FA_DATABASE_PASSWORD', '$DB_PASS');~" /etc/kopano/webapp/plg.conf-google2fa.php
+		sed -i -e "s~define('PLUGIN_GOOGLE2FA_MCRYPTKEY'.*~define('PLUGIN_GOOGLE2FA_MCRYPTKEY', '$SALT');~" /etc/kopano/webapp/plg.conf-google2fa.php
+	fi
+	if [ -e /etc/kopano/webapp/plg.conf-mdm.php ] && ! grep -q 9080 /etc/kopano/webapp/plg.conf-mdm.php
+	then
+		sed -i -e "s~localhost~localhost:9080~" /etc/kopano/webapp/plg.conf-mdm.php
 	fi
 	
 }

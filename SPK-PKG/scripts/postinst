@@ -9,6 +9,7 @@ if [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ]
 then
 	# ** get config from package wizzard tags, stale vs. beta from INFO and calculate tuning
 	GET_BETA_STABLE
+	# GET_WIZZARD_CFG includes GET_WIZZARD_EDITION & GET_WIZZARD_SIZE
 	GET_WIZZARD_CFG
 	GET_TUNIG_PARAMS
 	# ** inits: create log, user, group, share, mounts, etc, database
@@ -58,11 +59,10 @@ if ! CHECK_DOCKER_TAG tosoboso/kopano4s "$VER_TAG"
 then
 	IMAGE_BUILD="ON"
 fi
-if [ "$IMAGE_BUILD" == "ON" ]
+if [ "$IMAGE_BUILD" = "ON" ]
 then
 	#echo "$(date '+%Y.%m.%d-%H:%M:%S') postinst build docker" >> /tmp/inst.log
 	STARTTIME=$(date +%s)
-	SET_DOCKERFILE
 	BUILD_DOCKER
 fi
 SET_GUI_NO_DEBUG

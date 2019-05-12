@@ -1,11 +1,6 @@
 #!/bin/sh
-# script to build the docker images which is also part of the spk tool-chain
+# script to build the docker images which is also part of the synology spk tool-chain
 #set -euo pipefail
-#EDITION="Community"
-EDITION="Supported"
-#EDITION="Default"
-#EDITION="Migration"
-BUILD_PARAMS="--build-arg PHP_VERSION=7.0"
 LOGIN=$(whoami)
 if [ "$LOGIN" != "root" ]
 then
@@ -14,11 +9,17 @@ then
 else
 	SUDO=""
 fi
+if [ -z "$EDITION" ]
+then
+	read -p "Pleae provide Kopano Edition to build (Community) : " EDITION
+	if [ -z "$EDITION" ] ; then EDITION="Community" ; fi
+fi
+BUILD_PARAMS="--build-arg EDITION=${EDITION} --build-arg PHP_VER=7.0"
 if [ "$EDITION" != "Community" ] && [ -z "$K_SNR" ]
 then
 	read -p "Pleae provide Kopano subscription Serial-Nr: " K_SNR
 fi
-echo "building kopano4s docker image you need to provide sudo pwd at initial start.."
+echo "Building image for kopano 4s $EDITION you need to provide sudo pwd at initial start.."
 MYDIR=$(dirname "$0")
 if [ -z "$DOCKER_PATH" ]
 then
@@ -28,11 +29,11 @@ if [ -z "$DOCKER_HOST" ]
 then
 	DOCKER_HOST=$(ip address show docker0 | grep inet | awk '{print $2}' | cut -f1 -d/ | head -n 1)
 fi
-"$SUDO" mkdir -p "$DOCKER_PATH/kopano4s"
-"$SUDO" mkdir -p "$DOCKER_PATH/kopano4s/container"
+"$SUDO" mkdir -p "$DOCKER_PATH"/kopano4s
+"$SUDO" mkdir -p "$DOCKER_PATH"/kopano4s/container
 # copy over dockerfile and cfg for packages to remove post build, then conatiner init, robot.png 
 "$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/Dockerfile "$DOCKER_PATH/kopano4s"
-"$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/* "$DOCKER_PATH/kopano4s/container"
+"$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/*.sh "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-APP/merge/kopano-cfg.tgz "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-APP/merge/kinit.tgz "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-APP/ui/images/robot.png "$DOCKER_PATH/kopano4s/container"
@@ -116,30 +117,41 @@ then
 fi
 if [ "$EDITION" = "Default" ]
 then
-	IMG_TAG="8.6.9.0_Web-3.5.0_Push-2.4.5"
+	IMG_TAG="Core-8.6.9.0_Webapp-3.5.0_Z-Push-2.4.5_WMeet-0.29.5"
 	VER_TAG="D-${IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEFAULT_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
 if [ "$EDITION" = "Migration" ]
 then
-	IMG_TAG="8.4.5.0_Web-3.4.2_Push-2.4.5"
+	IMG_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
 	VER_TAG="M-${IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg MIGRATION_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
 DATE_BUILD=$(date "+%Y-%m-%d")
-if [ $# -eq 1 ] && [ "$1" = "get-repo" ]
+# in get repo mode only run the k4s-intermediate build and extract repo from container
+if [ $# -gt 0 ] && [ "$1" = "get-repo" ]
 then
 	# get the repo from intermediate image aka stop at the stage and copy from container
 	BUILD_PARAMS="$BUILD_PARAMS --target k4s-repo-intermediate --tag tosoboso/k4s-repo:${VER_TAG}"
 else
-	BUILD_PARAMS="$BUILD_PARAMS --build-arg DATE_BUILD=${DATE_BUILD} --build-arg IMG_TAG=${IMG_TAG} --tag tosoboso/kopano4s:${VER_TAG}"
+	BUILD_PARAMS="$BUILD_PARAMS --build-arg PARENT=${DOCKER_HOST} --build-arg BUILD=${DATE_BUILD} --build-arg TAG=${IMG_TAG} --tag tosoboso/kopano4s:${VER_TAG}"
 fi
+# in use repo mode only run the k4-main build and use extracted repo from local webserver
+if [ $# -gt 0 ] && [ "$1" = "web-repo" ]
+then
+	WEBREPO=${DOCKER_HOST}/repo
+	echo "Building from web-repo $WEBREPO assuming you did run get-repo before and put the artifacts to this location.."
+	# in Dockerfile we comment of the copy from interactive which is skipped anyway via target k4s-main
+	#sed -i -e 's~^COPY --from=k4s-intermediate~#COPY --from=k4s-intermediate'~  "$DOCKER_PATH"/kopano4s/Dockerfile
+	BUILD_PARAMS="$BUILD_PARAMS --build-arg ENV_BUILD=web-repo --build-arg WEBREPO=${WEBREPO}"
+fi
+
 # remove old image if exists
 if $SUDO docker images | grep -q "$VER_TAG"
 then
 	"$SUDO" docker rmi tosoboso/kopano4s:"$VER_TAG"
 fi
-if ( [ $# -eq 1 ] && [ "$1" = "clean" ] ) || ( [ $# -eq 2 ] && [ "$2" = "clean" ] )
+if ( [ $# -gt 0 ] && [ "$1" = "clean" ] ) || ( [ $# -eq 2 ] && [ "$2" = "clean" ] )
 then
 	# deleting all containers with status exit if no exists error is ok
 	"$SUDO" docker rm -v $($SUDO docker ps -a -q -f status=exited)
@@ -150,15 +162,16 @@ then
 	for L in $LIST ; do "$SUDO" docker rmi -f $L ; done
 	BUILD_PARAMS="$BUILD_PARAMS --no-cache"
 fi
+
 echo "Build-Args: ${BUILD_PARAMS}"
 "$SUDO" docker build ${DOCKER_PATH}/kopano4s ${BUILD_PARAMS}
 
 # if we created image with repo copy it over to place it on a webserver e.g. for wget $PARENT/repo/k4s-${EDITION}-repo.tgz
-if [ $# -eq 1 ] && [ "$1" = "get-repo" ]
+if [ $# -gt 0 ] && [ "$1" = "get-repo" ]
 then
-	$SUDO docker create -ti --name k4s-repo tosoboso/k4s-repo:${VER_TAG} bash
-	$SUDO docker cp k4s-repo:/root/k4s-${EDITION}-repo.tgz .
-	$SUDO docker rm -fv k4s-repo
+	"$SUDO" docker create -ti --name k4s-repo tosoboso/k4s-repo:${VER_TAG} bash
+	"$SUDO" docker cp k4s-repo:/root/k4s-${EDITION}-repo.tgz .
+	"$SUDO" docker rm -fv k4s-repo
 	echo "collected k4s-repo with deb files:"
 	ls -al k4s-*repo*
 fi

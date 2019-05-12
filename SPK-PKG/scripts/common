@@ -1,17 +1,17 @@
 #!/bin/sh
 # ** (c) 2017-19 TosoBoso - common lib for Kopano-4-Synology in Docker container
 # ** set environment
-# Default is from 28.11./13.12.2018 and Migration from 15.12./15.12.2017
-VER_DEFAULT_TAG="Core-8.6.9.0_Web-3.5.0_Push-2.4.5"
-VER_MIGRATION_TAG="Core-8.4.5.0_Web-3.4.2_Push-2.3.9"
-VER_SUPPORTED_TAG="Core-8.7.0_Web-3.5.3_Push-2.4.5"
-VER_COMMUNITY_TAG="Core-8.7.80_Web-3.5.4_Push-2.4.5"
-COMMUNITY_BASE_SIZE=154
-SUPPORTED_BASE_SIZE=154
-MIGRATION_SIZE=141
-COMMUNITY_FULL_SIZE=173
-SUPPORTED_FULL_SIZE=173
+# Image tags: Default is from 28.11./13.12.2018 and Migration from 15.12./15.12.2017
+DEFAULT_TAG="Core-8.6.9.0_Web-3.5.0_Push-2.4.5_WMeet-0.29.5"
+MIGRATION_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
+SUPPORTED_TAG="Core-8.7.1_Webapp-3.5.5_Z-Push-2.5.0_WMeet-0.29.5"
+COMMUNITY_TAG="Core-8.7.80_Webapp-3.5.6_Z-Push-2.5.0_WMeet-0.29.5"
+COMMUNITY_SIZE=173
+DEFAULT_SIZE=159
+MIGRATION_SIZE=143
+SUPPORTED_SIZE=174
 RELEASE="Stable"
+PHP_VER="7.0"
 PKG_NAME=Kopano4s
 ETC_PATH="/usr/syno/etc/packages/$PKG_NAME"
 TARGET_PATH="/var/packages/$PKG_NAME/target"
@@ -255,26 +255,20 @@ GET_WIZZARD_SIZE()
 # used in preinst for GUI download % of docker pull helper tool (Wizz-Edition & Size was loaded)
 GET_K4S_SIZE()
 {
-	if [ "$K_EDITION" = "Supported" ]
-	then
-		if [ "$K_SIZE" = "FULL" ] 
-		then
-			K4S_SIZE=$SUPPORTED_FULL_SIZE
-		else
-			K4S_SIZE=$SUPPORTED_BASE_SIZE
-		fi
-	else
-		if [ "$K_SIZE" = "FULL" ] 
-		then
-			K4S_SIZE=$COMMUNITY_FULL_SIZE
-		else
-			K4S_SIZE=$COMMUNITY_BASE_SIZE
-		fi
-	fi
-	if [ "$K_EDITION" = "Migration" ]
-	then
+	case "$K_EDITION" in
+		Default)
+		K4S_SIZE=$DEFAULT_SIZE
+		;;
+		Migration)
 		K4S_SIZE=$MIGRATION_SIZE
-	fi
+		;;
+		Supported)
+		K4S_SIZE=$SUPPORTED_SIZE
+		;;
+		Community)
+		K4S_SIZE=$COMMUNITY_SIZE
+		;;
+	esac
 }
 GET_WIZZARD_CFG()
 {
@@ -474,7 +468,23 @@ GET_PKG_CFG()
 {
 	source "$ETC_PATH/package.cfg"
 }
-# returns in RET_URL download path to pattern lie *debian9.0
+# for community and supported dynamically evaluate release tag base on url
+GET_K_DOWNLOAD_RELEASE_TAG()
+{
+	local URL="$1"
+	local TAG="[[:graph:]]*${2}[[:graph:]]*"
+	# get basename from download URL for tag (e.g. Debian_9) which is recognized in between double-brackets
+	local DOWNL_FILE=$(basename $(curl --silent "$URL" | grep -o "$TAG" | head -1 | cut -f2 -d \"))
+	if [ -n "$DOWNL_FILE" ]
+	then
+		# based on download file split off as major release only the 1st 3 secions on . delimiter
+		local MAJ_REL=$(echo "$DOWNL_FILE" | grep -o "$TAG" | grep -o "[0-9.]*" | head -1 | cut -f1-3 -d .)
+		echo "$MAJ_REL"
+	else
+		echo ""
+	fi
+}
+# returns in RET_URL download path to pattern like *debian9.0
 GET_K_DOWNLOAD_BY_TAG()
 {
 	local URL="$1"
@@ -552,7 +562,6 @@ GET_DOCKER_TAG()
 GET_VER_TAG()
 {
 	local SEC="current"
-	local GET_ED
 	if [ -n "$1" ]
 	then
 		SEC="$1"
@@ -562,54 +571,41 @@ GET_VER_TAG()
 	then
 		GET_WIZZARD_EDITION
 	fi
-	if [ -z "$K_SIZE" ]
+	# no need to do GET_DOCKER_TAG for Migration edition
+	if [ "$K_EDITION" = "Migration" ]
 	then
-		GET_WIZZARD_SIZE
+		VER_TAG=M-${MIGRATION_TAG}
 	fi
-	if [ -z "$K_RELEASE" ]
+	if [ "$K_EDITION" = "Default" ]
 	then
-		GET_BETA_STABLE
+		if GET_DOCKER_TAG "tosoboso/kopano4s" "D-" "$SEC"
+		then
+			# found latest or previous version so use it
+			VER_TAG=$RET_VER_TAG
+		else
+			VER_TAG=D-${DEFAULT_TAG}
+		fi
 	fi
 	if [ "$K_EDITION" = "Supported" ]
 	then
-		# set defaults from SPK in case GET_DOCKER_TAG fails
-		if [ "$K_SIZE" = "FULL" ] 
+		if GET_DOCKER_TAG "tosoboso/kopano4s" "S-" "$SEC"
 		then
-			EDITION="Supported"
-			VER_TAG="$VER_SUPPORTED_FULL_TAG"
+			# found latest or previous version so use it
+			VER_TAG=$RET_VER_TAG
 		else
-			EDITION="Supported_base"
-			VER_TAG="$VER_SUPPORTED_BASE_TAG"
+			VER_TAG=S-${SUPPORTED_TAG}
 		fi
 	fi
 	if [ "$K_EDITION" = "Community" ]
 	then
-		# set defaults from SPK in case GET_DOCKER_TAG fails
-		if [ "$K_SIZE" = "FULL" ] 
-		then
-			EDITION="Community"
-			VER_TAG="$VER_COMMUNITY_FULL_TAG"
-		else
-			EDITION="Community_base"
-			VER_TAG="$VER_COMMUNITY_BASE_TAG"
-		fi
-	fi
-	if [ "$K_EDITION" = "Migration" ]
-	then
-		VER_TAG=$VER_MIGRATION_TAG
-		# no need to do GET_DOCKER_TAG1
-	else
-		if [ "$K_RELEASE" = "Beta" ]
-		then
-			GET_ED="${EDITION}_B"
-		else
-			GET_ED="$EDITION"
-		fi
-		if GET_DOCKER_TAG "tosoboso/kopano4s" "$GET_ED" "$SEC"
+		if GET_DOCKER_TAG "tosoboso/kopano4s" "C-" "$SEC"
 		then
 			# found latest or previous version so use it
-			VER_TAG="$RET_VER_TAG"
+			VER_TAG=$RET_VER_TAG
+		else
+			VER_TAG=C-${COMMUNITY_TAG}
 		fi
+
 	fi
 }
 # ** calculated the tuning for caches in kopano server and MySql
@@ -1418,248 +1414,6 @@ SET_PKG_CFG()
 		echo INSTALL_STATE="$INSTALL_STATE"
 	) > "$ETC_PATH"/package.cfg
 }
-# ** set dockerfile EMV and ARGS with urls and steps for community / supported version then copy it over for build
-SET_DOCKERFILE()
-{
-	local URL_CORE
-	local CORE_NAME
-	local URL_UBCORE
-	local VTAG
-	local URL_Z_PUSH
-	local URL_WEBAPP
-	local URL_MDM
-	local URL_SMIME
-	local URL_UBSMIME
-	local URL_WEBMEET
-	local URL_MATMOST
-	local URL_FILES
-	local URL_DOCED
-	local KED
-	local URL_PASSWD
-	local URL_G2FA
-	local URL_PFETCHM
-
-	URL_Z_PUSH="http://repo.z-hub.io/z-push:/final/Debian_9.0/all/"
-	URL_PASSWD="https://github.com/dducret/kopano-webapp-passwd/raw/master/builds/passwd-1.5.zip"
-	URL_G2FA="https://www.familiethimm.de/download/2525/"
-	URL_PFETCHM="https://github.com/olia-dev/kopano-webapp-fetchmail/raw/master/builds/fetchmail-1.0.2.zip"
-	# to find the right gz file for debian
-	CORE_NAME="Debian_9.0-amd64.tar.gz"
-
-	if [ "$K_EDITION" = "Community" ]
-	then
-		GET_K_DOWNLOAD_BY_TAG "https://$K_URL_COM/core:/" "Debian_9.0-amd64.tar.gz"
-		URL_CORE="$RET_URL"
-		GET_DOWNLOAD_REL_NR "$RET_URL" core- -Debian
-		VTAG="Core-${RET_REL}"
-		GET_K_DOWNLOAD_BY_TAG "https://$K_URL_COM/core:/" "Ubuntu_18.04-amd64.tar.gz"
-		URL_UBCORE="$RET_URL"
-		if [ "$K_SIZE" = "FULL" ] 
-		then
-			VER_TAG="Community"
-		else
-			VER_TAG="Community_base"
-		fi
-		if [ "$K_RELEASE" = "Beta" ]
-		then
-			VER_TAG="${VER_TAG}_B"
-		fi
-		VER_TAG="$VER_TAG-${RET_REL_MAJ}"
-		GET_K_DOWNLOAD_BY_TAG "https://$K_URL_COM/webapp:/" "Debian_9.0-all.tar.gz"
-		URL_WEBAPP="$RET_URL"
-		GET_DOWNLOAD_REL_NR "$RET_URL" webapp- -Debian
-		VTAG="${VTAG}_Web-${RET_REL}"
-		VER_TAG="${VER_TAG}_Web-${RET_REL_MAJ}"
-		GET_K_DOWNLOAD_BY_TAG "https://$K_URL_COM/mdm:/" "Debian_9.0-all.tar.gz"
-		URL_MDM="$RET_URL"
-		GET_K_DOWNLOAD_BY_TAG "https://$K_URL_COM/smime:/" "Debian_9.0-amd64.tar.gz"
-		URL_SMIME="$RET_URL"
-		GET_K_DOWNLOAD_BY_TAG "https://$K_URL_COM/smime:/" "Ubuntu_18.04-amd64.tar.gz"
-		URL_UBSMIME="$RET_URL"
-		GET_K_DOWNLOAD_BY_TAG "$URL_Z_PUSH" "z-push-kopano_"
-		GET_DOWNLOAD_REL_NR "$RET_URL" z-push-kopano all
-		VTAG="${VTAG}_Push-${RET_REL}"
-		VER_TAG="${VER_TAG}_Push-${RET_REL_MAJ}"
-		# enable community download debian core
-		sed -i -e "s~#COMMUNITY~~" /var/packages/Kopano4s/scripts/container/Dockerfile
-		if [ "$K_SIZE" = "FULL" ] 
-		then
-			# URLS
-			GET_K_DOWNLOAD_BY_TAG "https://$K_URL_COM/webmeetings:/" "Debian_9.0-amd64.tar.gz"
-			URL_WEBMEET="$RET_URL"
-			GET_DOWNLOAD_REL_NR "$RET_URL" webmeetings- -Debian
-			VTAG="${VTAG}_Meet-${RET_REL}"
-			VER_TAG="${VER_TAG}_Meet-${RET_REL_MAJ}"
-			GET_K_DOWNLOAD_BY_TAG "https://$K_URL_COM/mattermost:/" "Debian_9.0-amd64.tar.gz"
-			URL_MATMOST="$RET_URL"
-			GET_DOWNLOAD_REL_NR "$RET_URL" mattermost- -Debian
-			VTAG="${VTAG}_Mmost-${RET_REL}"
-			VER_TAG="${VER_TAG}_Mmost-${RET_REL_MAJ}"
-			GET_K_DOWNLOAD_BY_TAG "https://$K_URL_COM/files:/" "Debian_9.0-all.tar.gz"
-			URL_FILES="$RET_URL"
-			GET_DOWNLOAD_REL_NR "$RET_URL" files- -Debian
-			VTAG="${VTAG}_Files-${RET_REL}"
-			VER_TAG="${VER_TAG}_Files-${RET_REL_MAJ}"
-			URL_DOCED="${K_URL_COM}/libreofficeonline/Debian_9.0/"
-		# to adjust to GET_K_DOWNLOAD_BY_TAG "https://serial:${K_SNR}@${URL_CORE}/all/" "kopano-server-packages_"
-		#GET_DOWNLOAD_REL_NR $RET_URL files- -Debian
-			RET_REL=5.4
-			RET_REL_MAJ=5.4
-			VTAG="${VTAG}_Docs-${RET_REL}"
-			VER_TAG="${VER_TAG}_Docs-${RET_REL_MAJ}"
-			sed -i -e "s~#COM_FULL~~" /var/packages/Kopano4s/scripts/container/Dockerfile
-			sed -i -e "s~#FULL~~" /var/packages/Kopano4s/scripts/container/Dockerfile
-			KED="Community-full"
-		else
-			KED="Community-base"
-		fi
-	fi
-
-	if [ "$K_EDITION" = "Default" ]
-	then
-		VTAG="$VER_DEFAULT_TAG"
-		VER_TAG="D-$VER_DEFAULT_TAG"
-		KED="Default"
-		#URL_CORE="${K_URL_SUP}/core:/final/tarballs/archives/"
-		URL_CORE="${K_URL_SUP}/core:/8.7/tarballs/archives/"
-		CORE_NAME="Debian_9.0-amd64.tar.gz"
-
-
-		URL_CORE="https://serial:${K_SNR}@${K_URL_SUP}/core:/final/tarballs/archives/core-8.4.5.0_0%2B33-Debian_9.0-amd64.tar.gz"
-		URL_WEBAPP="https://serial:${K_SNR}@${K_URL_SUP}/webapp:/final/tarballs/archives/webapp-3.4.2.1108%2B36-Debian_9.0-all.tar.gz"
-		URL_MDM="https://serial:${K_SNR}@${K_URL_SUP}/mdm:/final/tarballs/archives/mdm-2.1.0.97%2B27-Debian_9.0-all.tar.gz"
-		URL_SMIME="https://serial:${K_SNR}@${K_URL_SUP}/smime:/final/tarballs/archives/smime-2.1.1.28%2B16-Debian_9.0-all.tar.gz"
-	fi
-
-	if [ "$K_EDITION" = "Supported" ]
-	then
-		# currently use 8.7 instead of final since final has the 8.69
-		#URL_CORE="${K_URL_SUP}/core:/final/tarballs"
-		URL_CORE="${K_URL_SUP}/core:/8.7/tarballs"
-		URL_UBCORE="${K_URL_SUP}/core:/8.7/Ubuntu_18.04/amd64"
-		GET_K_DOWNLOAD_BY_TAG "https://serial:${K_SNR}@${URL_CORE}/all/" "kopano-server-packages_"
-		GET_DOWNLOAD_REL_NR "https://serial:${K_SNR}@${RET_URL}" packages all
-		VTAG="Core-${RET_REL}"
-		if [ "$K_SIZE" = "FULL" ] 
-		then
-			VER_TAG="Supported"
-		else
-			VER_TAG="Supported_base"
-		fi
-		VER_TAG="$VER_TAG-${RET_REL_MAJ}"
-		GET_K_DOWNLOAD_BY_TAG "https://serial:${K_SNR}@${K_URL_SUP}/webapp:/final/tarballs/" "Debian_9.0-all.tar.gz"
-		URL_WEBAPP="$RET_URL"
-		GET_DOWNLOAD_REL_NR "https://serial:${K_SNR}@${RET_URL}" webapp- -Debian
-		VTAG="${VTAG}_Web-${RET_REL}"
-		VER_TAG="${VER_TAG}_Web-${RET_REL_MAJ}"
-		URL_MDM="${K_URL_SUP}/mdm:/final/Debian_9.0/all/"
-		GET_K_DOWNLOAD_BY_TAG "https://serial:${K_SNR}@${K_URL_SUP}/smime:/final/tarballs/" "Debian_9.0-amd64.tar.gz"
-		URL_SMIME="$RET_URL"
-		URL_UBSMIME="${K_URL_SUP}/smime:/final/Ubuntu_18.04/all"
-		GET_K_DOWNLOAD_BY_TAG $URL_Z_PUSH "z-push-kopano_"
-		GET_DOWNLOAD_REL_NR "$RET_URL" z-push-kopano all
-		VTAG="${VTAG}_Push-${RET_REL}"
-		VER_TAG="${VER_TAG}_Push-${RET_REL_MAJ}"
-		# enable supported download debian core
-		sed -i -e "s~#SUPPORTED~~" /var/packages/Kopano4s/scripts/container/Dockerfile
-		if [ "$K_SIZE" = "FULL" ] 
-		then
-			# URLS
-			GET_K_DOWNLOAD_BY_TAG "https://serial:${K_SNR}@${K_URL_SUP}/webmeetings:/final/tarballs/" "Debian_9.0-amd64.tar.gz"
-			URL_WEBMEET="$RET_URL"
-			GET_DOWNLOAD_REL_NR "$RET_URL" webmeetings- -Debian
-			VTAG="${VTAG}_Meet-${RET_REL}"
-			VER_TAG="${VER_TAG}_Meet-${RET_REL_MAJ}"
-			GET_K_DOWNLOAD_BY_TAG "https://serial:${K_SNR}@${K_URL_SUP}/mattermost:/final/tarballs/" "Debian_9.0-amd64.tar.gz"
-			URL_MATMOST="$RET_URL"
-			GET_DOWNLOAD_REL_NR "$RET_URL" mattermost- -Debian
-			VTAG="${VTAG}_Mmost-${RET_REL}"
-			VER_TAG="${VER_TAG}_Mmost-${RET_REL_MAJ}"
-			GET_K_DOWNLOAD_BY_TAG "https://serial:${K_SNR}@${K_URL_SUP}/files:/final/tarballs/" "-Debian_9.0-all.tar.gz"
-			URL_FILES="$RET_URL"
-			GET_DOWNLOAD_REL_NR "$RET_URL" files- -Debian
-			VTAG="${VTAG}_Files-${RET_REL}"
-			VER_TAG="${VER_TAG}_Files-${RET_REL_MAJ}"
-			URL_DOCED="${K_URL_SUP}/documentseditor/Debian_9.0/"
-		# to adjust to GET_K_DOWNLOAD_BY_TAG "https://serial:${K_SNR}@${URL_CORE}/all/" "kopano-server-packages_"
-		#GET_DOWNLOAD_REL_NR $RET_URL files- -Debian
-			RET_REL=5.4
-			RET_REL_MAJ=5.4
-			VTAG="${VTAG}_Docs-${RET_REL}"
-			VER_TAG="${VER_TAG}_Docs-${RET_REL_MAJ}"
-			sed -i -e "s~#SUP_FULL~~" /var/packages/Kopano4s/scripts/container/Dockerfile
-			sed -i -e "s~#FULL~~" /var/packages/Kopano4s/scripts/container/Dockerfile
-			KED="Supported-full"
-		else
-			KED="Supported-base"
-		fi
-	fi
-
-	# special migration version for ZCP install as community on tarballs
-	if [ "$K_EDITION" = "Migration" ]
-	then
-		VTAG="Core-8.4.5.0_Web-3.4.2_Push-2.3.9"
-		VER_TAG="Migration-8.4.5.0_Web-3.4.2_Push-2.3.9"
-		KED="Migration-base"
-		URL_Z_PUSH="http://repo.z-hub.io/z-push:/old-final/Debian_9.0/all/"
-		URL_CORE="https://serial:${K_SNR}@${K_URL_SUP}/core:/final/tarballs/archives/core-8.4.5.0_0%2B33-Debian_9.0-amd64.tar.gz"
-		URL_WEBAPP="https://serial:${K_SNR}@${K_URL_SUP}/webapp:/final/tarballs/archives/webapp-3.4.2.1108%2B36-Debian_9.0-all.tar.gz"
-		URL_MDM="https://serial:${K_SNR}@${K_URL_SUP}/mdm:/final/tarballs/archives/mdm-2.1.0.97%2B27-Debian_9.0-all.tar.gz"
-		URL_SMIME="https://serial:${K_SNR}@${K_URL_SUP}/smime:/final/tarballs/archives/smime-2.1.1.28%2B16-Debian_9.0-all.tar.gz"
-	fi
-	# If beta release add information to K_Edition 
-	if [ "$K_RELEASE" = "Beta" ] && [ "$K_EDITION" != "Migration" ]
-	then
-		KED="${KED}-Beta"
-	fi
-	# exit if urls cannot be retrieved and variables are empty
-	if [ -z "$URL_CORE" ] || [ -z "$URL_WEBAPP" ] || [ -z "$URL_Z_PUSH" ]
-	then
-		local MSG="Fatal error cannot evaluate download urls and will exit now"
-		GUI_MESSAGE "$MSG"
-		echo "$MSG"
-		exit 1
-	fi
-	local DTS
-	DTS=$(date "+%Y-%m-%d")
-	# prepare kopano4s docker build by ENV and ARGS (for –build-arg)
-	sed -i -e "s~ENV BUILD=.*~ENV BUILD=\"$DTS\" \\\ ~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~EDITION=.*~EDITION=\"$KED\" \\\ ~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~TAG=.*~TAG=\"$VTAG\" \\\ ~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_CORE~$URL_CORE~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_CORE_NAME~$CORE_NAME~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_UBCORE~$URL_UBCORE~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_WEBAPP~$URL_WEBAPP~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_MDM~$URL_MDM~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_SMIME~$URL_SMIME~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_UBSMIME~$URL_UBSMIME~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_Z_PUSH~$URL_Z_PUSH~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_WEBMEET~$URL_WEBMEET~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_MATMOST~$URL_MATMOST~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_FILES~$URL_FILES~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_DOCED~$URL_DOCED~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_PASSWD~$URL_PASSWD~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_G2FA~$URL_G2FA~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	sed -i -e "s~G_URL_PFETCHM~$URL_PFETCHM~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	# remove kopano-spamd as it did not exist at the time
-	if [ "$K_EDITION" = "Migration" ]
-	then
-		sed -i -e "s~kopano-migration-pst kopano-spamd~kopano-migration-pst~" /var/packages/Kopano4s/scripts/container/Dockerfile
-	fi
-	# have cfg and init files copied over to care for KC-681 missing files
-	if [ "$K_EDITION" != "Migration" ] ; then sed -i -e "s~#KC-681~~g" /var/packages/Kopano4s/scripts/container/Dockerfile ; fi
-	# now update the ver_tag
-	sed -i -e "s~VER_TAG=.*~VER_TAG=\"$VER_TAG\"~" $ETC_PATH/package.cfg
-	mkdir -p "$DOCKER_PATH/kopano4s"
-	mkdir -p "$DOCKER_PATH/kopano4s/container"
-	# copy over dockerfile and cfg for packages to remove post build, then conatiner init, robot.png 
-	cp -f /var/packages/Kopano4s/scripts/container/Dockerfile "$DOCKER_PATH/kopano4s"
-	cp -f /var/packages/Kopano4s/scripts/container/* "$DOCKER_PATH/kopano4s/container"
-	rm "$DOCKER_PATH/kopano4s/container/Dockerfile*"
-	cp -f "$TARGET_PATH/merge/kopano-cfg.tgz" "$DOCKER_PATH/kopano4s/container"
-	cp -f "$TARGET_PATH/merge/kinit.tgz" "$DOCKER_PATH/kopano4s/container"
-	cp -f "$TARGET_PATH/ui/images/robot.png" "$DOCKER_PATH/kopano4s/container"
-}
 # ** set all environment as docker mounts and ports exposed, do all via softlinks from etc
 SET_DOCKER_ENV()
 {
@@ -1678,16 +1432,18 @@ SET_DOCKER_ENV()
 	"$SUDO" ln -sf /run/mysqld "$DOCKER_PATH/kopano4s/mysocket"
 	"$SUDO" ln -sf "$K_SHARE/postgrey" "$DOCKER_PATH/kopano4s/postgrey"
 	"$SUDO" ln -sf "$K_SHARE/run" "$DOCKER_PATH/kopano4s/run"
+	"$SUDO" ln -sf "$K_SHARE/run" /run/kopano
 	"$SUDO" ln -sf "$K_SHARE/search" "$DOCKER_PATH/kopano4s/search"
 	"$SUDO" ln -sf "$K_SHARE/spool" "$DOCKER_PATH/kopano4s/spool"
 	"$SUDO" ln -sf /etc/TZ "$DOCKER_PATH/kopano4s/timezone"
 	"$SUDO" ln -sf "$K_SHARE/z-push" "$DOCKER_PATH/kopano4s/z-push"
 	# remove recursive softlinks kopano and z-push in etc, log, k-share
 	if [ -e /etc/kopano/kopano ] && [ -h /etc/kopano/kopano ] ; then "$SUDO" rm /etc/kopano/kopano ; fi
-	if [ -e /var/log/kopano/kopano ] && [ -h /var/log/kopano/kopano ] ; then "$SUDO" rm /var/log/kopano/kopano ; fi
+	if [ -e /etc/kopano/z-push ] ; then "$SUDO" rm -R /etc/kopano/z-push ; fi
 	if [ -e /etc/z-push/z-push ] && [ -h /etc/z-push/z-push ] ; then "$SUDO" rm /etc/z-push/z-push ; fi
 	if [ -e "$K_SHARE/z-push/z-push" ] && [ -h "$K_SHARE/z-push/z-push" ] ; then "$SUDO" rm "$K_SHARE/z-push/z-push" ; fi
-	if [ -e /etc/kopano/z-push ] ; then "$SUDO" rm -R /etc/kopano/z-push ; fi
+	if [ -e "$K_SHARE/run/run" ] && [ -h "$K_SHARE/run/run" ] ; then "$SUDO" rm "$K_SHARE/run/run" ; fi
+	if [ -e /var/log/kopano/kopano ] && [ -h /var/log/kopano/kopano ] ; then "$SUDO" rm /var/log/kopano/kopano ; fi
 
 	local K_ETC="$DOCKER_PATH/kopano4s/etc-kopano"
 	local Z_ETC="$DOCKER_PATH/kopano4s/etc-z-push"
@@ -1810,15 +1566,101 @@ SET_SOFTLINKS()
 # ** build docker image
 BUILD_DOCKER()
 {
+	local BUILD_PARAMS
+	local TAG1
+	local TAG2
+	local TAG3
+	local TAG4
+	local IMG_TAG
 	NOTIFY_MESSAGE "Please ignore potential install errors during 12-35min docker build time: this is a Synology package installer time-out.."
 	LOG_MESSAGE "Building Kopano4s in Docker container: 12-35 min see docker-kopano-build.log"
+	mkdir -p "$DOCKER_PATH/kopano4s"
+	mkdir -p "$DOCKER_PATH/kopano4s/container"
+	# copy over dockerfile and cfg for packages to remove post build, then conatiner init, robot.png 
+	cp -f /var/packages/Kopano4s/scripts/container/Dockerfile "$DOCKER_PATH/kopano4s"
+	cp -f /var/packages/Kopano4s/scripts/container/*.sh "$DOCKER_PATH/kopano4s/container"
+	cp -f "$TARGET_PATH/merge/kopano-cfg.tgz" "$DOCKER_PATH/kopano4s/container"
+	cp -f "$TARGET_PATH/merge/kinit.tgz" "$DOCKER_PATH/kopano4s/container"
+	cp -f "$TARGET_PATH/ui/images/robot.png" "$DOCKER_PATH/kopano4s/container"
+
 	echo "Calling kopano4s Dockerfile build at $(date "+%Y%m%d-%H:%M:%S").." >$TARGET_PATH/log/docker-kopano-build.log
-	local BUILD_PARAMS="--tag tosoboso/kopano4s:$VER_TAG $DOCKER_PATH/kopano4s --build-arg NO_PROXY=${DOCKER_HOST}"
-	if [ "$K_EDITION" = "Supported" ] || [ "$K_EDITION" = "Migration" ]
+	BUILD_PARAMS=="--build-arg EDITION=${EDITION} --build-arg PHP_VER=$PHP_VER"
+	# for supported and community edition get dynamic version tag
+	if [ "$EDITION" = "Community" ]
 	then
-		# passing SNR for download via arg http_proxy not found in docker history..
-		BUILD_PARAMS="$BUILD_PARAMS --build-arg FTP_PROXY=${K_SNR}"
+		TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/core:/" "Debian_9.0" )
+		if [ -z "$TAG1" ]
+		then
+			echo "Could not evaluate Kopano core release tag from download; exiting.."
+			exit 1
+		fi
+		TAG2=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webapp:/" "Debian_9.0" )
+		if [ -z "$TAG2" ]
+		then
+			echo "Could not evaluate Kopano webapp release tag from download; exiting.."
+			exit 1
+		fi
+		TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+		if [ -z "$TAG3" ]
+		then
+			echo "Could not evaluate Kopano z-push release tag from download; exiting.."
+			exit 1
+		fi
+		TAG4=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webmeetings:/" "Debian_9.0" )
+		if [ -z "$TAG4" ]
+		then
+			echo "Could not evaluate Kopano webmeetings release tag from download; exiting.."
+			exit 1
+		fi	
+		IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
+		VER_TAG="C-${IMG_TAG}"
+		BUILD_PARAMS="$BUILD_PARAMS --build-arg COMMUNITY_BUILD=1"
 	fi
+	if [ "$EDITION" = "Supported" ]
+	then
+		TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/" "Debian_9.0" )
+		if [ -z "$TAG1" ]
+		then
+			echo "Could not evaluate Kopano core release tag from download; exiting.."
+			exit 1
+		fi
+		TAG2=$( GET_K_DOWNLOAD_RELEASE_TAG "https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/" "Debian_9.0" )
+		if [ -z "$TAG2" ]
+		then
+			echo "Could not evaluate Kopano webapp release tag from download; exiting.."
+			exit 1
+		fi
+		TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+		if [ -z "$TAG3" ]
+		then
+			echo "Could not evaluate Kopano z-push release tag from download; exiting.."
+			exit 1
+		fi
+		TAG4=$( GET_K_DOWNLOAD_RELEASE_TAG "https://serial:${K_SNR}@download.kopano.io/supported/webmeetings:/final/tarballs/" "Debian_9.0" )
+		if [ -z "$TAG4" ]
+		then
+			echo "Could not evaluate Kopano webmeetings release tag from download; exiting.."
+			exit 1
+		fi	
+		IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
+		VER_TAG="S-${IMG_TAG}"
+		# passing SNR for download via arg http_proxy not found in docker history.
+		BUILD_PARAMS="$BUILD_PARAMS --build-arg SUPPORTED_BUILD=1 --build-arg K_SNR=${K_SNR}"
+	fi
+	if [ "$EDITION" = "Default" ]
+	then
+		IMG_TAG="$DEFAULT_TAG"
+		VER_TAG="D-${IMG_TAG}"
+		BUILD_PARAMS="$BUILD_PARAMS --build-arg DEFAULT_BUILD=1 --build-arg K_SNR=${K_SNR}"
+	fi
+	if [ "$EDITION" = "Migration" ]
+	then
+		IMG_TAG="$MIGRATION_TAG"
+		VER_TAG="M-${IMG_TAG}"
+		BUILD_PARAMS="$BUILD_PARAMS --build-arg MIGRATION_BUILD=1 --build-arg K_SNR=${K_SNR}"
+	fi
+	BUILD_PARAMS="$BUILD_PARAMS --build-arg PARENT=${DOCKER_HOST} --build-arg BUILD=${DATE_BUILD} --build-arg TAG=${IMG_TAG} --tag tosoboso/kopano4s:${VER_TAG}"
+	sed -i -e "s~VER_TAG=.*~VER_TAG=\"$VER_TAG\"~" $ETC_PATH/package.cfg
 	docker build "$BUILD_PARAMS" >>"$TARGET_PATH/log/docker-kopano-build.log" 2>&1
 	NOTIFY_MESSAGE "Building Kopano4s container $VER_TAG sucessfully completed"	
 }
