@@ -22,7 +22,7 @@ case "$1" in
 		# update certificates from synology into container if out of sync
 		SYNC_K_CERTIFICATE
 		# do not start in active slave mode as it breaks replication
-		if [ "$K_REPLICATION" = "SLAVE" ] && ( "$SUDO" kopano4s-replication | grep -q "running" )
+		if [ "$K_REPLICATION" = "SLAVE" ] && ( $SUDO kopano4s-replication | grep -q "running" )
 		then
 			MSG="Refuse Kopano start: slave replication running do kopano4s-replication stop first"
 			# write warning to log once and only if root as it is for gui part
@@ -39,15 +39,15 @@ case "$1" in
 		fi
 		if [ -e "$ETC_PATH/kopano/mount.issue" ]
 		then
-			"$SUDO" rm "$ETC_PATH/kopano/mount.issue"
-			"$SUDO" docker rm kopano4s
+			$SUDO rm "$ETC_PATH/kopano/mount.issue"
+			$SUDO docker rm kopano4s
 		fi
-		if "$SUDO" docker ps | grep -q kopano4s
+		if $SUDO docker ps | grep -q kopano4s
 		then
 			echo "Kopano4s already running"
 		else
 			# exception to recreate the container?
-			if ! ("$SUDO" docker ps -a | grep -q kopano4s)
+			if ! ($SUDO docker ps -a | grep -q kopano4s)
 			then
 				MSG="Rebuilding Kopano docker container (~15-30s)"
 				if [ -n "$SUDO" ]
@@ -57,7 +57,7 @@ case "$1" in
 					LOG_MESSAGE "Warning $MSG"
 				fi
 				SET_DOCKER_ENV
-				if ! ("$SUDO" docker run "$DOCKER_PARAMS" "$DOCKER_MOUNTS" "$DOCKER_PORTS" "$DOCKER_IMAGE")
+				if ! ($SUDO docker run "$DOCKER_PARAMS" "$DOCKER_MOUNTS" "$DOCKER_PORTS" "$DOCKER_IMAGE")
 				then
 					echo "failed to rebuild Kopano"
 					exit 1
@@ -66,7 +66,7 @@ case "$1" in
 				INIT_DOCKER
 			# normal restart
 			else
-				if ! ("$SUDO" docker start kopano4s)
+				if ! ($SUDO docker start kopano4s)
 				then
 					echo "failed to start Kopano"
 					exit 1
@@ -74,7 +74,7 @@ case "$1" in
 			fi
 		fi
 		# check for warnings of non critical services not running 
-		RET=$("$SUDO" docker exec -it kopano4s /usr/local/bin/init.sh status)
+		RET=$($SUDO docker exec -it kopano4s /usr/local/bin/init.sh status)
 		if ! (echo "$RET" | grep -q "Running:")
 		then
 			# write warning to log once and only if root as it is for gui part
@@ -86,7 +86,6 @@ case "$1" in
 		echo "Kopano services started"
 		exit 0
 		# expose Kopano pipe from container to localhost
-		#"$SUDO" ln -sf /var/packages/Kopano4s/target/run/kopano /var/run/kopano
 		echo "Kopano services started"
 		exit 0
 		;;
@@ -94,19 +93,19 @@ case "$1" in
 		# disable admin and web icons
 		DISABLE_UI
 		# stop services and sleep 10s for graceful shutdown (container waits 15s)
-		echo -e "\n" | "$SUDO" docker exec -i kopano4s init.sh stop
+		echo -e "\n" | $SUDO docker exec -i kopano4s init.sh stop
 		sleep 10
-		"$SUDO" docker stop kopano4s
+		$SUDO docker stop kopano4s
 		echo "Kopano services stopped"
 		exit 0
 		;;
 	status)
-		if ! ("$SUDO" docker ps | grep -q kopano4s)
+		if ! ($SUDO docker ps | grep -q kopano4s)
 		then
 			echo "Kopano services not running exit false"
 			exit 1
 		fi
-		RET=$("$SUDO" docker exec -it kopano4s /usr/local/bin/init.sh status)
+		RET=$($SUDO docker exec -it kopano4s /usr/local/bin/init.sh status)
 		echo "$RET"
 		exit 0
 		;;

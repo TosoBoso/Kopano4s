@@ -25,6 +25,12 @@ then
 	#echo "$(date '+%Y.%m.%d-%H:%M:%S') preinst: get image $VER_TAG" >> /tmp/inst.log
 	# ** usage:/var/packages/Docker/target/tool/helper JOB: image_name image_tag image_path image_download_size_mb
 	# ** SYNOPKG_PKG_PROGRESS_PATH = /tmp/install_progress_Kopano4s will be needed to show and run aka only in GUI mode
+	if [ "$PKGWIZ_NO_GUI" = "true" ]
+	then 
+		SYNOPKG_PKG_PROGRESS_PATH=/tmp/install_progress_Kopano4s
+		export SYNOPKG_PKG_PROGRESS_PATH
+		echo "Pulling image $VER_TAG with size $K4S_SIZE .."
+	fi
 	NOTIFY_MESSAGE "Pulling k4s Docker image (${K4S_SIZE}M ~2-7m; time-out: 10m). Please ignore potential install errors: this is a Synology package installer time-out.."
 	if ! /var/packages/Docker/target/tool/helper "$K4S_IMAGE" "$VER_TAG" "$DOCKER_PATH/k4s-$VER_TAG.tar.xz" "$K4S_SIZE"
 	then

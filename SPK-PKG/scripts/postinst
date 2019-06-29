@@ -53,7 +53,7 @@ fi
 # ** install & upgrade modus
 INIT_SYNOACL
 # put to amavis spamtraining from spamassassin.apache.org/old/publiccorpus
-mv -f "$TARGET_PATH/merge/spamtrain.tgz" "$K_SHARE/amavis"
+if [ -e "$TARGET_PATH/merge/spamtrain.tgz" ] ; then mv -f "$TARGET_PATH"/merge/spamtrain.tgz "$K_SHARE"/amavis ; fi
 # we do not find the latest or predefined tag so we have to build
 if ! CHECK_DOCKER_TAG tosoboso/kopano4s "$VER_TAG"
 then

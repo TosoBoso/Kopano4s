@@ -9,17 +9,17 @@ then
 else
 	SUDO=""
 fi
-if [ -z "$EDITION" ]
+if [ -z "$K_EDITION" ]
 then
-	read -p "Pleae provide Kopano Edition to build (Community) : " EDITION
-	if [ -z "$EDITION" ] ; then EDITION="Community" ; fi
+	read -p "Pleae provide Kopano K_EDITION to build (Community) : " K_EDITION
+	if [ -z "$K_EDITION" ] ; then K_EDITION="Community" ; fi
 fi
-BUILD_PARAMS="--build-arg EDITION=${EDITION} --build-arg PHP_VER=7.0"
-if [ "$EDITION" != "Community" ] && [ -z "$K_SNR" ]
+BUILD_PARAMS="--build-arg EDITION=${K_EDITION} --build-arg PHP_VER=7.0"
+if [ "$K_EDITION" != "Community" ] && [ -z "$K_SNR" ]
 then
 	read -p "Pleae provide Kopano subscription Serial-Nr: " K_SNR
 fi
-echo "Building image for kopano 4s $EDITION you need to provide sudo pwd at initial start.."
+echo "Building image for kopano 4s $K_EDITION you need to provide sudo pwd at initial start.."
 MYDIR=$(dirname "$0")
 if [ -z "$DOCKER_PATH" ]
 then
@@ -34,6 +34,7 @@ fi
 # copy over dockerfile and cfg for packages to remove post build, then conatiner init, robot.png 
 "$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/Dockerfile "$DOCKER_PATH/kopano4s"
 "$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/*.sh "$DOCKER_PATH/kopano4s/container"
+"$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/dpkg-remove "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-APP/merge/kopano-cfg.tgz "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-APP/merge/kinit.tgz "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-APP/ui/images/robot.png "$DOCKER_PATH/kopano4s/container"
@@ -54,7 +55,7 @@ GET_K_DOWNLOAD_RELEASE_TAG()
 		echo ""
 	fi
 }
-if [ "$EDITION" = "Community" ]
+if [ "$K_EDITION" = "Community" ]
 then
 	TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/core:/" "Debian_9.0" )
 	if [ -z "$TAG1" ]
@@ -84,7 +85,7 @@ then
 	VER_TAG="C-${IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg COMMUNITY_BUILD=1"
 fi
-if [ "$EDITION" = "Supported" ]
+if [ "$K_EDITION" = "Supported" ]
 then
 	TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/" "Debian_9.0" )
 	if [ -z "$TAG1" ]
@@ -115,13 +116,13 @@ then
 	# passing SNR for download via arg http_proxy not found in docker history.
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg SUPPORTED_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
-if [ "$EDITION" = "Default" ]
+if [ "$K_EDITION" = "Default" ]
 then
 	IMG_TAG="Core-8.6.9.0_Webapp-3.5.0_Z-Push-2.4.5_WMeet-0.29.5"
 	VER_TAG="D-${IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEFAULT_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
-if [ "$EDITION" = "Migration" ]
+if [ "$K_EDITION" = "Migration" ]
 then
 	IMG_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
 	VER_TAG="M-${IMG_TAG}"
@@ -166,11 +167,11 @@ fi
 echo "Build-Args: ${BUILD_PARAMS}"
 "$SUDO" docker build ${DOCKER_PATH}/kopano4s ${BUILD_PARAMS}
 
-# if we created image with repo copy it over to place it on a webserver e.g. for wget $PARENT/repo/k4s-${EDITION}-repo.tgz
+# if we created image with repo copy it over to place it on a webserver e.g. for wget $PARENT/repo/k4s-${K_EDITION}-repo.tgz
 if [ $# -gt 0 ] && [ "$1" = "get-repo" ]
 then
 	"$SUDO" docker create -ti --name k4s-repo tosoboso/k4s-repo:${VER_TAG} bash
-	"$SUDO" docker cp k4s-repo:/root/k4s-${EDITION}-repo.tgz .
+	"$SUDO" docker cp k4s-repo:/root/k4s-${K_EDITION}-repo.tgz .
 	"$SUDO" docker rm -fv k4s-repo
 	echo "collected k4s-repo with deb files:"
 	ls -al k4s-*repo*

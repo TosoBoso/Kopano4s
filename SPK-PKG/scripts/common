@@ -39,6 +39,8 @@ fi
 # ** for testing without GUI set wizz-values
 if [ -z "$PKGWIZ_DB_NAME" ]
 then
+	# mark no-gui as manual and fill al defaults from package wizzard
+	PKGWIZ_NO_GUI="true"
 	PKGWIZ_K_SUP="false"
 	PKGWIZ_K_MIG="false"
 	PKGWIZ_DB_NAME="kopano"
@@ -96,7 +98,6 @@ GUI_MESSAGE()
 }
 NOTIFY_MESSAGE()
 {
-echo "hi"
 	# ** set the notify recipient best what can be found
 	local RCP
 	RCP="$SYNOPKG_USERNAME"
@@ -169,7 +170,7 @@ CHECK_DOCKER_TAG()
 		echo "tag $TAG is empty"
 		return 1
 	fi
-	if curl --silent "$UR"L | jq '."results"[]["name"]' | grep -q "$TAG"
+	if curl --silent "$URL" | jq '."results"[]["name"]' | grep -q "$TAG"
 
 	then
 		#echo "Tag found $TAG"		
@@ -199,13 +200,13 @@ RESTORE_LOG_ETC()
 # en/disable 3rdparty admin ui and web icons and remove the cycle softlink
 ENABLE_UI()
 {
-	"$SUDO" ln -sf "$TARGET_PATH/ui" "$UI_PATH"
+	$SUDO ln -sf "$TARGET_PATH"/ui "$UI_PATH"
 	# remove cycle softlink ui/ui
-	if [ -e "$TARGET_PATH/ui/ui" ] ; then "$SUDO" rm "$TARGET_PATH/ui/ui" ; fi
+	if [ -e "$TARGET_PATH/ui/ui" ] ; then $SUDO rm "$TARGET_PATH"/ui/ui ; fi
 }
 DISABLE_UI()
 {
-	if [ -e "$TARGET_PATH/ui" ] ; then "$SUDO" rm "$TARGET_PATH/ui" ; fi
+	if [ -e "$TARGET_PATH/ui" ] ; then $SUDO rm "$TARGET_PATH"/ui ; fi
 }
 # *** sub-routines GET_ (WIZZARD_CFG / TUNING_PARAMS / K_DOWNLOAD_BY_TAG) ***
 # get from INFO file if we have a stable or beta version
@@ -473,12 +474,16 @@ GET_K_DOWNLOAD_RELEASE_TAG()
 {
 	local URL="$1"
 	local TAG="[[:graph:]]*${2}[[:graph:]]*"
+	local MAJ_REL
+	local DOWNL
+	local DOWNL_FILE
 	# get basename from download URL for tag (e.g. Debian_9) which is recognized in between double-brackets
-	local DOWNL_FILE=$(basename $(curl --silent "$URL" | grep -o "$TAG" | head -1 | cut -f2 -d \"))
+	DOWNL=$(curl --silent "$URL" | grep -o "$TAG" | head -1 | cut -f2 -d \")
+	DOWNL_FILE=$(basename "$DOWNL")
 	if [ -n "$DOWNL_FILE" ]
 	then
 		# based on download file split off as major release only the 1st 3 secions on . delimiter
-		local MAJ_REL=$(echo "$DOWNL_FILE" | grep -o "$TAG" | grep -o "[0-9.]*" | head -1 | cut -f1-3 -d .)
+		MAJ_REL=$(echo "$DOWNL_FILE" | grep -o "$TAG" | grep -o "[0-9.]*" | head -1 | cut -f1-3 -d .)
 		echo "$MAJ_REL"
 	else
 		echo ""
@@ -578,7 +583,7 @@ GET_VER_TAG()
 	fi
 	if [ "$K_EDITION" = "Default" ]
 	then
-		if GET_DOCKER_TAG "tosoboso/kopano4s" "D-" "$SEC"
+		if GET_DOCKER_TAG "tosoboso/kopano4s" "D" "$SEC"
 		then
 			# found latest or previous version so use it
 			VER_TAG=$RET_VER_TAG
@@ -588,7 +593,7 @@ GET_VER_TAG()
 	fi
 	if [ "$K_EDITION" = "Supported" ]
 	then
-		if GET_DOCKER_TAG "tosoboso/kopano4s" "S-" "$SEC"
+		if GET_DOCKER_TAG "tosoboso/kopano4s" "S" "$SEC"
 		then
 			# found latest or previous version so use it
 			VER_TAG=$RET_VER_TAG
@@ -598,7 +603,7 @@ GET_VER_TAG()
 	fi
 	if [ "$K_EDITION" = "Community" ]
 	then
-		if GET_DOCKER_TAG "tosoboso/kopano4s" "C-" "$SEC"
+		if GET_DOCKER_TAG "tosoboso/kopano4s" "C" "$SEC"
 		then
 			# found latest or previous version so use it
 			VER_TAG=$RET_VER_TAG
@@ -759,7 +764,7 @@ DOWNL_PRE_CHECK()
 {
 	# get_ver_tag will also get the wizzard gfg, it can be called with parameter e.g. previous in other script
 	GET_VER_TAG ""
-	if [ "$K_EDITION" = "Supported" ]
+	if [ "$K_EDITION" = "Supported" ] || [ "$K_EDITION" = "Default" ] 
 	then
 		if [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ]
 		then
@@ -774,6 +779,7 @@ DOWNL_PRE_CHECK()
 		if ! CHECK_DOWNLOAD_SOURCE "$DOWNLOAD_SOURCE"
 		then
 			GUI_MESSAGE "Fatal Build Error: Download unavailable $DOWNLOAD_SOURCE "
+			if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "Fatal Build Error: Download unavailable $DOWNLOAD_SOURCE" ; fi
 			exit 1
 		fi
 	else
@@ -781,17 +787,20 @@ DOWNL_PRE_CHECK()
 		if [ "$K_EDITION" = "Supported" ] && ! CHECK_DOWNLOAD_SOURCE "$DOWNLOAD_SOURCE"
 		then
 			GUI_MESSAGE "Fatal SNR Error: could not authenticate via Kopano download <${K_SNR}> "
+			if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "Fatal SNR Error: could not authenticate via Kopano download <${K_SNR}>" ; fi
 			exit 1	
 		fi
 		# ** verify docker hub available for loading container otherwise exit
 		if ! CHECK_DOWNLOAD_SOURCE "https://$K_DHUB/"
 		then
 			GUI_MESSAGE "Fatal Error: Docker-Hub unavailable $K_DHUB "
+			if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "Fatal Error: Docker-Hub unavailable $K_DHUB" ; fi
 			exit 1
 		fi	
 		if ! CHECK_DOCKER_TAG tosoboso/kopano4s "$VER_TAG"
 		then
 			NOTIFY_MESSAGE "Warning: Tag $VER_TAG not found on Docker-Hub for tosoboso/kopano4s"
+			if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "Warning: Tag $VER_TAG not found on Docker-Hub for tosoboso/kopano4s" ; fi
 			exit 0
 		fi
 	fi
@@ -852,7 +861,7 @@ INIT_USR_GRP()
 }
 INIT_UPDATE()
 {
-	# perform any inits of later realease missin gin install by update mode
+	# perform any inits of later realease missing in install by update mode
 	if [ ! -e "$K_SHARE/z-push" ] ; then mkdir -p "$K_SHARE/z-push" && chmod 750 "$K_SHARE/z-push" ; fi
 	if [ ! -e "$ETC_PATH/z-push" ] ; then mkdir -p "$ETC_PATH/z-push" && chmod 750 "$ETC_PATH/z-push" ; fi
 	# etc-kopano-zpush moved to etc-z-push so remove it
@@ -861,14 +870,14 @@ INIT_UPDATE()
 		rm -R "$ETC_PATH/kopano/z-push"
 	fi
 	ä change to new naming convention for z-push and webapp confs incl. pkugins
-	if [ ! -e "$ETC_PATH/z-push/z-push.conf.php" ] ; then cp "$TARGET_PATH/merge/z-push/*" "$ETC_PATH/z-push" ; fi
-	if [ ! -e "$ETC_PATH/kopano/webapp/webapp.conf.php" ] ; then mv "$ETC_PATH/kopano/webapp/config.php" "$ETC_PATH/kopano/webapp/webapp.conf.php" ; fi
-	PDIR=$(find "$ETC_PATH/kopano/webapp/config-*" -maxdepth 0 | cut -d '-' -f2-)
-	for P in $PDIR ; do mv "${ETC_PATH}/kopano/webapp/config-${P}" "${ETC_PATH}/kopano/webapp/plg.conf-${P}" ; done
+	if [ ! -e "$ETC_PATH/z-push/z-push.conf.php" ] ; then cp "$TARGET_PATH"/merge/z-push/* "$ETC_PATH"/z-push ; fi
+	if [ ! -e "$ETC_PATH/kopano/webapp/webapp.conf.php" ] ; then mv "$ETC_PATH"/kopano/webapp/config.php "$ETC_PATH"/kopano/webapp/webapp.conf.php ; fi
+	PDIR=$(find "$ETC_PATH"/kopano/webapp/config-* -maxdepth 0 | cut -d '-' -f2-)
+	for P in $PDIR ; do mv "$ETC_PATH"/kopano/webapp/config-"${P}" "$ETC_PATH"/kopano/webapp/plg.conf-"${P}" ; done
 	# adjust mdm to port 9080
-	if [ -e "$ETC_PATH/kopano/webapp/plg.conf-mdm.php" ] && ! grep -q 9080 "$ETC_PATH/kopano/webapp/plg.conf-mdm.php"
+	if [ -e "$ETC_PATH"/kopano/webapp/plg.conf-mdm.php ] && ! grep -q 9080 "$ETC_PATH"/kopano/webapp/plg.conf-mdm.php
 	then
-		sed -i -e "s~localhost~localhost:9080~" "$ETC_PATH/kopano/webapp/plg.conf-mdm.php"
+		sed -i -e "s~localhost~localhost:9080~" "$ETC_PATH"/kopano/webapp/plg.conf-mdm.php
 	fi
 	if ! grep -q k4samavis: /etc/passwd
 	then
@@ -931,33 +940,33 @@ INIT_SHARE_ETC()
 		synoshare --add kopano 'Kopano area for Docker volumes and backups' $K_SHARE @users @kopano @administrators 0 0
 		synoacltool -add $K_SHARE group:kopano:allow:rwxpdDaARWc--:fd--
 		# ** now create subfolders for mounts in standard unix way
-		mkdir -p "$K_SHARE/amavis"
-		mkdir -p "$K_SHARE/amavis/export"
-		mkdir -p "$K_SHARE/amavis/ham"
-		mkdir -p "$K_SHARE/amavis/spam"
-		mkdir -p "$K_SHARE/archive"
-		mkdir -p "$K_SHARE/attachments"
-		mkdir -p "$K_SHARE/backup"
-		mkdir -p "$K_SHARE/log"
-		mkdir -p "$K_SHARE/log/z-push"
-		mkdir -p "$K_SHARE/postgrey"
-		mkdir -p "$K_SHARE/run"
-		mkdir -p "$K_SHARE/search"
-		mkdir -p "$K_SHARE/spool"
-		mkdir -p "$K_SHARE/z-push"
+		mkdir -p "$K_SHARE"/amavis
+		mkdir -p "$K_SHARE"/amavis/export
+		mkdir -p "$K_SHARE"/amavis/ham
+		mkdir -p "$K_SHARE"/amavis/spam
+		mkdir -p "$K_SHARE"/archive
+		mkdir -p "$K_SHARE"/attachments
+		mkdir -p "$K_SHARE"/backup
+		mkdir -p "$K_SHARE"/log
+		mkdir -p "$K_SHARE"/log/z-push
+		mkdir -p "$K_SHARE"/postgrey
+		mkdir -p "$K_SHARE"/run
+		mkdir -p "$K_SHARE"/search
+		mkdir -p "$K_SHARE"/spool
+		mkdir -p "$K_SHARE"/z-push
 		chown -R root.kopano "$K_SHARE"
 		chmod 751 "$K_SHARE"
-		chmod 750 "$K_SHARE/amavis"
-		chmod 750 "$K_SHARE/archive"
-		chmod 750 "$K_SHARE/attachments"
-		chmod 750 "$K_SHARE/backup"
-		chmod 771 "$K_SHARE/log"
-		chmod 750 "$K_SHARE/log/z-push"
-		chmod 750 "$K_SHARE/postgrey"
-		chmod 750 "$K_SHARE/run"
-		chmod 750 "$K_SHARE/search"
-		chmod 750 "$K_SHARE/spool"
-		chmod 750 "$K_SHARE/z-push"
+		chmod 750 "$K_SHARE"/amavis
+		chmod 750 "$K_SHARE"/archive
+		chmod 750 "$K_SHARE"/attachments
+		chmod 750 "$K_SHARE"/backup
+		chmod 771 "$K_SHARE"/log
+		chmod 750 "$K_SHARE"/log/z-push
+		chmod 750 "$K_SHARE"/postgrey
+		chmod 750 "$K_SHARE"/run
+		chmod 750 "$K_SHARE"/search
+		chmod 750 "$K_SHARE"/spool
+		chmod 750 "$K_SHARE"/z-push
 	fi
 	# ** create kopano etc area and set specific acls
 	if [ ! -e "$ETC_PATH/kopano" ] ; then mkdir -p "$ETC_PATH/kopano" ; fi
@@ -969,24 +978,26 @@ INIT_SHARE_ETC()
 	chown -R root.kopano "$ETC_PATH/kopano"
 	find "$ETC_PATH/kopano" -type d -exec chmod 750 "{}" ";"
 	chmod 751 "$ETC_PATH/kopano"
+	chmod 751 "$ETC_PATH/z-push"
 	chmod 751 "$ETC_PATH/kopano/custom"
 	chmod 751 "$ETC_PATH/kopano/postfix"
 	chmod 700 "$ETC_PATH/kopano/ssl"
 	chmod 751 "$ETC_PATH/kopano/web"
-	chmod 751 "$ETC_PATH/kopano/z-push"
 }
 INIT_DATABASE()
 {
 	LOG_MESSAGE "Creating database $DB_NAME owned by $DB_USER with random internal password"
+	if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "creating kopano database in cmd-line mode you have to pass the mysql root pwd.." ; fi
 	SQL="FLUSH PRIVILEGES; CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS'; CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` DEFAULT CHARACTER SET \`utf8\` COLLATE \`utf8_unicode_ci\`; GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';"
+	#if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "SQL: $SQL"; fi
 	# ** use mysql binary of MariaDB-10
-	$MYSQL -uroot -p "$DB_MPASS" -e "$SQL" >out.sql 2>&1
+	$MYSQL -uroot -p"${DB_MPASS}" -e "$SQL" >/tmp/out.sql 2>&1
 	ERR=$?
 	if [ "$ERR" -eq 1 ]
 	then
-		RET=$(cat out.sql)
+		RET=$(cat /tmp/out.sql)
 		# ** maybe mysql root pwd is not set -wow!
-		"$MYSQL" -uroot -p -e "$SQL" >out.sql 2>&1
+		$MYSQL -uroot -p -e "$SQL" >/tmp/out.sql 2>&1
 		ERR=$?
 		if [ "$ERR" -eq 0 ]
 		then
@@ -996,14 +1007,15 @@ INIT_DATABASE()
 			echo "Error in SQL: $RET"
 			LOG_MESSAGE "Error creating database and owner (wrong root-pwd to MySQL?): $RET on SQL: $SQL"
 			GUI_MESSAGE "Error creating database and owner (wrong root-pwd to MySQL?): $RET on SQL: $SQL"
+			if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "Error creating database and owner (wrong root-pwd to MySQL?): $RET on SQL: $SQL" ; fi
 			# ** maybe user did still exist so drop him twice for clean install next time
 			SQL_DROP_USR="DROP USER '$DB_USER'@'localhost';"
-			"$MYSQL" -uroot -p "$DB_MPASS" -e "$SQL_DROP_USR"
+			$MYSQL -uroot -p"${DB_MPASS}" -e "$SQL_DROP_USR"
 			ERR=$?
 			if [ "$ERR" -eq 1 ]
 			then
 				# ** for our wow no pwd candidates
-				"$MYSQL" -uroot -p -e "$SQL_DROP_USR"
+				$MYSQL -uroot -p -e "$SQL_DROP_USR"
 			fi
 			exit 1
 		fi
@@ -1012,27 +1024,26 @@ INIT_DATABASE()
 # ** init acls for synology area run every time as it will be overwritten by upgrades
 INIT_SYNOACL()
 {
-	# ** runs with suso in front as also used by cmd-line scripts
-	"$SUDO" chown root.administrators $ETC_PATH
-	"$SUDO" chmod 751 $ETC_PATH
-	"$SUDO" chown root.kopano $ETC_PATH/kopano
-	"$SUDO" chmod 751 $ETC_PATH/kopano
-	"$SUDO" chown -R root.http $ETC_PATH/z-push
-	"$SUDO" chmod 751 $ETC_PATH/z-push
-	"$SUDO" chmod 640 $ETC_PATH/z-push/*
-	"$SUDO" chown root.administrators $ETC_PATH/package.cfg
-	"$SUDO" chmod 640 $ETC_PATH/package.cfg
-	"$SUDO" chown http.http $K_SHARE/z-push
-	"$SUDO" chmod 770 $K_SHARE/z-push
-	"$SUDO" chown -R root.administrators /var/packages/Kopano4s/scripts/
-	"$SUDO" chmod 750 /var/packages/Kopano4s/scripts
-	"$SUDO" chmod 750 /var/packages/Kopano4s/scripts/*
-	"$SUDO" chown -R root.administrators $TARGET_PATH/log
-	"$SUDO" chmod 640 $TARGET_PATH/log/*.log
-	"$SUDO" chown -R root.administrators $TARGET_PATH/merge
-	find $TARGET_PATH/merge -type f -exec "$SUDO" chmod 640 "{}" ";"
-	find $TARGET_PATH/merge -type d -exec "$SUDO" chmod 750 "{}" ";"
-	# restricting access to UI makes icons vanish and index.cgi is secure by auth-login check
+	chown root.administrators "$ETC_PATH"
+	chmod 751 "$ETC_PATH"
+	chown root.kopano "$ETC_PATH"/kopano
+	chmod 751 "$ETC_PATH"/kopano
+	chown -R root.http "$ETC_PATH"/z-push
+	chmod 751 "$ETC_PATH"/z-push
+	chmod 640 "$ETC_PATH"/z-push/*
+	chown root.administrators "$ETC_PATH"/package.cfg
+	chmod 640 "$ETC_PATH"/package.cfg
+	chown http.http "$K_SHARE"/z-push
+	chmod 770 "$K_SHARE"/z-push
+	chown -R root.administrators /var/packages/Kopano4s/scripts/
+	chmod 750 /var/packages/Kopano4s/scripts
+	chmod 750 /var/packages/Kopano4s/scripts/*
+	chown -R root.administrators "$TARGET_PATH"/log
+	chmod 640 "$TARGET_PATH"/log/*.log
+	chown -R root.administrators "$TARGET_PATH"/merge
+	find "$TARGET_PATH"/merge -type f -exec chmod 640 "{}" ";"
+	find "$TARGET_PATH"/merge -type d -exec chmod 750 "{}" ";"
+	# restricting access to UI makes icons vanish and index.cgi is secure by auth-login check so no chmod
 }
 # ** init phase docker post build
 INIT_DOCKER()
@@ -1062,42 +1073,42 @@ INIT_DOCKER()
 	else
 		LOG_MESSAGE "$MSG"
 	fi
-	"$SUDO" /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/valiases
-	"$SUDO" /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/recipient_bcc
-	"$SUDO" /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/sender_bcc
-	"$SUDO" /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/recipient_access
-	"$SUDO" /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/sender_access
+	$SUDO /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/valiases
+	$SUDO /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/recipient_bcc
+	$SUDO /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/sender_bcc
+	$SUDO /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/recipient_access
+	$SUDO /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh map /etc/kopano/postfix/sender_access
 }
 # *** sub-routines SET_ (CFG_OPTIONS / GUI_NO_DEBUG / OPTIONALS / PKG_CFG / DOCKERFILE / DOCKER_ENV / SOFTLINKS) ***
 # ** set options as per install wizzard GUI, Syno UID, DB usr, pwd
 SET_CFG_OPTIONS()
 {
-	sed -i -e "s~kopano_db_name~$DB_NAME~" "$TARGET_PATH/merge/server.cfg.init"
-	sed -i -e "s~kopano_db_user~$DB_USER~" "$TARGET_PATH/merge/server.cfg.init"
-	sed -i -e "s~kopano_db_pwd~$DB_PASS~" "$TARGET_PATH/merge/server.cfg.init"
+	sed -i -e "s~kopano_db_name~$DB_NAME~" "$TARGET_PATH"/merge/server.cfg.init
+	sed -i -e "s~kopano_db_user~$DB_USER~" "$TARGET_PATH"/merge/server.cfg.init
+	sed -i -e "s~kopano_db_pwd~$DB_PASS~" "$TARGET_PATH"/merge/server.cfg.init
 	# special case migration version 8.4.5 with old zcp server.cfg settings
 	if [ "$K_EDITION" = "Migration" ]
 	then
-		sed -i -e "s~server_listen = \*:236~#server_listen = \*:236\nserver_tcp_enabled = yes\nserver_tcp_port = 236~" "$TARGET_PATH/merge/server.cfg.init"
-		sed -i -e "s~^server_listen_tls~#server_listen_tls~" "$TARGET_PATH/merge/server.cfg.init"
-		sed -i -e "s~^surveyclient_interval~#server_listen_tls~" "$TARGET_PATH/merge/server.cfg.init"
+		sed -i -e "s~server_listen = \*:236~#server_listen = \*:236\nserver_tcp_enabled = yes\nserver_tcp_port = 236~" "$TARGET_PATH"/merge/server.cfg.init
+		sed -i -e "s~^server_listen_tls~#server_listen_tls~" "$TARGET_PATH"/merge/server.cfg.init
+		sed -i -e "s~^surveyclient_interval~#server_listen_tls~" "$TARGET_PATH"/merge/server.cfg.init
 	fi
 	# ** update user and group id which has 5 digits in init script
 	KUSRID=$(id -u kopano)
 	AUSRID=$(id -u k4samavis)
 	GRPID=$(id -G kopano | grep -o "[0-9][0-9][0-9][0-9][0-9]")
-	echo -e "$KUSRID" > "$ETC_PATH/kopano/kuid"
-	echo -e "$GRPID" > "$ETC_PATH/kopano/kgid"
-	echo -e "$AUSRID" > "$ETC_PATH/kopano/auid"
+	echo -e "$KUSRID" > "$ETC_PATH"/kopano/kuid
+	echo -e "$GRPID" > "$ETC_PATH"/kopano/kgid
+	echo -e "$AUSRID" > "$ETC_PATH"/kopano/auid
 	# copy over base license if SNR exists
 	if [ -n "$K_SNR" ]
 	then
 		mkdir -p "$ETC_PATH/kopano/license"
-		echo -e "$K_SNR" > "$ETC_PATH/kopano/license/base"
+		echo -e "$K_SNR" > "$ETC_PATH"/kopano/license/base
 	fi
 	if [ "$ATTACHMENT_ON_FS" = "ON" ]
 	then
-		sed -i -e "s~attachment_storage.*~attachment_storage	= files~" "$TARGET_PATH/merge/server.cfg.init"
+		sed -i -e "s~attachment_storage.*~attachment_storage	= files~" "$TARGET_PATH"/merge/server.cfg.init
 		if [ "$K_EDITION" = "Migration" ]
 		then
 			GUI_MESSAGE "Note attachment seetings need to be setup from scratch. When importing old Zarafa database with attachments on FS the strict mode will force no startup. See admin-manual regarding migration."
@@ -1220,26 +1231,26 @@ SET_CFG_OPTIONS()
 		LOG_MESSAGE "Tuning kopano chache-call from 16M to 64M."
 	fi
 	# ** copy over merge sections to kopano-etc
-	cp -f "$TARGET_PATH/merge/*.init" "$ETC_PATH/kopano"
-	cp "$TARGET_PATH/merge/z-push/*" "$ETC_PATH/z-push"
-	cp "$TARGET_PATH/merge/postfix/*" "$ETC_PATH/kopano/postfix"
-	cp -f "$TARGET_PATH/merge/fetchmailrc" "$ETC_PATH/kopano"
-	cp -f "$TARGET_PATH/merge/dpkg-add" "$ETC_PATH/kopano/custom"
-	cp -f "$TARGET_PATH/merge/postbuild.sh" "$ETC_PATH/kopano/custom"
+	cp -f "$TARGET_PATH"/merge/*.init "$ETC_PATH"/kopano
+	cp "$TARGET_PATH"/merge/z-push/* "$ETC_PATH"/z-push
+	cp "$TARGET_PATH"/merge/postfix/* "$ETC_PATH"/kopano/postfix
+	cp -f "$TARGET_PATH"/merge/fetchmailrc "$ETC_PATH"/kopano
+	cp -f "$TARGET_PATH"/merge/dpkg-add "$ETC_PATH"/kopano/custom
+	cp -f "$TARGET_PATH"/merge/postbuild.sh "$ETC_PATH"/kopano/custom
 	# web-config: nginx.conf and kopano-web.conf
-	cp -f "$TARGET_PATH/merge/web/*" "$ETC_PATH/kopano/web"
+	cp -f "$TARGET_PATH"/merge/web/* "$ETC_PATH"/kopano/web
 	# ** todo in /etc/php5/fpm/php.ini: allow_url_fopen = Off, short_open_tag = On, upload_max_filesize=30M, post_max_size=31M 
 	# ** todo in /etc/nginx/nginx.conf: client_max_body_size 12m; .htaccess topics for z-push state
 }
 # ** set isDebug to fals in gui index.cgi
 SET_GUI_NO_DEBUG()
 {
-	sed -i -e "s~my \$isDebug = 1~my \$isDebug = 0~" "$TARGET_PATH/ui/index.cgi"
+	sed -i -e "s~my \$isDebug = 1~my \$isDebug = 0~" "$TARGET_PATH"/ui/index.cgi
 }
 # ** set Beta on in case of community edition in INFO file even if originally stable version as per INFO 
 SET_COMMUNITY_BETA()
 {
-	if [ "$K_EDITION" != "Supported" ]
+	if [ "$K_EDITION" = "Community" ]
 	then
 		sed -i -e 's~#report_url~report_url~' /var/packages/Kopano4s/INFO
 	fi
@@ -1248,57 +1259,57 @@ SET_COMMUNITY_BETA()
 SET_OPTIONALS()
 {
 	# ** change kopano-etc-default entry to enable optional services
-	if [ "$K_EDITION" = "Supported" ] ; then "$SUDO" sed -i -e 's~SUPPORTED.*~SUPPORTED=yes~' "$ETC_PATH/kopano/default.init" ; fi
+	if [ "$K_EDITION" = "Supported" ] ; then $SUDO sed -i -e 's~SUPPORTED.*~SUPPORTED=yes~' "$ETC_PATH"/kopano/default.init ; fi
 	if [ "$K_SEARCH" = "OFF" ]
 	then
-		"$SUDO" sed -i -e 's~SEARCH_ENABLED.*~SEARCH_ENABLED=no~' "$ETC_PATH/kopano/default.init"
-		if grep -q "^#search_enabled" $ETC_PATH/kopano/server.cfg.init ; then "$SUDO" sed -i -e 's~#search_enabled~search_enabled~' "$ETC_PATH/kopano/server.cfg.init" ; fi
-		"$SUDO" sed -i -e 's~search_enabled.*~search_enabled = no~' "$ETC_PATH/kopano/server.cfg.init"
+		$SUDO sed -i -e 's~SEARCH_ENABLED.*~SEARCH_ENABLED=no~' "$ETC_PATH"/kopano/default.init
+		if grep -q "^#search_enabled" $ETC_PATH/kopano/server.cfg.init ; then $SUDO sed -i -e 's~#search_enabled~search_enabled~' "$ETC_PATH"/kopano/server.cfg.init ; fi
+		$SUDO sed -i -e 's~search_enabled.*~search_enabled = no~' "$ETC_PATH"/kopano/server.cfg.init
 	fi
-	if [ "$K_MONITOR" = "ON" ] ; then "$SUDO" sed -i -e 's~MONITOR_ENABLED.*~MONITOR_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_GATEWAY" = "ON" ] ; then "$SUDO" sed -i -e 's~GATEWAY_ENABLED.*~GATEWAY_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_ICAL" = "ON" ] ; then "$SUDO" sed -i -e 's~ICAL_ENABLED.*~ICAL_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_POSTGREY" = "ON" ] ; then "$SUDO" sed -i -e 's~POSTGREY_ENABLED.*~POSTGREY_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_AMAVISD" = "ON" ] ; then "$SUDO" sed -i -e 's~AMAVISD_ENABLED.*~AMAVISD_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_CLAMAVD" = "ON" ] ; then "$SUDO" sed -i -e 's~CLAMAVD_ENABLED.*~CLAMAVD_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_SPAMD" = "ON" ] ; then "$SUDO" sed -i -e 's~SPAMD_ENABLED.*~SPAMD_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_BOUNCE_SPAM" = "ON" ] ; then "$SUDO" sed -i -e 's~BOUNCE_SPAM_ENABLED.*~BOUNCE_SPAM_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_FETCHMAIL" = "ON" ] ; then "$SUDO" sed -i -e 's~FETCHMAIL_ENABLED.*~FETCHMAIL_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_ARCHIVE_IMAP" = "ON" ] ; then "$SUDO" sed -i -e 's~COURIER_IMAP_ENABLED.*~COURIER_IMAP_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_WEBMEETINGS" = "ON" ] ; then "$SUDO" sed -i -e 's~WEBMEETINGS_ENABLED.*~WEBMEETINGS_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_PRESENCE" = "ON" ] ; then "$SUDO" sed -i -e 's~PRESENCE_ENABLED.*~PRESENCE_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_MATTERMOST" = "ON" ] ; then "$SUDO" sed -i -e 's~MATTERMOST_ENABLED.*~MATTERMOST_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	if [ "$K_COTURN" = "ON" ] ; then "$SUDO" sed -i -e 's~COTURN_ENABLED.*~COTURN_ENABLED=yes~' "$ETC_PATH/kopano/default.init" ; fi
-	"$SUDO" cp "$ETC_PATH/kopano/default.init" "$ETC_PATH/kopano/default"
+	if [ "$K_MONITOR" = "ON" ] ; then $SUDO sed -i -e 's~MONITOR_ENABLED.*~MONITOR_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_GATEWAY" = "ON" ] ; then $SUDO sed -i -e 's~GATEWAY_ENABLED.*~GATEWAY_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_ICAL" = "ON" ] ; then $SUDO sed -i -e 's~ICAL_ENABLED.*~ICAL_ENABLED=yes~' "$ETC_PATH"/kopano/default.ini ; fi
+	if [ "$K_POSTGREY" = "ON" ] ; then $SUDO sed -i -e 's~POSTGREY_ENABLED.*~POSTGREY_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_AMAVISD" = "ON" ] ; then $SUDO sed -i -e 's~AMAVISD_ENABLED.*~AMAVISD_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_CLAMAVD" = "ON" ] ; then $SUDO sed -i -e 's~CLAMAVD_ENABLED.*~CLAMAVD_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_SPAMD" = "ON" ] ; then $SUDO sed -i -e 's~SPAMD_ENABLED.*~SPAMD_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_BOUNCE_SPAM" = "ON" ] ; then $SUDO sed -i -e 's~BOUNCE_SPAM_ENABLED.*~BOUNCE_SPAM_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_FETCHMAIL" = "ON" ] ; then $SUDO sed -i -e 's~FETCHMAIL_ENABLED.*~FETCHMAIL_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_ARCHIVE_IMAP" = "ON" ] ; then $SUDO sed -i -e 's~COURIER_IMAP_ENABLED.*~COURIER_IMAP_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_WEBMEETINGS" = "ON" ] ; then $SUDO sed -i -e 's~WEBMEETINGS_ENABLED.*~WEBMEETINGS_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_PRESENCE" = "ON" ] ; then $SUDO sed -i -e 's~PRESENCE_ENABLED.*~PRESENCE_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_MATTERMOST" = "ON" ] ; then $SUDO sed -i -e 's~MATTERMOST_ENABLED.*~MATTERMOST_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_COTURN" = "ON" ] ; then $SUDO sed -i -e 's~COTURN_ENABLED.*~COTURN_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	$SUDO cp "$ETC_PATH/kopano/default.init" "$ETC_PATH"/kopano/default
 }
 SET_K_CERTIFICATE()
 {
 	LOG_MESSAGE "Importing SSL certificates from synology default area to container for NGINX and Postfix"
-	chmod 600 "$ETC_PATH/kopano/ssl/*"
+	chmod 600 "$ETC_PATH"/kopano/ssl/*
 	if [ -e /usr/syno/etc/certificate/system/default/fullchain.pem ]
 	then
-		cp /usr/syno/etc/certificate/system/default/fullchain.pem "$ETC_PATH/kopano/ssl/svrcertbundle.pem"
+		cp /usr/syno/etc/certificate/system/default/fullchain.pem "$ETC_PATH"/kopano/ssl/svrcertbundle.pem
 	else
-		cp /usr/syno/etc/certificate/system/default/cert.pem "$ETC_PATH/kopano/ssl/svrcertbundle.pem"
+		cp /usr/syno/etc/certificate/system/default/cert.pem "$ETC_PATH"/kopano/ssl/svrcertbundle.pem
 	fi
-	cp /usr/syno/etc/certificate/system/default/privkey.pem "$ETC_PATH/kopano/ssl/server.key"
-	chmod 400 "$ETC_PATH/kopano/ssl/*"
+	cp /usr/syno/etc/certificate/system/default/privkey.pem "$ETC_PATH"/kopano/ssl/server.key
+	chmod 400 "$ETC_PATH"/kopano/ssl/*
 }
 SYNC_K_CERTIFICATE()
 {
-	if [ "$K_SYNC_SYNOCERT" = "ON" ] && "$SUDO" [ -e "$ETC_PATH/kopano/ssl/server.key" ]
+	if [ "$K_SYNC_SYNOCERT" = "ON" ] && $SUDO [ -e "$ETC_PATH/kopano/ssl/server.key" ]
 	then
-		if ! "$SUDO" diff -s "$ETC_PATH/kopano/ssl/server.key" /usr/syno/etc/certificate/system/default/privkey.pem | grep -q "identical"
+		if ! $SUDO diff -s "$ETC_PATH/kopano/ssl/server.key" /usr/syno/etc/certificate/system/default/privkey.pem | grep -q "identical"
 		then
 			echo "Importing Synology SSL certificates into Kopano container due to updated certs"
 			LOG_MESSAGE "Importing Synology SSL certificates into Kopano container due to updated certs"
-			if "$SUDO" [ -e /usr/syno/etc/certificate/system/default/fullchain.pem ]
+			if $SUDO [ -e /usr/syno/etc/certificate/system/default/fullchain.pem ]
 			then
-				"$SUDO" cp /usr/syno/etc/certificate/system/default/fullchain.pem "$ETC_PATH/kopano/ssl/svrcertbundle.pem"
+				$SUDO cp /usr/syno/etc/certificate/system/default/fullchain.pem "$ETC_PATH/kopano/ssl/svrcertbundle.pem"
 			else
-				"$SUDO" cp /usr/syno/etc/certificate/system/default/cert.pem "$ETC_PATH/kopano/ssl/svrcertbundle.pem"
+				$SUDO cp /usr/syno/etc/certificate/system/default/cert.pem "$ETC_PATH/kopano/ssl/svrcertbundle.pem"
 			fi
-			"$SUDO" cp /usr/syno/etc/certificate/system/default/privkey.pem "$ETC_PATH/kopano/ssl/server.key"
+			$SUDO cp /usr/syno/etc/certificate/system/default/privkey.pem "$ETC_PATH/kopano/ssl/server.key"
 		fi
 	fi
 }
@@ -1420,30 +1431,30 @@ SET_DOCKER_ENV()
 	# we are soft-linking the mounts in docker share via etc to deal with Synology Docker GUI issues (mounts "outside")
 	# create soflinks from k-etc-docker-volumes to kopano-share for mounts into docker; create docker path for downloaded image case
 	# to get the right localtime and timezone mount /etc/localtime & /etc/TZ in container
-	"$SUDO" mkdir -p "$DOCKER_PATH/kopano4s"
-	"$SUDO" ln -sf "$ETC_PATH/kopano" "$DOCKER_PATH/kopano4s/etc-kopano"
-	"$SUDO" ln -sf "$ETC_PATH/z-push" "$DOCKER_PATH/kopano4s/etc-z-push"
-	"$SUDO" ln -sf "$K_SHARE/amavis" "$DOCKER_PATH/kopano4s/amavis"
-	"$SUDO" ln -sf "$K_SHARE/archive" "$DOCKER_PATH/kopano4s/archive"
-	"$SUDO" ln -sf "$K_SHARE/attachments" "$DOCKER_PATH/kopano4s/attachments"
-	"$SUDO" ln -sf "$K_SHARE/backup" "$DOCKER_PATH/kopano4s/backup"
-	"$SUDO" ln -sf /etc/localtime "$DOCKER_PATH/kopano4s/localtime"
-	"$SUDO" ln -sf "$K_SHARE/log" "$DOCKER_PATH/kopano4s/log"
-	"$SUDO" ln -sf /run/mysqld "$DOCKER_PATH/kopano4s/mysocket"
-	"$SUDO" ln -sf "$K_SHARE/postgrey" "$DOCKER_PATH/kopano4s/postgrey"
-	"$SUDO" ln -sf "$K_SHARE/run" "$DOCKER_PATH/kopano4s/run"
-	"$SUDO" ln -sf "$K_SHARE/run" /run/kopano
-	"$SUDO" ln -sf "$K_SHARE/search" "$DOCKER_PATH/kopano4s/search"
-	"$SUDO" ln -sf "$K_SHARE/spool" "$DOCKER_PATH/kopano4s/spool"
-	"$SUDO" ln -sf /etc/TZ "$DOCKER_PATH/kopano4s/timezone"
-	"$SUDO" ln -sf "$K_SHARE/z-push" "$DOCKER_PATH/kopano4s/z-push"
+	$SUDO mkdir -p "$DOCKER_PATH/kopano4s"
+	$SUDO ln -sf "$ETC_PATH/kopano" "$DOCKER_PATH/kopano4s/etc-kopano"
+	$SUDO ln -sf "$ETC_PATH/z-push" "$DOCKER_PATH/kopano4s/etc-z-push"
+	$SUDO ln -sf "$K_SHARE/amavis" "$DOCKER_PATH/kopano4s/amavis"
+	$SUDO ln -sf "$K_SHARE/archive" "$DOCKER_PATH/kopano4s/archive"
+	$SUDO ln -sf "$K_SHARE/attachments" "$DOCKER_PATH/kopano4s/attachments"
+	$SUDO ln -sf "$K_SHARE/backup" "$DOCKER_PATH/kopano4s/backup"
+	$SUDO ln -sf /etc/localtime "$DOCKER_PATH/kopano4s/localtime"
+	$SUDO ln -sf "$K_SHARE/log" "$DOCKER_PATH/kopano4s/log"
+	$SUDO ln -sf /run/mysqld "$DOCKER_PATH/kopano4s/mysocket"
+	$SUDO ln -sf "$K_SHARE/postgrey" "$DOCKER_PATH/kopano4s/postgrey"
+	$SUDO ln -sf "$K_SHARE/run" "$DOCKER_PATH/kopano4s/run"
+	$SUDO ln -sf "$K_SHARE/run" /run/kopano
+	$SUDO ln -sf "$K_SHARE/search" "$DOCKER_PATH/kopano4s/search"
+	$SUDO ln -sf "$K_SHARE/spool" "$DOCKER_PATH/kopano4s/spool"
+	$SUDO ln -sf /etc/TZ "$DOCKER_PATH/kopano4s/timezone"
+	$SUDO ln -sf "$K_SHARE/z-push" "$DOCKER_PATH/kopano4s/z-push"
 	# remove recursive softlinks kopano and z-push in etc, log, k-share
-	if [ -e /etc/kopano/kopano ] && [ -h /etc/kopano/kopano ] ; then "$SUDO" rm /etc/kopano/kopano ; fi
-	if [ -e /etc/kopano/z-push ] ; then "$SUDO" rm -R /etc/kopano/z-push ; fi
-	if [ -e /etc/z-push/z-push ] && [ -h /etc/z-push/z-push ] ; then "$SUDO" rm /etc/z-push/z-push ; fi
-	if [ -e "$K_SHARE/z-push/z-push" ] && [ -h "$K_SHARE/z-push/z-push" ] ; then "$SUDO" rm "$K_SHARE/z-push/z-push" ; fi
-	if [ -e "$K_SHARE/run/run" ] && [ -h "$K_SHARE/run/run" ] ; then "$SUDO" rm "$K_SHARE/run/run" ; fi
-	if [ -e /var/log/kopano/kopano ] && [ -h /var/log/kopano/kopano ] ; then "$SUDO" rm /var/log/kopano/kopano ; fi
+	if [ -e /etc/kopano/kopano ] && [ -h /etc/kopano/kopano ] ; then $SUDO rm /etc/kopano/kopano ; fi
+	if [ -e /etc/kopano/z-push ] ; then $SUDO rm -R /etc/kopano/z-push ; fi
+	if [ -e /etc/z-push/z-push ] && [ -h /etc/z-push/z-push ] ; then $SUDO rm /etc/z-push/z-push ; fi
+	if [ -e "$K_SHARE/z-push/z-push" ] && [ -h "$K_SHARE/z-push/z-push" ] ; then $SUDO rm "$K_SHARE/z-push/z-push" ; fi
+	if [ -e "$K_SHARE/run/run" ] && [ -h "$K_SHARE/run/run" ] ; then $SUDO rm "$K_SHARE/run/run" ; fi
+	if [ -e /var/log/kopano/kopano ] && [ -h /var/log/kopano/kopano ] ; then $SUDO rm /var/log/kopano/kopano ; fi
 
 	local K_ETC="$DOCKER_PATH/kopano4s/etc-kopano"
 	local Z_ETC="$DOCKER_PATH/kopano4s/etc-z-push"
@@ -1499,17 +1510,17 @@ SET_SVR_CFG_NEW()
 	then
 		if [ -e "$ETC_PATH/kopano/server.cfg.init" ] && grep -q server_tcp_port "$ETC_PATH/kopano/server.cfg.init"
 		then
-			"$SUDO" sed -i -e "s~#server_listen~server_listen~" $ETC_PATH/kopano/server.cfg.init
-			"$SUDO" sed -i -e "s~#server_listen_tls~server_listen_tls~" $ETC_PATH/kopano/server.cfg.init
-			"$SUDO" sed -i -e "s~server_tcp_enabled~#server_tcp_enabled~" $ETC_PATH/kopano/server.cfg.init
-			"$SUDO" sed -i -e "s~server_tcp_port~#server_tcp_port~" $ETC_PATH/kopano/server.cfg.init
+			$SUDO sed -i -e "s~#server_listen~server_listen~" $ETC_PATH/kopano/server.cfg.init
+			$SUDO sed -i -e "s~#server_listen_tls~server_listen_tls~" $ETC_PATH/kopano/server.cfg.init
+			$SUDO sed -i -e "s~server_tcp_enabled~#server_tcp_enabled~" $ETC_PATH/kopano/server.cfg.init
+			$SUDO sed -i -e "s~server_tcp_port~#server_tcp_port~" $ETC_PATH/kopano/server.cfg.init
 		fi
 		if [ -e $ETC_PATH/kopano/server.cfg ] && grep -q server_tcp_port $ETC_PATH/kopano/server.cfg
 		then
-			"$SUDO" sed -i -e "s~#server_listen~server_listen~" $ETC_PATH/kopano/server.cfg
-			"$SUDO" sed -i -e "s~#server_listen_tls~server_listen_tls~" $ETC_PATH/kopano/server.cfg
-			"$SUDO" sed -i -e "s~server_tcp_enabled~#server_tcp_enabled~" $ETC_PATH/kopano/server.cfg
-			"$SUDO" sed -i -e "s~server_tcp_port~#server_tcp_port~" $ETC_PATH/kopano/server.cfg
+			$SUDO sed -i -e "s~#server_listen~server_listen~" $ETC_PATH/kopano/server.cfg
+			$SUDO sed -i -e "s~#server_listen_tls~server_listen_tls~" $ETC_PATH/kopano/server.cfg
+			$SUDO sed -i -e "s~server_tcp_enabled~#server_tcp_enabled~" $ETC_PATH/kopano/server.cfg
+			$SUDO sed -i -e "s~server_tcp_port~#server_tcp_port~" $ETC_PATH/kopano/server.cfg
 		fi
 	fi
 }
@@ -1560,7 +1571,7 @@ SET_SOFTLINKS()
 	ln -sf "$K_SHARE/run" /var/run/kopano
 	ln -sf "$K_SHARE/log" /var/log/kopano
 	ln -sf "$K_SHARE/log" "$TARGET_PATH/log/kopano"
-	# cleanup container dir in scripts
+	# cleanup container sub-dir in scripts dir
 	if [ -e /var/packages/Kopano4s/scripts/container ] ; then rm -R /var/packages/Kopano4s/scripts/container ; fi
 }
 # ** build docker image
@@ -1572,21 +1583,27 @@ BUILD_DOCKER()
 	local TAG3
 	local TAG4
 	local IMG_TAG
+	local DATE_BUILD
+	DATE_BUILD=$(date "+%Y-%m-%d")
 	NOTIFY_MESSAGE "Please ignore potential install errors during 12-35min docker build time: this is a Synology package installer time-out.."
 	LOG_MESSAGE "Building Kopano4s in Docker container: 12-35 min see docker-kopano-build.log"
-	mkdir -p "$DOCKER_PATH/kopano4s"
-	mkdir -p "$DOCKER_PATH/kopano4s/container"
-	# copy over dockerfile and cfg for packages to remove post build, then conatiner init, robot.png 
-	cp -f /var/packages/Kopano4s/scripts/container/Dockerfile "$DOCKER_PATH/kopano4s"
-	cp -f /var/packages/Kopano4s/scripts/container/*.sh "$DOCKER_PATH/kopano4s/container"
-	cp -f "$TARGET_PATH/merge/kopano-cfg.tgz" "$DOCKER_PATH/kopano4s/container"
-	cp -f "$TARGET_PATH/merge/kinit.tgz" "$DOCKER_PATH/kopano4s/container"
-	cp -f "$TARGET_PATH/ui/images/robot.png" "$DOCKER_PATH/kopano4s/container"
-
-	echo "Calling kopano4s Dockerfile build at $(date "+%Y%m%d-%H:%M:%S").." >$TARGET_PATH/log/docker-kopano-build.log
-	BUILD_PARAMS=="--build-arg EDITION=${EDITION} --build-arg PHP_VER=$PHP_VER"
+	if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "Building Kopano4s in Docker container: 12-35 min see docker-kopano-build.log" ; fi
+	mkdir -p "$DOCKER_PATH"/kopano4s
+	mkdir -p "$DOCKER_PATH"/kopano4s/container
+	# copy over dockerfile and cfg for packages to remove post build, then conatiner init, robot.png
+	if [ -e /var/packages/Kopano4s/scripts/container ]
+	then
+		cp -f /var/packages/Kopano4s/scripts/container/Dockerfile "$DOCKER_PATH"/kopano4s
+		cp -f /var/packages/Kopano4s/scripts/container/*.sh "$DOCKER_PATH"/kopano4s/container
+		cp -f /var/packages/Kopano4s/scripts/container/dpkg-remove "$DOCKER_PATH"/kopano4s/container
+		cp -f "$TARGET_PATH/merge/kopano-cfg.tgz" "$DOCKER_PATH"/kopano4s/container
+		cp -f "$TARGET_PATH/merge/kinit.tgz" "$DOCKER_PATH"/kopano4s/container
+		cp -f "$TARGET_PATH/ui/images/robot.png" "$DOCKER_PATH"/kopano4s/container
+	fi
+	echo "Calling kopano4s Dockerfile build at $(date "+%Y%m%d-%H:%M:%S").." >"$TARGET_PATH"/log/docker-kopano-build.log
+	BUILD_PARAMS="--build-arg EDITION=${K_EDITION} --build-arg PHP_VER=$PHP_VER"
 	# for supported and community edition get dynamic version tag
-	if [ "$EDITION" = "Community" ]
+	if [ "$K_EDITION" = "Community" ]
 	then
 		TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/core:/" "Debian_9.0" )
 		if [ -z "$TAG1" ]
@@ -1616,7 +1633,7 @@ BUILD_DOCKER()
 		VER_TAG="C-${IMG_TAG}"
 		BUILD_PARAMS="$BUILD_PARAMS --build-arg COMMUNITY_BUILD=1"
 	fi
-	if [ "$EDITION" = "Supported" ]
+	if [ "$K_EDITION" = "Supported" ]
 	then
 		TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/" "Debian_9.0" )
 		if [ -z "$TAG1" ]
@@ -1647,13 +1664,13 @@ BUILD_DOCKER()
 		# passing SNR for download via arg http_proxy not found in docker history.
 		BUILD_PARAMS="$BUILD_PARAMS --build-arg SUPPORTED_BUILD=1 --build-arg K_SNR=${K_SNR}"
 	fi
-	if [ "$EDITION" = "Default" ]
+	if [ "$K_EDITION" = "Default" ]
 	then
 		IMG_TAG="$DEFAULT_TAG"
 		VER_TAG="D-${IMG_TAG}"
 		BUILD_PARAMS="$BUILD_PARAMS --build-arg DEFAULT_BUILD=1 --build-arg K_SNR=${K_SNR}"
 	fi
-	if [ "$EDITION" = "Migration" ]
+	if [ "$K_EDITION" = "Migration" ]
 	then
 		IMG_TAG="$MIGRATION_TAG"
 		VER_TAG="M-${IMG_TAG}"
@@ -1661,8 +1678,9 @@ BUILD_DOCKER()
 	fi
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg PARENT=${DOCKER_HOST} --build-arg BUILD=${DATE_BUILD} --build-arg TAG=${IMG_TAG} --tag tosoboso/kopano4s:${VER_TAG}"
 	sed -i -e "s~VER_TAG=.*~VER_TAG=\"$VER_TAG\"~" $ETC_PATH/package.cfg
-	docker build "$BUILD_PARAMS" >>"$TARGET_PATH/log/docker-kopano-build.log" 2>&1
+	docker build "$DOCKER_PATH"/kopano4s "${BUILD_PARAMS}" >>"$TARGET_PATH/log/docker-kopano-build.log" 2>&1
 	NOTIFY_MESSAGE "Building Kopano4s container $VER_TAG sucessfully completed"	
+	if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "Building Kopano4s container $VER_TAG sucessfully completed" ; fi
 }
 # ** drop section of unistall (SOFTLINKS / USER_DATBASE / MYSQL_TUNING) 
 # ** drop all softlinks and nginx onfig for reverse proxy webapp
@@ -1681,41 +1699,43 @@ DROP_SOFTLINKS()
 # ** drop user and database unless kepp was selected in WIZZARD-UI
 DROP_USER_DATABASE()
 {
+	if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "deleting kopano database in cmd-line mode you have to pass the mysql root pwd.." ; fi
 	local DB_MPASS="$PKGWIZ_DB_PASSWD"
 	local SQL_DROP_USR="DROP USER '$DB_USER'@'localhost';"
 	local SQL_DROP_DB="DROP DATABASE \`$DB_NAME\`;"
-	"$MYSQL" -uroot -p "$DB_MPASS" -e "$SQL_DROP_USR" >out.sql 2>&1
+	$MYSQL -uroot -p"${DB_MPASS}" -e "$SQL_DROP_USR" >/tmp/out.sql 2>&1
 	local ERR=$?
 	local RET
 	if [ "$ERR" -eq 1 ]
 	then
-		RET=$(cat out.sql)
+		RET=$(cat /tmp/out.sql)
 		# for our wow no pwd candidates
-		"$MYSQL" -uroot -p -e "$SQL_DROP_USR"
+		$MYSQL -uroot -p -e "$SQL_DROP_USR"
 		if [ "$ERR" -gt 0 ]
 		then
 			echo "Error in SQL: $RET"
 			LOG_MESSAGE "Error deleting user: $RET"
+			if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "Error deleting user: $RET" ; fi
 			exit 1
 		fi
 	fi
-	if [ "$PKGWIZ_KEEP_DB" = "false" ]
+	if [ "$PKGWIZ_KEEP_DB" == "false" ]
 	then
-		"$MYSQL" -uroot -p "$DB_MPASS" -e "$SQL_DROP_DB" >out.sql 2>&1
+		$MYSQL -uroot -p"${DB_MPASS}" -e "$SQL_DROP_DB" >/tmp/out.sql 2>&1
 		ERR=$?
 		if [ "$ERR" -eq 1 ]
 		then
-			RET=$(cat out.sql)
+			RET=$(cat /tmp/out.sql)
 			echo "Error in SQL: $RET"
 			GUI_MESSAGE "Error deleting database: $RET"
 			exit 1
 		fi
 	fi
-	if [ "$PKGWIZ_KEEP_SHARE" = "false" ]
+	if [ "$PKGWIZ_KEEP_SHARE" == "false" ]
 	then
 		synoshare --del TRUE kopano
 	fi
-	if [ "$PKGWIZ_KEEP_USER" = "false" ]
+	if [ "$PKGWIZ_KEEP_USER" == "false" ]
 	then
 		synouser --del kopano
 		synogroup --del kopano
