@@ -1472,7 +1472,7 @@ SET_DOCKER_ENV()
 	local K_TZ="$DOCKER_PATH/kopano4s/timezone"
 	local K_ZPU="$DOCKER_PATH/kopano4s/z-push"
 
-	DOCKER_MOUNTS="-v $M_SOCK:/run/mysqld:ro -v $K_RUN:/run/kopano -v K_LT:/etc/localtime:ro -v K_TZ:/etc/timezone:ro -v $K_ETC:/etc/kopano -v $Z_ETC:/etc/z-push \
+	DOCKER_MOUNTS="-v $M_SOCK:/run/mysqld:ro -v $K_RUN:/run/kopano -v $K_LT:/etc/localtime:ro -v $K_TZ:/etc/timezone:ro -v $K_ETC:/etc/kopano -v $Z_ETC:/etc/z-push \
 	-v $K_AMV:/var/lib/amavis -v $K_ARC:/var/lib/kopano/archive -v $K_ATC:/var/lib/kopano/attachments -v $K_BUP:/var/lib/kopano/backup \
 	-v $K_LOG:/var/log/kopano -v $K_GRY:/var/lib/postgrey -v $K_SRC:/var/lib/kopano/search -v $K_SPL:/var/spool/postfix -v $K_ZPU:/var/lib/z-push"
 	K_HOST="kopano4s.$MY_DOMAIN"	

@@ -57,7 +57,7 @@ case "$1" in
 					LOG_MESSAGE "Warning $MSG"
 				fi
 				SET_DOCKER_ENV
-				if ! ($SUDO docker run "$DOCKER_PARAMS" "$DOCKER_MOUNTS" "$DOCKER_PORTS" "$DOCKER_IMAGE")
+				if ! ( $SUDO docker run $DOCKER_PARAMS $DOCKER_MOUNTS $DOCKER_PORTS $DOCKER_IMAGE $DOCKER_CMD )
 				then
 					echo "failed to rebuild Kopano"
 					exit 1

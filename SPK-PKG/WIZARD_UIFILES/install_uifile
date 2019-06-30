@@ -1,5 +1,5 @@
 [{
-	"step_title": "Kopano for Synology Install Basic Settings",
+	"step_title": "Kopano for Synology Install Core Settings",
 	"items": 
 	[{
 		"type": "textfield",
@@ -142,7 +142,7 @@
 		},{
 		"type": "multiselect",
 		"desc": "",
-		"subitems": 
+		"subitems":
 		[{
 			"key": "PKGWIZ_SYNC_SYNOCERT",
 			"desc": "Sync and refresh Synology SSL default certificate into Kopano container for web-/mail-server.",
@@ -154,7 +154,7 @@
 		 },{
 			"key": "PKGWIZ_RPROXY",
 			"desc": "Add webapp & z-push as reverse proxy virtual directories of main domain to use https port 443.",
-			"defaultValue": false
+			"defaultValue": true
 		}]
 	}]
 },{
