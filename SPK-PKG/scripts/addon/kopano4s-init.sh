@@ -28,10 +28,11 @@ UPG="OFF"
 SRV="ON"
 PORT="ON"
 IMG="OFF"
+DNW="bridge"
 
 case "$1" in
 	reset)
-		echo "reset: initializing container from existing image.."
+		echo "reset: initializing container from existing image in NW mode $DNW.."
 		CONT="ON"
 		;;
 	refresh)
@@ -125,8 +126,8 @@ case "$1" in
 		MOB="ON"
 		;;
 	help)
-		echo "Usage: kopano-init plus reset | refresh | defresh | maintenance | no-ports | etc | acl | ssl | mobiles | upgrade | all | help"
-		echo "Reset builds a new container from lokal k4s image; refresh loads latest and defresh previous image from the docker hub."
+		echo "Usage: kopano-init plus reset | reset (bridge|host) | defresh | maintenance | no-ports | etc | acl | ssl | mobiles | upgrade | all | help"
+		echo "Reset re-builds container from local k4s image, optionally in host nw mode; refresh loads latest and defresh previous image from docker hub."
 		echo "Maintenance builds container with no kopano services running but staying up to allow repairs with kopano-dbadm etc.."
 		echo "No-ports builds container with no ports exposed for migration scenario to connect to zarafa tcp 236/7 on same synology."
 		echo "For both, maintenance and no-ports it is essential to run reset building std. container for resuming default operations."
@@ -137,11 +138,21 @@ case "$1" in
 		exit 0
 		;;
 	*)
-		echo "Usage: kopano-init plus reset | refresh | defresh | maintenance | no-ports | etc | acl | ssl | mobiles | upgrade | all | help"
+		echo "Usage: kopano-init plus reset (bridge|host) | refresh | defresh | maintenance | no-ports | etc | acl | ssl | mobiles | upgrade | all | help"
 		exit 1
 		;;
 esac
 
+if [ $# -gt 1 ] && [ $2 = "host" ]
+then
+	DNW="host"
+fi
+if [ "$DOCKER_NW" != "$DNW" ]
+then
+	# set docker_network as parameter changed
+	$SUDO sed -i -e "s~DOCKER_NW=.*~DOCKER_NW=\"${DNW}\"~" /var/packages/Kopano4s/etc/package.cfg
+	DOCKER_NW="$DNW"
+fi
 if [ "$MOB" == "ON" ]
 then
 #find /usr/share/kopano-webapp -type d -exec chmod 750 "{}" ";"

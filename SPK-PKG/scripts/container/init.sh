@@ -426,11 +426,6 @@ default_ssl()
 # for supported version validate license against download portal
 k_supported_license()
 {
-	if echo $EDITION | grep -q "Migration"
-	then
-		# set counter so it stops past 6 hours aka 3 min x 120
-		MIG_TIMER=120
-	fi
 	if echo $EDITION | grep -q "Supported" || [ -e /etc/K_SUPPORTED ]
 	then
 		if [ ! -e /etc/kopano/license/base ]
@@ -1285,15 +1280,6 @@ case $1 in
 					service postgrey start
 					sleep 2
 					if ! m_srv_on amavis postgrey ; then disable_postgrey ; fi
-				fi
-				if echo $EDITION | grep -q "Migration"
-				then
-					MIG_TIMER=$(expr $MIG_TIMER - 1)
-					if [ $MIG_TIMER -lt 1 ]
-					then
-						echo "6hrs uptime for migration purpose done exiting now.."
-						exit 1
-					fi
 				fi
 			fi
 		done

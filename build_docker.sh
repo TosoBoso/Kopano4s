@@ -133,7 +133,7 @@ DATE_BUILD=$(date "+%Y-%m-%d")
 if [ $# -gt 0 ] && [ "$1" = "get-repo" ]
 then
 	# get the repo from intermediate image aka stop at the stage and copy from container
-	BUILD_PARAMS="$BUILD_PARAMS --target k4s-repo-intermediate --tag tosoboso/k4s-repo:${VER_TAG}"
+	BUILD_PARAMS="$BUILD_PARAMS --target k4s-intermediate --tag tosoboso/k4s-repo:${VER_TAG}"
 else
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg PARENT=${DOCKER_HOST} --build-arg BUILD=${DATE_BUILD} --build-arg TAG=${IMG_TAG} --tag tosoboso/kopano4s:${VER_TAG}"
 fi

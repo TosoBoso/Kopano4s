@@ -9,6 +9,9 @@ then
 	exit 1
 fi
 
+# avoid false alrms on sql-err from previous run
+if [ -e "$SQL_ERR" ] ; then rm "$SQL_ERR" ; fi
+
 # backup from legacy into dump-zarafa is via 1st argument, restore of legacy dump to legacy db is via 2x legacy aka 4th argument
 if [ -e /var/packages/Kopano4s/etc/package.cfg ] && [ "$1" != "legacy" ] && [ "$4" != "legacy" ]
 then
@@ -29,7 +32,7 @@ then
 	fi
 	LEGACY=0
 else
-	# legacy zarafa package assuming use of MariaDB-5 unless not present adn replica in MariaDB-10
+	# legacy zarafa package assuming use of MariaDB-5 unless not present and replica in MariaDB-10
 	if [ -e /var/packages/MariaDB/target/usr/bin/mysql ]
 	then
 		MYSQL="/var/packages/MariaDB/target/usr/bin/mysql"
@@ -71,12 +74,6 @@ else
 		exit 1
 	fi
 fi
-if [ "_$NOTIFY" != "_ON" ]
-then 
-	NOTIFY=0
-else
-	NOTIFY=1
-fi
 if [ "_$BACKUP_PATH" != "_" ] && [ -e $BACKUP_PATH ]
 then
 	DUMP_PATH=$BACKUP_PATH
@@ -86,7 +83,7 @@ fi
 ATTM_PATH="$K_SHARE/attachments"
 DUMP_LOG="$DUMP_PATH/mySqlDump.log"
 SQL_ERR="$DUMP_PATH/mySql.err"
-DUMP_ARGS="--hex-blob --skip-lock-tables --single-transaction --log-error=$SQL_ERR"
+DUMP_ARGS="--hex-blob --skip-lock-tables --single-transaction --routines --log-error=$SQL_ERR"
 
 if [ "$1" == "help" ]
 then
@@ -128,7 +125,7 @@ then
 	then
 		MSG="refuse restore: replication running or mysql read-only do kopano-replication reset first"
 		echo $MSG
-		if [ $NOTIFY -gt 0 ]
+		if [ "$NOTIFY" = "ON" ]
 		then
 			/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s "$MSG"
 		fi
@@ -161,9 +158,27 @@ then
 	gunzip $DUMP_PATH/$DPREFIX-${TSTAMP}.sql.gz
 	STARTTIME=$(date +%s)
 	$MYSQL $DB_NAME -u$DB_USER -p$DB_PASS < $DUMP_PATH/$DPREFIX-${TSTAMP}.sql >$SQL_ERR 2>&1
-	# collect if available master-log-positon in in sql-dump
-	ML=`head $DUMP_PATH/$DPREFIX-${TSTAMP}.sql -n50 | grep "MASTER_LOG_POS" | cut -c 4-`
-	gzip -9 $DUMP_PATH/$DPREFIX-${TSTAMP}.sql
+	RET=`cat $SQL_ERR`
+	if [ "$RET" != "" ]
+	then
+		echo -e "MySQL returned error: $RET"
+	fi
+	# restoring attachements if they exist
+	if [ "$ATTACHMENT_ON_FS" == "ON" ] && [ -e $DUMP_PATH/attachments-${TSTAMP}.tgz ] 
+	then
+		MSG="restoring attachments linked to $DB_NAME..."
+		TS=$(date "+%Y.%m.%d-%H.%M.%S")
+		echo -e "$TS $MSG" >> $DUMP_LOG
+		echo -e "$MSG"
+		CUR_PATH=$(pwd)
+		cd $K_SHARE
+		if [ -e attachments.old ] ; then rm -R attachments.old ; fi
+		mv attachments attachments.old
+		tar -zxvf $DUMP_PATH/attachments-${TSTAMP}.tgz attachments/
+		chown -R kopano.kopano attachments
+		chmod 770 attachments
+		cd $CUR_PATH
+	fi
 	ENDTIME=$(date +%s)
 	DIFFTIME=$(( $ENDTIME - $STARTTIME ))
 	TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
@@ -171,17 +186,15 @@ then
 	MSG="restore for $DB_NAME completed in $TASKTIME"
 	echo -e "$TS $MSG" >> $DUMP_LOG
 	echo "$MSG"
-	if [ $NOTIFY -gt 0 ]
+	if [ "$NOTIFY" = "ON" ]
 	then
 		/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s-Backup "$MSG"
 	fi
-	RET=`cat $SQL_ERR`
-	if [ "$RET" != "" ]
-	then
-		echo -e "MySQL returned error: $RET"
-	fi
+	# clean-up inlc. collect if available master-log-positon in in sql-dump
+	ML=`head $DUMP_PATH/$DPREFIX-${TSTAMP}.sql -n50 | grep "MASTER_LOG_POS" | cut -c 4-`
+	gzip -9 $DUMP_PATH/$DPREFIX-${TSTAMP}.sql
 	# add if string is not empty
-	if [ ! -z "$ML" ]
+	if [ -n "$ML" ]
 	then
 		echo -e "for replication or point in time recovery $ML"
 		echo -e "for replication or point in time recovery $ML" >> $DUMP_LOG
@@ -192,22 +205,6 @@ then
 	then 
 		chown root.kopano $DUMP_PATH/master-logpos-${TSTAMP}
 		chmod 640 $DUMP_PATH/master-logpos-${TSTAMP}
-	fi
-	# backup attachements if they exist
-	if [ "$ATTACHMENT_ON_FS" == "ON" ] && [ -e $DUMP_PATH/attachments-${TSTAMP}.tgz ] 
-	then
-		MSG="restoring attachments linked to $DB_NAME..."
-		TS=$(date "+%Y.%m.%d-%H.%M.%S")
-		echo -e "$TS $MSG" >> $DUMP_LOG
-		echo -e "$MSG"
-		CUR_PATH=`pwd`
-		cd $K_SHARE
-		if [ -e attachments.old ] ; then rm .R attachments.old ; fi
-		mv attachments attachments.old
-		tar -zxvf $DUMP_PATH/attachments-${TSTAMP}.tgz attachments/
-		chown -R kopano.kopano attachments
-		chmod 770 attachments
-		cd $CUR_PATH
 	fi
 	if [ $K_START -gt 0 ]
 	then
@@ -280,6 +277,7 @@ then
 fi
 STARTTIME=$(date +%s)
 # ** start mysql-dump logging to $SQL_ERR to compressed file during run time use suffix RUNNING
+#echo "$MYSQLDUMP $DUMP_ARGS $DB_NAME -u$DB_USER -p$DB_PASS"
 $MYSQLDUMP $DUMP_ARGS $DB_NAME -u$DB_USER -p$DB_PASS | gzip -c -9 > $DUMP_FILE_RUN
 
 ENDTIME=$(date +%s)
@@ -291,7 +289,7 @@ if [ "$RET" != "" ]
 then
 	echo -e $RET
 	echo -e $RET >> $DUMP_LOG
-	if [ $NOTIFY -gt 0 ]
+	if [ "$NOTIFY" = "ON" ]
 	then
 		/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s-Backup-Error "$RET"
 	fi
@@ -302,7 +300,7 @@ TS=$(date "+%Y.%m.%d-%H.%M.%S")
 MSG="dump for $DB_NAME completed in $TASKTIME"
 echo -e "$TS $MSG" >> $DUMP_LOG
 echo "$MSG"
-if [ $NOTIFY -gt 0 ]
+if [ "$NOTIFY" = "ON" ]
 then
 	/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s-Backup "$MSG"
 fi

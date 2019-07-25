@@ -15,7 +15,7 @@ PHP_VER="7.0"
 PKG_NAME=Kopano4s
 ETC_PATH="/usr/syno/etc/packages/$PKG_NAME"
 TARGET_PATH="/var/packages/$PKG_NAME/target"
-UI_PATH="/usr/syno/synoman/webman/3rdparty/$PKG_NAME"
+UI_PATH="/usr/syno/synoman/webman/3rdparty"
 LOG="$TARGET_PATH/log/package.log"
 MYSQL="/usr/local/mariadb10/bin/mysql"
 # ** download areas
@@ -49,6 +49,8 @@ then
 	PKGWIZ_K_SNR="1"
 	PKGWIZ_HTTP_PORT_PREFIX=9000
 	PKGWIZ_ICAL_PORT_PREFIX=8000
+	IMAP_PORT=143
+	IMAPS_PORT=993
 	PKGWIZ_WRTC_PORT=8090
 	PKGWIZ_TLS_SERVER_NAME="mail.mydomain.me"
 	PKGWIZ_SMTPD_TLS="false"
@@ -200,13 +202,14 @@ RESTORE_LOG_ETC()
 # en/disable 3rdparty admin ui and web icons and remove the cycle softlink
 ENABLE_UI()
 {
-	$SUDO ln -sf "$TARGET_PATH"/ui "$UI_PATH"
-	# remove cycle softlink ui/ui
-	if [ -e "$TARGET_PATH/ui/ui" ] ; then $SUDO rm "$TARGET_PATH"/ui/ui ; fi
+	# sodtlink from ralpath of UI (e.g. /volume1/@appstore/Package/ui) to 3rdparty area
+	local REAL_UI=$(realpath /var/packages/"$PKG_NAME"/target/ui)
+	$SUDO ln -sf "$REAL_UI" "$UI_PATH/$PKG_NAME"
 }
 DISABLE_UI()
 {
-	if [ -e "$TARGET_PATH/ui" ] ; then $SUDO rm "$TARGET_PATH"/ui ; fi
+	# if softlink exists from 3rdparty-UI to package-target ui then remove it
+	if [ -h "$UI_PATH/$PKG_NAME" ] ; then $SUDO rm "$UI_PATH/$PKG_NAME" ; fi
 }
 # *** sub-routines GET_ (WIZZARD_CFG / TUNING_PARAMS / K_DOWNLOAD_BY_TAG) ***
 # get from INFO file if we have a stable or beta version
@@ -291,6 +294,9 @@ GET_WIZZARD_CFG()
 	WRTC_PORT=$PKGWIZ_WRTC_PORT
 	ICAL_PORT=$((PKGWIZ_ICAL_PORT_PREFIX + 80))
 	ICALS_PORT=$((PKGWIZ_ICAL_PORT_PREFIX + 443))
+	# IMAP port currently not via pkwizzard so set default
+	IMAP_PORT=143
+	IMAPS_PORT=993
 	if [ "$PKGWIZ_TLS_SERVER_NAME" != "mail.mydomain.me" ]
 	then
 		TLS_SERVER_NAME="$PKGWIZ_TLS_SERVER_NAME"
@@ -909,7 +915,10 @@ INIT_UPDATE()
 	fi
 	# disable surveyclient_interval as still to early for supported dition
 	sed -i -e "s~^surveyclient_interval~#server_listen_tls~" "$TARGET_PATH/merge/server.cfg.init"
-	# init K_SEARCH by enabled when it did not exist aka is empty (! -n)
+	# init IMAP(S)_PORT by enabled when it did not exist aka is empty (-z)
+	if [ -z "$IMAP_PORT" ] ; then IMAP_PORT=143 ; fi
+	if [ -z "$IMAPS_PORT" ] ; then IMAPS_PORT=993 ; fi
+	# init K_SEARCH by enabled when it did not exist aka is empty (-z)
 	if [ -z "$K_SEARCH" ] ; then K_SEARCH="ON" ; fi
 	# amavis now holds spamassasin and clamav in same directory and soft links are used in container
 	if [ -e "$K_SHARE/spamassasin" ] ; then rm "$K_SHARE/spamassasin" ; fi
@@ -1377,6 +1386,8 @@ SET_PKG_CFG()
 		echo WRTC_PORT=$WRTC_PORT
 		echo ICAL_PORT=$ICAL_PORT
 		echo ICALS_PORT=$ICALS_PORT
+		echo IMAP_PORT=$IMAP_PORT
+		echo IMAPS_PORT=$IMAPS_PORT
 		echo DOCKER_PATH="\"$DOCKER_PATH\""
 		echo DOCKER_HOST="\"$DOCKER_HOST\""
 		echo DOCKER_NW="\"$DOCKER_NW\""
@@ -1479,7 +1490,7 @@ SET_DOCKER_ENV()
 	DOCKER_PORTS="-p 236:236 -p 237:237 -p 25:25 -p 2003:2003 -p $HTTP_PORT:9080 -p $HTTPS_PORT:9443"
 	if [ "$K_GATEWAY" = "ON" ]
 	then
-		DOCKER_PORTS="$DOCKER_PORTS -p 587:587 -p 143:143 -p 993:993"
+		DOCKER_PORTS="$DOCKER_PORTS -p $IMAP_PORT:143 -p $IMAPS_PORT:993"
 	fi
 	if [ "$K_ICAL" = "ON" ]
 	then
@@ -1508,14 +1519,14 @@ SET_SVR_CFG_NEW()
 {
 	if [ "$K_EDITION" != "Migration" ]
 	then
-		if [ -e "$ETC_PATH/kopano/server.cfg.init" ] && grep -q server_tcp_port "$ETC_PATH/kopano/server.cfg.init"
+		if [ -e "$ETC_PATH/kopano/server.cfg.init" ] && grep -q server_listen "$ETC_PATH/kopano/server.cfg.init"
 		then
 			$SUDO sed -i -e "s~#server_listen~server_listen~" $ETC_PATH/kopano/server.cfg.init
 			$SUDO sed -i -e "s~#server_listen_tls~server_listen_tls~" $ETC_PATH/kopano/server.cfg.init
 			$SUDO sed -i -e "s~server_tcp_enabled~#server_tcp_enabled~" $ETC_PATH/kopano/server.cfg.init
 			$SUDO sed -i -e "s~server_tcp_port~#server_tcp_port~" $ETC_PATH/kopano/server.cfg.init
 		fi
-		if [ -e $ETC_PATH/kopano/server.cfg ] && grep -q server_tcp_port $ETC_PATH/kopano/server.cfg
+		if [ -e $ETC_PATH/kopano/server.cfg ] && grep -q server_listen $ETC_PATH/kopano/server.cfg
 		then
 			$SUDO sed -i -e "s~#server_listen~server_listen~" $ETC_PATH/kopano/server.cfg
 			$SUDO sed -i -e "s~#server_listen_tls~server_listen_tls~" $ETC_PATH/kopano/server.cfg
@@ -1555,12 +1566,14 @@ SET_SOFTLINKS()
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/sendmail.sh /usr/local/bin/mail
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-status.sh /usr/local/bin/kopano-status
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-restart.sh /usr/local/bin/kopano-restart
-	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-backup.sh /usr/local/bin/kopano4s-backup
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-autoblock.sh /usr/local/bin/kopano4s-autoblock
+	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-backup.sh /usr/local/bin/kopano4s-backup
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-hubtag.sh /usr/local/bin/kopano4s-hubtag
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-init.sh /usr/local/bin/kopano4s-init
+	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-migration-zarafa.sh /usr/local/bin/kopano4s-migration-zarafa
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh /usr/local/bin/kopano4s-optionals
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-replication.sh /usr/local/bin/kopano4s-replication
+	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-restore-user.sh /usr/local/bin/kopano4s-restore-user
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/kopano-cmdline
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/kopano4s
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/k4s
