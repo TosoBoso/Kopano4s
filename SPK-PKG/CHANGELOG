@@ -1,4 +1,4 @@
-[2019-05-15 v.1.0.1  [Split Stable vs. Beta nIghtly builds; intro Default Stable; fix to webapp-mdm connect]
+[2019-07-27 v.1.0.1  [Split Stable vs. Beta nIghtly builds; intro Default Stable; fix to webapp-mdm connect]
 [2019-03-17 v.1.0.0  [Fix to z-push issues incl. kopano4s-init mobiles, fix to logrotate init.rc warnings]
 [2019-03-03 v.0.9.9  [Refactoring directory structures, beta vs stable images, k4s-init for previous image]
 [2019-02-09 v.0.9.8  [Real-ip in nginx access log and php when set in reverse proxy, fix acl fetchmailrc]
