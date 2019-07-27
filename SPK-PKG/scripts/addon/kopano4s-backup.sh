@@ -155,7 +155,9 @@ then
 			K_START=1
 		fi
 	fi
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") un-zipping dump sql file.."
 	gunzip $DUMP_PATH/$DPREFIX-${TSTAMP}.sql.gz
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") starting sql import.."
 	STARTTIME=$(date +%s)
 	$MYSQL $DB_NAME -u$DB_USER -p$DB_PASS < $DUMP_PATH/$DPREFIX-${TSTAMP}.sql >$SQL_ERR 2>&1
 	RET=`cat $SQL_ERR`
@@ -192,7 +194,6 @@ then
 	fi
 	# clean-up inlc. collect if available master-log-positon in in sql-dump
 	ML=`head $DUMP_PATH/$DPREFIX-${TSTAMP}.sql -n50 | grep "MASTER_LOG_POS" | cut -c 4-`
-	gzip -9 $DUMP_PATH/$DPREFIX-${TSTAMP}.sql
 	# add if string is not empty
 	if [ -n "$ML" ]
 	then
@@ -206,6 +207,8 @@ then
 		chown root.kopano $DUMP_PATH/master-logpos-${TSTAMP}
 		chmod 640 $DUMP_PATH/master-logpos-${TSTAMP}
 	fi
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") doing cleanup in background by zipping back imported dump.sql file.."
+	gzip -9 $DUMP_PATH/$DPREFIX-${TSTAMP}.sql &
 	if [ $K_START -gt 0 ]
 	then
 		if [ $LEGACY -gt 0 ]
@@ -222,6 +225,7 @@ then
 			/var/packages/Kopano4s/scripts/start-stop-status start	
 		fi
 	fi
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") done (gzip running in background).."
 	exit 0
 fi
 

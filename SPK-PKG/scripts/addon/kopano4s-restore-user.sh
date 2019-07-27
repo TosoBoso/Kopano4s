@@ -56,7 +56,7 @@ for USR in $USRLIST; do
 	# is it a real backup directory then user control file has to exist
 	if [ -e "$K_BACKUP_PATH/$USR/user" ]
 	then
-		kopano-backup --restore $USR --only-meta
+		kopano-backup --restore $USR --only-meta >> "$K_BACKUP_PATH"/restore-user.log 2>&1
 	fi
 done
 ENDTIME=$(date +%s)

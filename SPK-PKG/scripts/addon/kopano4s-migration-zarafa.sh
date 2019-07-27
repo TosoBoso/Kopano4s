@@ -32,8 +32,8 @@ then
 	exit 1
 fi
 MSG="Starting migration steps: 1) kopano baseline backup 2) zarafa db-backup. 3) restore to kopano-db. 4) user export from kopano migration version 5) restore users to kopano baseline" 
-echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
-echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" > "$K_BACKUP_PATH"/migrate-steps.log
+echo "$MSG"
+echo "$MSG" > "$K_BACKUP_PATH"/migrate-steps.log
 if [ "$NOTIFY" = "ON" ]
 then
 	/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s-Migration-Zarafa "$MSG"
@@ -78,10 +78,13 @@ fi
 # set back server.cfg mode at migration version; it will not sstart with new settings
 if [ -e $ETC_PATH/kopano/server.cfg ] && grep -q server_listen "$ETC_PATH"/kopano/server.cfg
 then
-	sed -i -e "s~server_listen~#server_listen~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~server_listen_tls~#server_listen_tls~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~#server_tcp_enabled~server_tcp_enabled~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~#server_tcp_port~server_tcp_port~" "$ETC_PATH"/kopano/server.cfg
+	# in server.cfg swith from new server entry to migration versionstyle
+	if ! grep -q server_tcp_enabled "$ETC_PATH"/kopano/server.cfg
+	then
+		sed -i -e "s~server_listen = \*:236~server_listen = \*:236\nserver_tcp_enabled = yes\nserver_tcp_port = 236~" "$ETC_PATH"/kopano/server.cfg
+	fi
+	sed -i -e "s~^server_listen~#server_listen~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~^server_listen_tls~#server_listen_tls~" "$ETC_PATH"/kopano/server.cfg
 fi
 # get timestamp of zarafa dump and then start restore
 TS=$(ls -t1 "$K_BACKUP_PATH"/dump-zarafa-*.sql.gz | head -n 1 | grep -o [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
@@ -89,13 +92,26 @@ MSG="step 3: restore zarafa dump of $TS into kopano..."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 kopano4s-backup restore $TS legacy
-MSG="step 4: starting kopano migration (8.4.5) and starting mapi export..."
+MSG="step 4: starting kopano migration (8.4.5) tu run user export..."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
+echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting migration version.." > /var/log/kopano/server.log
 kopano4s-init refresh
 # wait 3m to have to have zarafa databse upgraded in migration version then start kopano-backup aka mapi export per uer
-sleep 180
+sleep 360
+# no point to continue if kopano migration version stopped for any reason
+if ! /var/packages/Kopano4s/scripts/start-stop-status status
+then
+	MSG="ERROR running imported data (see migrate-server.log); rolling back.."
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
+	cp /var/log/kopano/server.log "$K_BACKUP_PATH"/migrate-server.log
+	head -4 "$K_BACKUP_PATH"/migrate-server.log
+	exit 1
+fi
 kopano-backup -w 4 > "$K_BACKUP_PATH"/backup-user.log 2>&1
+cp /var/log/kopano/server.log "$K_BACKUP_PATH"/migrate-server.log
+echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting user import.." > /var/log/kopano/server.log
 TS=$(ls -t1 "$K_BACKUP_PATH"/dump-kopano-*.sql.gz | head -n 1 | grep -o [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
 MSG="step 5: restore kopano baseline dump of $TS and import users..."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
@@ -110,13 +126,14 @@ fi
 # set back server.cfg mode post migration version
 if [ -e $ETC_PATH/kopano/server.cfg ] && grep -q server_listen "$ETC_PATH"/kopano/server.cfg
 then
-	sed -i -e "s~#server_listen~server_listen~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~#server_listen_tls~server_listen_tls~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~server_tcp_enabled~#server_tcp_enabled~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~server_tcp_port~#server_tcp_port~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~^#server_listen~server_listen~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~^#server_listen_tls~server_listen_tls~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~^server_tcp_enabled~~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~^server_tcp_port~~" "$ETC_PATH"/kopano/server.cfg
 fi
 kopano4s-backup restore $TS
 kopano4s-init refresh
+/var/packages/Kopano4s/scripts/start-stop-status start
 kopano4s-restore-user all
 ENDTIME=$(date +%s)
 DIFFTIME=$(( $ENDTIME - $STARTTIME ))
