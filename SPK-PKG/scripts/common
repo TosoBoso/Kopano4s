@@ -5,7 +5,7 @@
 DEFAULT_TAG="Core-8.6.9.0_Webapp-3.5.0_Z-Push-2.4.5_WMeet-0.29.5"
 MIGRATION_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
 SUPPORTED_TAG="Core-8.7.3_Webapp-3.5.8_Z-Push-2.5.0_WMeet-0.29.5"
-COMMUNITY_TAG="Core-8.7.82_Webapp-3.5.8_Z-Push-2.5.0_WMeet-0.29."
+COMMUNITY_TAG="Core-8.7.82_Webapp-3.5.8_Z-Push-2.5.0_WMeet-0.29.5"
 DEFAULT_SIZE=159
 MIGRATION_SIZE=143
 SUPPORTED_SIZE=174
@@ -203,7 +203,8 @@ RESTORE_LOG_ETC()
 ENABLE_UI()
 {
 	# sodtlink from ralpath of UI (e.g. /volume1/@appstore/Package/ui) to 3rdparty area
-	local REAL_UI=$(realpath /var/packages/"$PKG_NAME"/target/ui)
+	local REAL_UI
+	REAL_UI=$(realpath /var/packages/"$PKG_NAME"/target/ui)
 	$SUDO ln -sf "$REAL_UI" "$UI_PATH/$PKG_NAME"
 }
 DISABLE_UI()
@@ -914,7 +915,7 @@ INIT_UPDATE()
 		cp "$TARGET_PATH/merge/web/nginx.conf" /etc/kopano/web
 	fi
 	# disable surveyclient_interval as still to early for supported dition
-	sed -i -e "s~^surveyclient_interval~#server_listen_tls~" "$TARGET_PATH/merge/server.cfg.init"
+	sed -i -e "s~^surveyclient_interval~#surveyclient_interval~" "$TARGET_PATH/merge/server.cfg.init"
 	# init IMAP(S)_PORT by enabled when it did not exist aka is empty (-z)
 	if [ -z "$IMAP_PORT" ] ; then IMAP_PORT=143 ; fi
 	if [ -z "$IMAPS_PORT" ] ; then IMAPS_PORT=993 ; fi
@@ -1098,9 +1099,9 @@ SET_CFG_OPTIONS()
 	# special case migration version 8.4.5 with old zcp server.cfg settings
 	if [ "$K_EDITION" = "Migration" ]
 	then
-		sed -i -e "s~server_listen = \*:236~#server_listen = \*:236\nserver_tcp_enabled = yes\nserver_tcp_port = 236~" "$TARGET_PATH"/merge/server.cfg.init
+		sed -i -e "s~^server_listen = \*:236~#server_listen = \*:236\nserver_tcp_enabled = yes\nserver_tcp_port = 236~" "$TARGET_PATH"/merge/server.cfg.init
 		sed -i -e "s~^server_listen_tls~#server_listen_tls~" "$TARGET_PATH"/merge/server.cfg.init
-		sed -i -e "s~^surveyclient_interval~#server_listen_tls~" "$TARGET_PATH"/merge/server.cfg.init
+		sed -i -e "s~^surveyclient_interval~#surveyclient_interval~" "$TARGET_PATH"/merge/server.cfg.init
 	fi
 	# ** update user and group id which has 5 digits in init script
 	KUSRID=$(id -u kopano)
