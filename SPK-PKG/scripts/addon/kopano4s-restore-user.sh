@@ -34,7 +34,7 @@ for USR in $USRLIST; do
 	# is it a real backup directory then user control file has to exist
 	if [ -e "$K_BACKUP_PATH/$USR/user" ]
 	then
-		MSG="Resoring user $USR"
+		MSG="Restoring user $USR"
 		if ! kopano-admin -l | grep -v SYSTEM | grep -v Homeserver | grep -v "User list for Default" | grep -v "\-\-\-" | grep -q $USR
 		then
 			MSG="$MSG incl. creation with default pwd"

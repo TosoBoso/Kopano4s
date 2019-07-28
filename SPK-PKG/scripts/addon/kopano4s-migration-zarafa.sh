@@ -1,5 +1,5 @@
 #!/bin/sh
-LOGIN=`whoami`
+LOGIN=$(whoami)
 # get common and config
 . /var/packages/Kopano4s/scripts/common
 . "$ETC_PATH"/package.cfg
@@ -26,7 +26,7 @@ then
 	echo "To avoid accidential usage you have to provide start as parameter"
 	exit 0
 fi
-if [ $LOGIN != "root" ]
+if [ "$LOGIN" != "root" ]
 then 
 	echo "you have to run as root! alternatively as admin run with sudo prefix! exiting.."
 	exit 1
@@ -53,17 +53,25 @@ else
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 	kopano4s-backup
 fi
-DBDUMPS=$(find "$K_BACKUP_PATH" -name "dump-kopano-${TSD}*" | wc -l | sed 's/\ //g')
+DBDUMPS=$(find "$K_BACKUP_PATH" -name "dump-zarafa-${TSD}*" | wc -l | sed 's/\ //g')
 if [ $DBDUMPS -gt 0 ]
 then
 	MSG="step 2: skipped as zarafa dump exists for today..."
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 else
-	MSG="step 2: create dump from legacy zarafa..."
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
-	kopano4s-backup legacy
+	if [ -e /etc/zarafa4h/server.cfg ] || [ -e /etc/zarafa/server.cfg ]
+	then
+		MSG="step 2: create dump from legacy zarafa..."
+		echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
+		echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
+		kopano4s-backup legacy
+	else
+		MSG="ERROR no /etc/zarafa(4h)/server.cfg found: cannot run legacy backup. Add cfg or copy over zarafa dump of today"
+		echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
+		echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log		
+		exit 1
+	fi
 fi
 # stopping kopano and preparing for migration edition incl. ATTACHMENT_ON_FS="OFF"
 if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
@@ -98,6 +106,7 @@ echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting migration version.." > /var/log/kopano/server.log
 kopano4s-init refresh
 # wait 3m to have to have zarafa databse upgraded in migration version then start kopano-backup aka mapi export per uer
+echo "$(date "+%Y.%m.%d-%H.%M.%S") sleep 3min to have migration version running smoothly with zarafa database import.."
 sleep 360
 # no point to continue if kopano migration version stopped for any reason
 if ! /var/packages/Kopano4s/scripts/start-stop-status status
@@ -109,6 +118,7 @@ then
 	head -4 "$K_BACKUP_PATH"/migrate-server.log
 	exit 1
 fi
+echo "$(date "+%Y.%m.%d-%H.%M.%S") running kaopano-backup with 4 streams (see backup-user.log).."
 kopano-backup -w 4 > "$K_BACKUP_PATH"/backup-user.log 2>&1
 cp /var/log/kopano/server.log "$K_BACKUP_PATH"/migrate-server.log
 echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting user import.." > /var/log/kopano/server.log
@@ -141,6 +151,8 @@ TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
 MSG="Migration zarafa to kopano4s completed in $TASKTIME.."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
+cp /var/log/kopano/server.log "$K_BACKUP_PATH"/import-server.log
+head -4 "$K_BACKUP_PATH"/import-server.log
 if [ "$NOTIFY" = "ON" ]
 then
 	/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s-Migration-Zarafa "$MSG"

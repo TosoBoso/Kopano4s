@@ -179,6 +179,7 @@ then
 		tar -zxvf $DUMP_PATH/attachments-${TSTAMP}.tgz attachments/
 		chown -R kopano.kopano attachments
 		chmod 770 attachments
+		if [ -e attachments.old ] ; then rm -R attachments.old ; fi
 		cd $CUR_PATH
 	fi
 	ENDTIME=$(date +%s)

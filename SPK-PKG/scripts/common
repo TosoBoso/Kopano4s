@@ -41,7 +41,9 @@ if [ -z "$PKGWIZ_DB_NAME" ]
 then
 	# mark no-gui as manual and fill al defaults from package wizzard
 	PKGWIZ_NO_GUI="true"
+	PKGWIZ_K_DEF="true"
 	PKGWIZ_K_SUP="false"
+	PKGWIZ_K_COM="false"
 	PKGWIZ_K_MIG="false"
 	PKGWIZ_DB_NAME="kopano"
 	PKGWIZ_K_SHARE="/volume1/kopano"
@@ -231,19 +233,19 @@ GET_BETA_STABLE()
 # get the selected edition via gui-wizzard; non selected is in the else tree
 GET_WIZZARD_EDITION()
 {
-	if [ "$PKGWIZ_K_SUP" = "true" ]
+	if [ "$PKGWIZ_K_DEF" = "true" ]
 	then
-		K_EDITION="Supported"
+		K_EDITION="Default"
 	else
-		if [ "$PKGWIZ_K_MIG" = "true" ]
+		if [ "$PKGWIZ_K_SUP" = "true" ]
 		then
-			K_EDITION="Migration"
+			K_EDITION="Supported"
 		else
-			if [ "$K_RELEASE" = "Beta" ]
+			if [ "$PKGWIZ_K_MIG" = "true" ]
 			then
-				K_EDITION="Community"
+				K_EDITION="Migration"
 			else
-				K_EDITION="Default"
+				K_EDITION="Community"
 			fi
 		fi
 	fi
