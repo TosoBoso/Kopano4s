@@ -118,7 +118,16 @@ then
 fi
 if [ "$K_EDITION" = "Default" ]
 then
-	IMG_TAG="Core-8.6.9.0_Webapp-3.5.0_Z-Push-2.4.5_WMeet-0.29.5"
+	TAG1="8.6.9.0"
+	TAG2="3.5.0"
+	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+	if [ -z "$TAG3" ]
+	then
+		echo "Could not evaluate Kopano z-push release tag from download; exiting.."
+		exit 1
+	fi
+	TAG4="0.29.5"
+	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
 	VER_TAG="D-${IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEFAULT_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
