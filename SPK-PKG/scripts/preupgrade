@@ -10,6 +10,12 @@ then
 	GUI_MESSAGE "No upgrade to previously uncompleted or legacy install. Please remove and install again. "
 	exit 1
 fi
+if [ "$RELEASE" = "Stable" ] && [ "$K_EDITION" = "Community" ]
+then
+	GUI_MESSAGE "No upgrade from beta community version to default or supported please run kopano-backup then remove database and install again followed by kopano4s-resoter-users all. "
+	exit 1
+fi
+
 # ** backup install-log & etc
 SAVE_LOG_ETC
 OLD_VER_TAG="$VER_TAG"
