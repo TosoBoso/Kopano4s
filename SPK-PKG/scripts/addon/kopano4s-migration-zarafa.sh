@@ -66,6 +66,7 @@ else
 		echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 		echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 		kopano4s-backup legacy
+		sleep 10
 	else
 		MSG="ERROR no /etc/zarafa(4h)/server.cfg found: cannot run legacy backup. Add cfg or copy over zarafa dump of today"
 		echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
@@ -100,30 +101,38 @@ MSG="step 3: restore zarafa dump of $TS into kopano..."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 kopano4s-backup restore $TS legacy
-MSG="step 4: starting kopano migration (8.4.5) tu run user export..."
+MSG="step 4: starting kopano migration (8.4.5) to run user export..."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting migration version.." > /var/log/kopano/server.log
 kopano4s-init refresh
 # wait 3m to have to have zarafa databse upgraded in migration version then start kopano-backup aka mapi export per uer
 echo "$(date "+%Y.%m.%d-%H.%M.%S") sleep 3min to have migration version running smoothly with zarafa database import.."
-sleep 360
+sleep 300
 # no point to continue if kopano migration version stopped for any reason
-if ! /var/packages/Kopano4s/scripts/start-stop-status status
+if /var/packages/Kopano4s/scripts/start-stop-status status
 then
+	ROLLB=0
+else
 	MSG="ERROR running imported data (see migrate-server.log); rolling back.."
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
-	cp /var/log/kopano/server.log "$K_BACKUP_PATH"/migrate-server.log
-	head -4 "$K_BACKUP_PATH"/migrate-server.log
-	exit 1
+	ROLLB=1
 fi
-echo "$(date "+%Y.%m.%d-%H.%M.%S") running kaopano-backup with 4 streams (see backup-user.log).."
-kopano-backup -w 4 > "$K_BACKUP_PATH"/backup-user.log 2>&1
+if [ $ROLLB -eq 0 ]
+then
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") running kopano-backup with 4 streams (see backup-user.log).."
+	kopano-backup -w 4 > "$K_BACKUP_PATH"/backup-user.log 2>&1
+fi
 cp /var/log/kopano/server.log "$K_BACKUP_PATH"/migrate-server.log
-echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting user import.." > /var/log/kopano/server.log
 TS=$(ls -t1 "$K_BACKUP_PATH"/dump-kopano-*.sql.gz | head -n 1 | grep -o [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
-MSG="step 5: restore kopano baseline dump of $TS and import users..."
+if [ $ROLLB -eq 0 ]
+then
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting user import.." > /var/log/kopano/server.log
+	MSG="step 5: restore kopano baseline dump of $TS and import users..."
+else
+	MSG="rollback restore kopano baseline dump of $TS ..."
+fi
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
@@ -144,15 +153,20 @@ fi
 kopano4s-backup restore $TS
 kopano4s-init refresh
 /var/packages/Kopano4s/scripts/start-stop-status start
-kopano4s-restore-user all
-ENDTIME=$(date +%s)
-DIFFTIME=$(( $ENDTIME - $STARTTIME ))
-TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
-MSG="Migration zarafa to kopano4s completed in $TASKTIME.."
-echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
-echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
-cp /var/log/kopano/server.log "$K_BACKUP_PATH"/import-server.log
-head -4 "$K_BACKUP_PATH"/import-server.log
+if [ $ROLLB -eq 0 ]
+then
+	kopano4s-restore-user all
+	ENDTIME=$(date +%s)
+	DIFFTIME=$(( $ENDTIME - $STARTTIME ))
+	TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
+	MSG="Migration zarafa to kopano4s completed in $TASKTIME.."
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
+	cp /var/log/kopano/server.log "$K_BACKUP_PATH"/import-server.log
+	head -4 "$K_BACKUP_PATH"/import-server.log
+else
+	MSG="Migration zarafa to kopano4s rolled back.."
+fi
 if [ "$NOTIFY" = "ON" ]
 then
 	/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s-Migration-Zarafa "$MSG"

@@ -208,8 +208,6 @@ then
 		chown root.kopano $DUMP_PATH/master-logpos-${TSTAMP}
 		chmod 640 $DUMP_PATH/master-logpos-${TSTAMP}
 	fi
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") doing cleanup in background by zipping back imported dump.sql file.."
-	gzip -9 $DUMP_PATH/$DPREFIX-${TSTAMP}.sql &
 	if [ $K_START -gt 0 ]
 	then
 		if [ $LEGACY -gt 0 ]
@@ -226,7 +224,9 @@ then
 			/var/packages/Kopano4s/scripts/start-stop-status start	
 		fi
 	fi
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") done (gzip running in background).."
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") doing cleanup zipping back imported dump.sql file.."
+	gzip -9 $DUMP_PATH/$DPREFIX-${TSTAMP}.sql
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") done.."
 	exit 0
 fi
 

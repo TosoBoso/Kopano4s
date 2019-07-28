@@ -64,6 +64,11 @@ case "$1" in
 				echo "cannot switch from Community to Supported. Run backup restore against fresh install instead"
 				exit 1
 			fi
+			if [ "$K_EDITION" == "Supported" ] && [ "$2" == "Default" ]
+			then
+				echo "cannot switch from Supported to Default. Run backup restore against fresh install instead"
+				exit 1
+			fi			
 			K_EDITION="$2"
 			if [ $# -gt 2 ] && [ "$K_EDITION" == "Supported" ]
 			then
