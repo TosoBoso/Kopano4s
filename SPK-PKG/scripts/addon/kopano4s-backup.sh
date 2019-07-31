@@ -83,7 +83,8 @@ fi
 ATTM_PATH="$K_SHARE/attachments"
 DUMP_LOG="$DUMP_PATH/mySqlDump.log"
 SQL_ERR="$DUMP_PATH/mySql.err"
-DUMP_ARGS="--hex-blob --skip-lock-tables --single-transaction --routines --log-error=$SQL_ERR"
+# no --routines  as restore then requires root priviledges..
+DUMP_ARGS="--hex-blob --skip-lock-tables --single-transaction --log-error=$SQL_ERR"
 
 if [ "$1" == "help" ]
 then
