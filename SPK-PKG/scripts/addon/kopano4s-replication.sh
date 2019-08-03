@@ -21,7 +21,7 @@ if [ -e /var/packages/Kopano4s/etc/package.cfg ] && [ "$1" != "legacy" ] && [ "$
 then
 	CFG="/var/packages/Kopano4s/etc/package.cfg"
 else
-	# legacy zarafa package assuming use of MariaDB-5 unless not present adn replica in MariaDB-10
+	# legacy zarafa package assuming use of MariaDB-5 unless not present and replica in MariaDB-10
 	if [ -e /var/packages/MariaDB/target/usr/bin/mysql ]
 	then
 		MYSQL="/var/packages/MariaDB/target/usr/bin/mysql"

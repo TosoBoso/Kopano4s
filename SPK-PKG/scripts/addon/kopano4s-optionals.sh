@@ -157,16 +157,14 @@ case "$1" in
 	if [ $# -gt 1 ] && [ $2 = "on" ]
 	then
 		$SUDO sed -i -e 's~SPAMD_ENABLED.*~SPAMD_ENABLED=yes~' $ETC_PATH/kopano/default
-		$SUDO sed -i -e 's~K_POSTGREY.*~K_POSTGREY="ON"~' $ETC_PATH/package.cfg
-		$SUDO sed -i -e "s~#check_policy_service ~check_policy_service " $ETC_PATH/kopano/postfix/main.cf
-		MSG="Postgrey enabled; please restart package to make effective"
+		$SUDO sed -i -e 's~K_SPAMD.*~K_SPAMD="ON"~' $ETC_PATH/package.cfg
+		MSG="Spamd enabled; please restart package to make effective"
 	else
 		if [ $# -gt 1 ] && [ $2 = "off" ]
 		then
-			$SUDO sed -i -e 's~POSTGREY_ENABLED.*~POSTGREY_ENABLED=no~' $ETC_PATH/kopano/default
-			$SUDO sed -i -e 's~K_POSTGREY.*~K_POSTGREY="OFF"~' $ETC_PATH/package.cfg
-			$SUDO sed -i -e "s~check_policy_service ~#check_policy_service " $ETC_PATH/kopano/postfix/main.cf
-			MSG="Postgrey disabled; please restart package to make effective"
+			$SUDO sed -i -e 's~SPAMD_ENABLED.*~SPAMD_ENABLED=no~' $ETC_PATH/kopano/default
+			$SUDO sed -i -e 's~K_SPAMD.*~K_SPAMD="OFF"~' $ETC_PATH/package.cfg
+			MSG="Spamd disabled; please restart package to make effective"
 		fi
 	fi
 	;;
@@ -175,14 +173,14 @@ case "$1" in
 	then
 		$SUDO sed -i -e 's~POSTGREY_ENABLED.*~POSTGREY_ENABLED=yes~' $ETC_PATH/kopano/default
 		$SUDO sed -i -e 's~K_POSTGREY.*~K_POSTGREY="ON"~' $ETC_PATH/package.cfg
-		$SUDO sed -i -e "s~#check_policy_service ~check_policy_service " $ETC_PATH/kopano/postfix/main.cf
+		$SUDO sed -i -e "s~#check_policy_service~check_policy_service~" $ETC_PATH/kopano/postfix/main.cf
 		MSG="Postgrey enabled; please restart package to make effective"
 	else
 		if [ $# -gt 1 ] && [ $2 = "off" ]
 		then
 			$SUDO sed -i -e 's~POSTGREY_ENABLED.*~POSTGREY_ENABLED=no~' $ETC_PATH/kopano/default
 			$SUDO sed -i -e 's~K_POSTGREY.*~K_POSTGREY="OFF"~' $ETC_PATH/package.cfg
-			$SUDO sed -i -e "s~check_policy_service ~#check_policy_service " $ETC_PATH/kopano/postfix/main.cf
+			$SUDO sed -i -e "s~check_policy_service~#check_policy_service~" $ETC_PATH/kopano/postfix/main.cf
 			MSG="Postgrey disabled; please restart package to make effective"
 		fi
 	fi

@@ -2,6 +2,8 @@
 # (c) 2018 vbettag initialisation for Kopano4Syno in Docker container
 # kopano-monitor, gateway, ical disabled by default and added if found in etc-default
 if [ ! -e /etc/kopano/default ] && [ -e /etc/kopano/default.init ] ; then cp /etc/kopano/default.init /etc/kopano/default ; fi
+# Community new feature remove -d(emonized) for dagent from default for community edition
+if [ "$EDITION" = "Community" ] && grep -q "^DAGENT_OPTS" /etc/kopano/default ; then sed -i -e 's~DAGENT_OPTS~#DAGENT_OPTS~' /etc/kopano/default ; fi
 K_SERVICES="kopano-server kopano-spooler kopano-dagent"
 if grep -q ^SEARCH_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-search" ; fi
 if grep -q ^MONITOR_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-monitor" ; fi
