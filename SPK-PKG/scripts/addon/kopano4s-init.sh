@@ -131,7 +131,7 @@ case "$1" in
 		MOB="ON"
 		;;
 	help)
-		echo "Usage: kopano-init plus reset | reset (bridge|host) | defresh | maintenance | no-ports | etc | acl | ssl | mobiles | upgrade | all | help"
+		echo "Usage: kopano-init plus reset (bridge|host) | frefresh | defresh | edition | maintenance | no-ports | etc | acl | ssl | mobiles | upgrade | all | help"
 		echo "Reset re-builds container from local k4s image, optionally in host nw mode; refresh loads latest and defresh previous image from docker hub."
 		echo "Maintenance builds container with no kopano services running but staying up to allow repairs with kopano-dbadm etc.."
 		echo "No-ports builds container with no ports exposed for migration scenario to connect to zarafa tcp 236/7 on same synology."
@@ -143,7 +143,7 @@ case "$1" in
 		exit 0
 		;;
 	*)
-		echo "Usage: kopano-init plus reset (bridge|host) | refresh | defresh | maintenance | no-ports | etc | acl | ssl | mobiles | upgrade | all | help"
+		echo "Usage: kopano-init plus reset (bridge|host) | frefresh | defresh | edition | maintenance | no-ports | etc | acl | ssl | mobiles | upgrade | all | help"
 		exit 1
 		;;
 esac
