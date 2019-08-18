@@ -2,7 +2,7 @@
 # (c) 2018 vbettag - script to collect lates tag on docker hub
 # admins only plus set sudo for DSM 6 as root login is no longer possible
 LOGIN=`whoami`
-if [ $LOGIN != "root" ] && ! (grep administrators /etc/group | grep -q $LOGIN)
+if [ $LOGIN != "root" ] && ! (grep administrators /etc/group | grep -q "$LOGIN")
 then 
 	echo "admins only"
 	exit 1

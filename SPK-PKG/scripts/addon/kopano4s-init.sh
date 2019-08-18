@@ -7,8 +7,7 @@ then
 	echo "admins only"
 	exit 1
 fi
-MAJOR_VERSION=$(grep majorversion /etc.defaults/VERSION | grep -o [0-9])
-if [ $MAJOR_VERSION -gt 5 ] && [ "$LOGIN" != "root" ]
+if [ "$LOGIN" != "root" ]
 then
 	echo "Switching in sudo mode. You may need to provide root password at initial call.."
 	SUDO="sudo"
@@ -61,14 +60,9 @@ case "$1" in
 		then
 			if [ "$K_EDITION" == "Community" ] && [ "$2" == "Supported" ]
 			then
-				echo "cannot switch from Community to Supported. Run backup restore against fresh install instead"
+				echo "cannot switch from Community to Supported. Run kopano4s-downgrade instead"
 				exit 1
 			fi
-			if [ "$K_EDITION" == "Supported" ] && [ "$2" == "Default" ]
-			then
-				echo "cannot switch from Supported to Default. Run backup restore against fresh install instead"
-				exit 1
-			fi			
 			K_EDITION="$2"
 			if [ $# -gt 2 ] && [ "$K_EDITION" == "Supported" ]
 			then
@@ -86,7 +80,9 @@ case "$1" in
 					echo "SNR could not be validated at Kopano download area ($K_SNR)"
 					exit 1
 				fi
-			else
+			fi
+			if [ $# -lt 2 ] && [ "$K_EDITION" == "Supported" ]
+			then
 				echo "Please provide SNR as 3rd parameter for Supported edition"
 				exit 1
 			fi
@@ -97,7 +93,7 @@ case "$1" in
 			CONT="ON"
 			IMG="ON"
 		else
-			echo "Please provide valid edition to swith to: Community/Supported "
+			echo "Please provide valid edition to swith to: Community/Supported (for Default us kopano4s-downgrade)"
 			exit 1
 		fi
 		;;
@@ -263,9 +259,9 @@ then
 		INIT_DOCKER
 		if grep -q ^AMAVISD_ENABLED=yes /etc/kopano/default
 		then 
-			WAIT=70
+			WAIT=120
 		else
-			WAIT=40
+			WAIT=60
 		fi
 		if [ $# -gt 1 ] && [ "$2" == "nowait" ] ; then WAIT=1 ; fi
 		echo "waiting for services to restart: ${WAIT}s.."

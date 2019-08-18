@@ -1,13 +1,13 @@
 #!/bin/sh
 # ** (c) 2017-19 TosoBoso - common lib for Kopano-4-Synology in Docker container
 # ** set environment
-# Image tags: Default is from 28.11./13.12.2018 and Migration from 15.12./15.12.2017
-DEFAULT_TAG="Core-8.6.9.0_Webapp-3.5.0_Z-Push-2.5.0_WMeet-0.29.5"
+# Image tags: Default is from 02.05./17.05.2019 and Migration from 15.12./15.12.2017
+DEFAULT_TAG="Core-8.7.1.0_Webapp-3.5.6_Z-Push-2.5.1_WMeet-0.29.5"
 MIGRATION_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
-SUPPORTED_TAG="Core-8.7.5_Webapp-3.5.8_Z-Push-2.5.0_WMeet-0.29.5"
+SUPPORTED_TAG="Core-8.7.5_Webapp-3.5.9_Z-Push-2.5.1_WMeet-0.29.5"
 COMMUNITY_TAG="Core-8.7.82_Webapp-3.5.8_Z-Push-2.5.0_WMeet-0.29.5"
-DEFAULT_SIZE=158
-MIGRATION_SIZE=143
+DEFAULT_SIZE=173
+MIGRATION_SIZE=142
 SUPPORTED_SIZE=172
 COMMUNITY_SIZE=172
 RELEASE="Stable"
@@ -1547,30 +1547,32 @@ SET_SOFTLINKS()
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cachestat.sh /usr/local/bin/kopano-cachestat
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh /usr/local/bin/kopano-cli
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-dbadm.sh /usr/local/bin/kopano-dbadm
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-devicelist.sh /usr/local/bin/kopano-devicelist
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-fetchmail.sh /usr/local/bin/kopano-fetchmail
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-fix-ipm-subtree.sh /usr/local/bin/kopano-fix-ipm-subtree
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-folderlist.sh /usr/local/bin/kopano-folderlist
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-fsck.sh /usr/local/bin/kopano-fsck
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-localize-folders.sh /usr/local/bin/kopano-localize-folders
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-grouplist.sh /usr/local/bin/kopano-grouplist
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-mailbox-permissions.sh /usr/local/bin/kopano-mailbox-permissions
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-migration-imap.sh /usr/local/bin/kopano-migration-imap
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-migration-pst.sh /usr/local/bin/kopano-migration-pst
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-passwd.sh /usr/local/bin/kopano-passwd
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh /usr/local/bin/kopano-postfix
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-pubfolders.sh /usr/local/bin/kopano-pubfolders
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-recreate-systemfolders.sh /usr/local/bin/kopano-recreate-systemfolders
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-set-oof.sh /usr/local/bin/kopano-set-oof
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-srvadm.sh /usr/local/bin/kopano-srvadm
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-storeadm.sh /usr/local/bin/kopano-storeadm
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/z-push-admin.sh /usr/local/bin/z-push-admin
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-devicelist.sh /usr/local/bin/kopano-devicelist
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-userlist.sh /usr/local/bin/kopano-userlist
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-folderlist.sh /usr/local/bin/kopano-folderlist
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-pubfolders.sh /usr/local/bin/kopano-pubfolders
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh /usr/local/bin/kopano-postfix
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-fetchmail.sh /usr/local/bin/kopano-fetchmail
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/sendmail.sh /usr/sbin/sendmail
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/sendmail.sh /usr/local/bin/mail
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-status.sh /usr/local/bin/kopano-status
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-restart.sh /usr/local/bin/kopano-restart
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-userlist.sh /usr/local/bin/kopano-userlist
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/sendmail.sh /usr/local/bin/mail
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/sendmail.sh /usr/sbin/sendmail
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/z-push-admin.sh /usr/local/bin/z-push-admin
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-autoblock.sh /usr/local/bin/kopano4s-autoblock
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-backup.sh /usr/local/bin/kopano4s-backup
+	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-downgrade.sh /usr/local/bin/kopano4s-downgrade
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-hubtag.sh /usr/local/bin/kopano4s-hubtag
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-init.sh /usr/local/bin/kopano4s-init
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-migration-zarafa.sh /usr/local/bin/kopano4s-migration-zarafa
@@ -1713,7 +1715,7 @@ DROP_SOFTLINKS()
 	if [ -e /usr/local/etc/nginx/conf.d/www.Kopano4s.conf ] ; then rm /usr/local/etc/nginx/conf.d/www.Kopano4s.conf ; fi
 }
 # ** drop user and database unless kepp was selected in WIZZARD-UI
-DROP_USER_DATABASE()
+DROP_USER_DATABASE_SHARE()
 {
 	if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "deleting kopano database in cmd-line mode you have to pass the mysql root pwd.." ; fi
 	local DB_MPASS="$PKGWIZ_DB_PASSWD"
@@ -1746,6 +1748,11 @@ DROP_USER_DATABASE()
 			GUI_MESSAGE "Error deleting database: $RET"
 			exit 1
 		fi
+		# drop also attachments
+		rm -R "$K_SHARE"/attachments
+		mkdir -p "$K_SHARE"/attachments
+		chown kopano.kopano "$K_SHARE"/attachments
+		chmod 770 "$K_SHARE"/attachments
 	fi
 	if [ "$PKGWIZ_KEEP_SHARE" == "false" ]
 	then

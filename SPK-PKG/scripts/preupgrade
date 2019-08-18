@@ -12,7 +12,7 @@ then
 fi
 if [ "$RELEASE" = "Stable" ] && [ "$K_EDITION" = "Community" ]
 then
-	GUI_MESSAGE "No upgrade from beta community version to default or supported please run kopano-backup then remove database and install again followed by kopano4s-resoter-users all. "
+	GUI_MESSAGE "No upgrade from beta community version to default or supported please run kopano-backup then remove database and install again followed by kopano4s-restore-user all or kopano4s-downgrade which combines the tasks. "
 	exit 1
 fi
 

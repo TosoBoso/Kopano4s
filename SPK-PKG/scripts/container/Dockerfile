@@ -28,14 +28,14 @@ ENV	URL_CORE=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/support
 ENV URL_CORE=${URL_CORE:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/}}
 ENV URL_CORE=${URL_CORE:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/}}
 ENV URL_CORE=${URL_CORE:-https://download.kopano.io/community/core:/}
-ENV NAME_CORE=${DEFAULT_BUILD:+8.6.9.0_0+24-Debian_9.0-amd64.tar.gz}
+ENV NAME_CORE=${DEFAULT_BUILD:+8.7.1.0_0+1-Debian_9.0-amd64.tar.gz}
 ENV NAME_CORE=${NAME_CORE:-${MIGRATION_BUILD:+8.4.5.0_0+33-Debian_9.0-amd64.tar.gz}}
 ENV NAME_CORE=${NAME_CORE:-Debian_9.0-amd64.tar.gz}
 ENV URL_WEBAPP=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/archives/}
 ENV URL_WEBAPP=${URL_WEBAPP:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/archives/}}
 ENV URL_WEBAPP=${URL_WEBAPP:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/}}
 ENV URL_WEBAPP=${URL_WEBAPP:-https://download.kopano.io/community/webapp:/}
-ENV NAME_WEBAPP=${DEFAULT_BUILD:+3.5.0.2047+85-Debian_9.0-all.tar.gz}
+ENV NAME_WEBAPP=${DEFAULT_BUILD:+3.5.6.2298+94-Debian_9.0-all.tar.gz}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-${MIGRATION_BUILD:+3.4.24.1929+84-Debian_9.0-all.tar.gz}}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-Debian_9.0-all.tar.gz}
 ENV URL_MDM=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/mdm:/final/tarballs/}
@@ -221,12 +221,12 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 # copy config and init.d files as on latest versions they are missing (KC-681); dual-cfg triggers error so not for old Migration
 	if [ "$EDITION" != "Migration" ] ; then cp /root/repo/kinit.d/* /etc/init.d/ && mkdir -p /etc/kopano && cp /root/repo/kopano.cfg/* /etc/kopano ; fi && \
 # presence and webmeetings still have cfg and init shiped so delete them, for search as default version also delete it
-	if [ "$EDITION" = "Default" ] && [ -e /etc/init.d/kopano-spooler ] ; then rm /etc/init.d/kopano-spooler ; fi && \
-	if [ "$EDITION" = "Default" ] && [ -e /etc/kopano/spooler.cfg ] ; then rm /etc/kopano/spooler.cfg ; fi && \
-	if [ "$EDITION" = "Default" ] && [ -e /etc/init.d/kopano-search ] ; then rm /etc/init.d/kopano-search ; fi && \
-	if [ "$EDITION" = "Default" ] && [ -e /etc/kopano/search.cfg ] ; then rm /etc/kopano/search.cfg ; fi && \
-	if [ "$EDITION" = "Default" ] && [ -e /etc/init.d/kopano-presence ] ; then rm /etc/init.d/kopano-presence ; fi && \
-	if [ "$EDITION" = "Default" ] && [ -e /etc/kopano/presence.cfg ] ; then rm /etc/kopano/presence.cfg ; fi && \
+	#if [ "$EDITION" = "Default" ] && [ -e /etc/init.d/kopano-spooler ] ; then rm /etc/init.d/kopano-spooler ; fi && \
+	#if [ "$EDITION" = "Default" ] && [ -e /etc/kopano/spooler.cfg ] ; then rm /etc/kopano/spooler.cfg ; fi && \
+	#if [ "$EDITION" = "Default" ] && [ -e /etc/init.d/kopano-search ] ; then rm /etc/init.d/kopano-search ; fi && \
+	#if [ "$EDITION" = "Default" ] && [ -e /etc/kopano/search.cfg ] ; then rm /etc/kopano/search.cfg ; fi && \
+	#if [ "$EDITION" = "Default" ] && [ -e /etc/init.d/kopano-presence ] ; then rm /etc/init.d/kopano-presence ; fi && \
+	#if [ "$EDITION" = "Default" ] && [ -e /etc/kopano/presence.cfg ] ; then rm /etc/kopano/presence.cfg ; fi && \
 	if [ -e /etc/init.d/kopano-webmeetings ] ; then rm /etc/init.d/kopano-webmeetings ; fi && \
 	if [ -e /etc/kopano/webmeetings.cfg ] ; then rm /etc/kopano/webmeetings.cfg ; fi && \
 	if [ -e /root/repo/locale/de ] ; then cp -R /root/repo/locale/* /usr/share/locale ; fi && \
@@ -272,16 +272,18 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" $S ; done ; fi && \
 # new 'bug/feature' community edition: spooler etc hang unless -b = background is used in init.d file have to remoce -d falg for dagent in default
 	if [ "$EDITION" = "Community" ] ; then K_SRVS="kopano-server kopano-spooler kopano-dagent kopano-gateway kopano-ical kopano-monitor" && for S in $K_SRVS; do sed -i -e "s~start-stop-daemon --start~start-stop-daemon --start -b~" /etc/init.d/$S && \ 
-# search add searchm.pid as it take quite long until search writes search.pid (same applies for spamd, presence)
     sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" /etc/init.d/$S ; done ; fi && \
-	sed -i -e "s~search.pid~searchm.pid~" /etc/init.d/kopano-search && sed -i -e "s~--name \$NAME ~~g" /etc/init.d/kopano-search && \
-	sed -i -e "s~unset LC_ALL~PID=\`ps -ef | grep \$SEARCH | head -1 | awk '{print \$2}'\` \&\& echo \$PID > \$PIDFILE\n\tunset LC_ALL~" /etc/init.d/kopano-search && \
 # new 'bug/feature' supported & community edition: search, spamd config paramter flipped from -c to -C
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$SEARCH_CONFIG~-C \$SEARCH_CONFIG~" /etc/init.d/kopano-search ; fi && \
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$SPAMD_CONFIG~-C \$SPAMD_CONFIG~" /etc/init.d/kopano-spamd ; fi && \
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$PRESENCE_CONFIG~-C \$PRESENCE_CONFIG~" /etc/init.d/kopano-presence ; fi && \
 # search, spamd presence now running with /usr/bin/python3 hence replace --exec /usr/bin/python $SEARCH by --name $NAME
-	sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" /etc/init.d/kopano-search && \
+# search add searchm.pid as it take quite long until search writes search.pid (same applies for spamd, presence)
+	if [ -e /etc/init.d/kopano-search ] ; then sed -i -e "s~/usr/bin/python ~~" /etc/init.d/kopano-search ; fi && \
+	if [ -e /etc/init.d/kopano-search ] ; then sed -i -e "s~search.pid~searchm.pid~" /etc/init.d/kopano-search && sed -i -e "s~--name \$NAME ~~g" /etc/init.d/kopano-search ; fi && \
+	if [ -e /etc/init.d/kopano-search ] ; then sed -i -e "s~unset LC_ALL~PID=\`ps -ef | grep \$SEARCH | head -1 | awk '{print \$2}'\` \&\& echo \$PID > \$PIDFILE\n\tunset LC_ALL~" /etc/init.d/kopano-search ; fi && \
+	if [ -e /etc/init.d/kopano-search ] ; then sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" /etc/init.d/kopano-search ; fi && \
+	if [ -e /etc/init.d/kopano-spamd ] ; then sed -i -e "s~/usr/bin/python ~~" /etc/init.d/kopano-spamd ; fi && \
 	if [ -e /etc/init.d/kopano-spamd ] ; then sed -i -e "s~spamd.pid~spamdm.pid~" /etc/init.d/kopano-spamd && sed -i -e "s~--name \$NAME ~~g" /etc/init.d/kopano-spamd ; fi && \
 	if [ -e /etc/init.d/kopano-spamd ] ; then sed -i -e "s~unset LC_ALL LANG~PID=\`ps -ef | grep \$SPAMD | head -1 | awk '{print \$2}'\` \&\& echo \$PID > \$PIDFILE\n\tunset LC_ALL LANG~" /etc/init.d/kopano-spamd ; fi && \
 	if [ -e /etc/init.d/kopano-spamd ] ; then sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" /etc/init.d/kopano-spamd ; fi && \
@@ -289,7 +291,6 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	if [ -e /etc/init.d/kopano-presence ] ; then sed -i -e "s~presence.pid~presencem.pid~" /etc/init.d/kopano-presence && sed -i -e "s~--name \$NAME ~~g" /etc/init.d/kopano-presence ; fi && \
 	if [ -e /etc/init.d/kopano-presence ] ; then sed -i -e "s~unset LC_ALL~PID=\`ps -ef | grep \$PRESENCE | head -1 | awk '{print \$2}'\` \&\& echo \$PID > \$PIDFILE\n\tunset LC_ALL~" /etc/init.d/kopano-presence ; fi && \
 	if [ -e /etc/init.d/kopano-presence ] ; then sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" /etc/init.d/kopano-presence ; fi && \
-sed -i -e "s~/usr/bin/python ~~" /etc/init.d/kopano-search && \
 # exclude userscripts from exposed mountpoint in synology softlink it instead,
 	mv /etc/kopano/userscripts /etc/kopano/k-userscripts && \
 	cp -R /etc/kopano/k-userscripts /etc && rm -R /etc/kopano/k-userscripts && \

@@ -178,7 +178,8 @@ if ($page eq 'intro')
 if ($page eq 'user') 
 {
     my $usrtbl = ''; # collect the z-user table tr commands
-    my $grptbl = ''; # collect the z-group table tr commands   
+    my $grptbl = ''; # collect the z-group table tr commands
+    my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
 
     # process request to add, update, delete user first considering the input forms
     $form = param('form');
@@ -198,10 +199,10 @@ if ($page eq 'user')
             $status = "Error adding new user: parameters missing. ";
         }
         else {
+            my $locale = getCfgValue($pkgcfg, 'LOCALE');
+            my $admflag = $admin eq "on" ? 1 : 0;
             $status = "Adding $kuser with pwd $passwd.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -c $kuser -p '$passwd' -f '$name' -e '$email'";
-            $cmdline .= " -a y" if $admin eq "on";
-            $cmdline .= " |";
+            $cmdline = "kopano-cli --create --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -210,6 +211,8 @@ if ($page eq 'user')
                     $status .=  $reply;
                 }
                 $status .= ". ";
+                # add another kopano-localize-folders just in case
+                system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-localize-folders.sh -u $kuser --lang '$locale' > /dev/null");				
             }
             else {
                 close(DAT);
@@ -219,7 +222,7 @@ if ($page eq 'user')
     if ( $action eq 'Update'  && $form eq 'user') {
         my $kuser = param ('kuser');
         my $passwd = param ('passwd');
-        if ( $passwd && length($passwd) > 2 ) { # happy deoding obfuscated pwd
+        if ( $passwd && length($passwd) > 2 ) { # happy decoding obfuscated pwd
             my $encoded = substr($passwd, 2); # from pos 2 to end, no need to give lenght
             $passwd = decode_base64($encoded);
             chop($passwd);
@@ -233,12 +236,11 @@ if ($page eq 'user')
         else {
             $admin = "off" if ! $admin;
             $status = "Updating $kuser.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser";
-            $cmdline .= " -f '$name'" if $name;
-            $cmdline .= " -e '$email'" if $email;
-            $cmdline .= " -p '$passwd'" if $passwd;
-            $cmdline .= " -a n" if $admin eq "off";
-            $cmdline .= " -a y" if $admin eq "on";
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser";
+            $cmdline .= " --fullname='$name'" if $name;
+            $cmdline .= " --email='$email'" if $email;
+            $cmdline .= " --password='$passwd'" if $passwd;
+            $cmdline .= " --admin-level=1" if $admin eq "on";
             $cmdline .= " |";
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
@@ -261,12 +263,12 @@ if ($page eq 'user')
         $imap = "off" if ! $imap;
         my $pop3 = param ('pop3');
         $pop3 = "off" if ! $pop3;
-        $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser";
+        $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser";
         if ($imap eq 'on') {
-            $cmdline .= " --enable imap |";
+            $cmdline .= " --add-feature imap |";
         }
         else {
-            $cmdline .= " --disable imap |";
+            $cmdline .= " --remove-feature imap |";
         }
         if (open(DAT, $cmdline)) {
             @rawDataCmd = <DAT>;
@@ -280,12 +282,12 @@ if ($page eq 'user')
         else {
             close(DAT);
         }
-        $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser";
+        $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser";
         if ($pop3 eq 'on') {
-            $cmdline .= " --enable pop3 |";
+            $cmdline .= " --add-feature pop3 |";
         }
         else {
-            $cmdline .= " --disable pop3 |";
+            $cmdline .= " --remove-feature pop3 |";
         }
         if (open(DAT, $cmdline)) {
             @rawDataCmd = <DAT>;
@@ -307,7 +309,7 @@ if ($page eq 'user')
         }
         else {
             $status = "Deleting $kuser.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -d $kuser |";
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser --delete |";
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -330,8 +332,8 @@ if ($page eq 'user')
         }
         else {
             $status = "Adding $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -g $kgroup";
-            $cmdline .= " -e '$email'" if $email;
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --create --group $kgroup";
+            $cmdline .= " --email '$email'" if $email;
             $cmdline .= " |";
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
@@ -355,8 +357,8 @@ if ($page eq 'user')
         }
         else {
             $status = "Updating $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh --update-group $kgroup";
-            $cmdline .= " -e '$email'" if $email;
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup";
+            $cmdline .= " --email='$email'" if $email;
             $cmdline .= " |";
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
@@ -380,7 +382,7 @@ if ($page eq 'user')
         }
         else {
             $status = "Deleting $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -G $kgroup |";
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --delete |";
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -404,7 +406,7 @@ if ($page eq 'user')
         }
         else {
             $status = "Adding $kuser to $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -b $kuser -i $kgroup |";
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --add-user $kuser |";
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -428,7 +430,7 @@ if ($page eq 'user')
         }
         else {
             $status = "Removing $kuser off from $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -B $kuser -i $kgroup |";
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --remove-user $kuser |";
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -454,11 +456,11 @@ if ($page eq 'user')
         else {
             if ($kuser) {
                 $status = "Adding $kuser the send-as delegate $delegate.. ";
-                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser --add-sendas $delegate |";
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser --add-sendas $delegate |";
             }
             if ($kgroup) {
                 $status = "Adding $kgroup the send-as delegate $delegate.. ";
-                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh --update-group $kgroup --add-sendas $delegate |";
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --add-sendas $delegate |";
             }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
@@ -484,11 +486,11 @@ if ($page eq 'user')
         else {
             if ($kuser) {
                 $status = "Deleting $kuser the send-as delegate $delegate.. ";
-                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser --del-sendas $delegate |";
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser --remove-sendas $delegate |";
             }
             if ($kgroup) {
                 $status = "Deleting $kgroup the send-as delegate $delegate.. ";
-                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh --update-group $kgroup --del-sendas $delegate |";
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --remove-sendas $delegate |";
             }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
@@ -1775,8 +1777,8 @@ if ($page eq 'cmd')
     my $rcmd='';
     my $params='';
     my $cmdcmb='';
-    my @commands = ('kopano-admin', 'kopano-cli', 'kopano-status', 'kopano-restart', 'kopano4s-init', 'kopano4s-optionals', 'kopano-postfix', 'kopano-fetchmail', 'kopano-backup',
-                    'kopano4s-backup', 'kopano-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
+    my @commands = ('kopano-admin', 'kopano-cli', 'kopano-storeadm', 'kopano-status', 'kopano-restart', 'kopano4s-init', 'kopano4s-optionals', 'kopano-postfix', 'kopano-fetchmail', 'kopano-backup',
+                    'kopano4s-backup', 'kopano4s-restore-user', 'kopano4s-downgrade', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
     # process command first
     if ($action eq "Run") {
         $rcmd = param('rcmd');
@@ -1784,17 +1786,30 @@ if ($page eq 'cmd')
         # kopano-admin: help = blank and run from script-dir to avoid legacy issue
         $params = "" if ( $rcmd eq "kopano-admin" && $params eq "help" );
         $rcmd = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh" if ( $rcmd eq "kopano-admin" );
+		# kopano-storeadm / kopano-cli: blank or help = -h(elp)
+        $params = "-h" if ( ( $rcmd eq "kopano-storeadm" || $rcmd eq "kopano-cli" ) && ( $params eq "" || $params eq "help" ) );
+        #$rcmd = "/var/packages/Kopano4s/scripts/wrapper/kopano-storeadm.sh" if ( $rcmd eq "kopano-storeadm" );
 
-        if ( $rcmd eq "kopano4s-backup" && $params ne "help" && $params ne "restore" ) {
-            system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-4s-backup.sh $params >/tmp/kopano-backup.out &");
-            sleep 2;
-            if (open(IN,"/tmp/kopano-backup.out")) {
-                while (<IN>) {
-                    $cmdtxt .= "$_\n";
-                }
-                close(IN);
+        if ( ($rcmd eq "kopano-backup" || $rcmd eq "kopano4s-backup") && $params ne "help" && $params ne "restore" ) {
+            if ( $rcmd eq "kopano4s-backup" ) {
+               system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano4s-backup.sh $params >/tmp/kopano4s-backup.out &");
             }
-            $cmdtxt .= "Started as log running background job; check notification and logs for kopano-backup completion..  "
+            else {
+               $params .= " -l INFO" if !($params =~ /-l/);
+               system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-backup.sh $params >/tmp/kopano-backup.out &");
+            }
+            sleep 1;
+            $cmdtxt .= "Started as log running background job; check notification and logs for backup completion..  "
+        }
+		elsif ( ($rcmd eq "kopano4s-restore-user" || $rcmd eq "kopano4s-downgrade") && ($params eq "start" || $params eq "all") ) {
+            if ( $rcmd eq "kopano4s-restore-user" ) {
+               system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano4s-restore-user.sh $params >/tmp/kopano4s-restore-user.out &");
+            }
+            else {
+               system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano4s-downgrade.sh $params >/tmp/kopano4s-downgrade.out &");
+            }
+            sleep 1;
+            $cmdtxt .= "Started as log running background job; check notification and logs for job completion..  "
         }
         else {
             $cmdline = "$rcmd $params |";

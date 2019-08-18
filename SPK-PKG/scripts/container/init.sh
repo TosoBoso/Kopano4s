@@ -2,8 +2,9 @@
 # (c) 2018 vbettag initialisation for Kopano4Syno in Docker container
 # kopano-monitor, gateway, ical disabled by default and added if found in etc-default
 if [ ! -e /etc/kopano/default ] && [ -e /etc/kopano/default.init ] ; then cp /etc/kopano/default.init /etc/kopano/default ; fi
-# Community new feature remove -d(emonized) for dagent from default for community edition
+# Community new feature remove -d(emonized) for dagent from default for community edition and do it reverse if downgraded
 if [ "$EDITION" = "Community" ] && grep -q "^DAGENT_OPTS" /etc/kopano/default ; then sed -i -e 's~DAGENT_OPTS~#DAGENT_OPTS~' /etc/kopano/default ; fi
+if [ "$EDITION" != "Community" ] && grep -q "^#DAGENT_OPTS" /etc/kopano/default ; then sed -i -e 's~#DAGENT_OPTS~DAGENT_OPTS~' /etc/kopano/default ; fi
 K_SERVICES="kopano-server kopano-spooler kopano-dagent"
 if grep -q ^SEARCH_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-search" ; fi
 if grep -q ^MONITOR_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-monitor" ; fi
@@ -419,9 +420,15 @@ install_ssl()
 		ln -sf /etc/kopano/ssl/svrcertbundle.pem /etc/kopano/gateway/cert.pem
 	fi
 }
+disable_ssl()
+{
+	echo "kopano: disabling SLL due to errors"
+	echo "" > /var/log/kopano/server.log
+
+}
 default_ssl()
 {
-	echo "going back to default self signed SSL to deal with to SSL errors"
+	echo "nginx: going back to default self signed SSL to deal with SSL errors"
 	echo "" > /var/log/nginx/error.log
 	sed -i -e 's,cert-kopano,cert-snakeoil,g' /etc/kopano/web/kopano-web.conf
 }

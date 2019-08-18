@@ -118,8 +118,10 @@ then
 fi
 if [ "$K_EDITION" = "Default" ]
 then
-	TAG1="8.6.9.0"
-	TAG2="3.5.0"
+	#TAG1="8.6.9.0"
+	#TAG2="3.5.0"
+	TAG1="8.7.1.0"
+	TAG2="3.5.6"
 	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then

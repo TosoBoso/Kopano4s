@@ -78,10 +78,10 @@ fi
 if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
 ATTACHMENT_STATE="$ATTACHMENT_ON_FS"
 K_EDITION_STATE="$K_EDITION"
-$SUDO sed -i -e "s~K_EDITION=.*~K_EDITION=\"Migration\""~ $ETC_PATH/package.cfg
+sed -i -e "s~K_EDITION=.*~K_EDITION=\"Migration\""~ $ETC_PATH/package.cfg
 if [ "$ATTACHMENT_ON_FS" = "ON" ]
 then
-	$SUDO sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"OFF\""~ "$ETC_PATH"/package.cfg
+	sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"OFF\""~ "$ETC_PATH"/package.cfg
 	sed -i -e "s~attachment_storage.*~attachment_storage	= database~" "$ETC_PATH"/kopano/server.cfg
 fi
 # set back server.cfg mode at migration version; it will not sstart with new settings
@@ -107,7 +107,7 @@ echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting migration version.." > /var/log/kopano/server.log
 kopano4s-init refresh
 # wait 3m to have to have zarafa databse upgraded in migration version then start kopano-backup aka mapi export per uer
-echo "$(date "+%Y.%m.%d-%H.%M.%S") sleep 3min to have migration version running smoothly with zarafa database import.."
+echo "$(date "+%Y.%m.%d-%H.%M.%S") sleep 5 min to have migration version running smoothly with zarafa database import.."
 sleep 300
 # no point to continue if kopano migration version stopped for any reason
 if /var/packages/Kopano4s/scripts/start-stop-status status
@@ -122,7 +122,7 @@ fi
 if [ $ROLLB -eq 0 ]
 then
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") running kopano-backup with 4 streams (see backup-user.log).."
-	kopano-backup -w 4 > "$K_BACKUP_PATH"/backup-user.log 2>&1
+	kopano-backup -w 4 -l INFO > "$K_BACKUP_PATH"/backup-user.log 2>&1
 fi
 cp /var/log/kopano/server.log "$K_BACKUP_PATH"/migrate-server.log
 TS=$(ls -t1 "$K_BACKUP_PATH"/dump-kopano-*.sql.gz | head -n 1 | grep -o [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])

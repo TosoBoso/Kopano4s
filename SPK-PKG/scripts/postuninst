@@ -9,7 +9,7 @@ GET_PKG_CFG
 if [ "$SYNOPKG_PKG_STATUS" != UPGRADE ]
 then
 	DROP_SOFTLINKS
-	DROP_USER_DATABASE
+	DROP_USER_DATABASE_SHARE
 	DROP_DOCKER
 	DROP_MYSQL_TUNING
 	# now delete the etc area to avoid it left orphaned

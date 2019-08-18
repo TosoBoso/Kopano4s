@@ -2,8 +2,7 @@
 # (c) 2018 vbettag - mysql backup for Kopano  script inspired by synology-wiki.de mods mysql backup section
 # admins only plus set sudo for DSM 6 as root login is no longer possible
 LOGIN=`whoami`
-MAJOR_VERSION=`grep majorversion /etc.defaults/VERSION | grep -o [0-9]`
-if [ $LOGIN != "root" ]
+if [ "$LOGIN" != "root" ]
 then 
 	echo "you have to run as root! alternatively as admin run with sudo prefix! exiting.."
 	exit 1
