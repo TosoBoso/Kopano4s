@@ -173,17 +173,11 @@ then
 fi
 if [ "$SSL" == "ON" ]
 then
-	if [ -e /usr/syno/etc/certificate/system/default/fullchain.pem ]
-	then
-		$SUDO cp /usr/syno/etc/certificate/system/default/fullchain.pem /etc/kopano/ssl/svrcertbundle.pem
-	else
-		$SUDO cp /usr/syno/etc/certificate/system/default/cert.pem /etc/kopano/ssl/svrcertbundle.pem
-	fi
-	$SUDO cp /usr/syno/etc/certificate/system/default/privkey.pem /etc/kopano/ssl/server.key
+	SET_K_CERTIFICATE
 	if [ "$ACL" == "OFF" ]
 	then
-		$SUDO chown -R root.root /etc/kopano/ssl
-		$SUDO chmod 700 /etc/kopano/ssl
+		$SUDO chown -R root.kopano /etc/kopano/ssl
+		$SUDO chmod 751 /etc/kopano/ssl
 	fi
 	if [ "$CONT" == "OFF" ]
 	then

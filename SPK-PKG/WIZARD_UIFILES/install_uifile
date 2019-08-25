@@ -52,10 +52,6 @@
 			"key": "PKGWIZ_K_SUP",
 			"desc": "Kopano Supported edition: latest tested version with Subscription and SNR required.",
 			"defaultValue": false
-		 },{
-			"key": "PKGWIZ_K_MIG",
-			"desc": "Kopano Migration edition (8.4.5-Web-3.4) to import Zarafa database and upgrade later.",
-			"defaultValue": false
 		}]
 		},{
 		"type": "multiselect",
@@ -121,7 +117,7 @@
 		}]
 	}]
 },{
-	"step_title": "Kopano for Synology Mail-Server Settings",
+	"step_title": "Kopano for Synology Mail-Server and SSL Settings",
 	"items": 
 	[{
 		"type": "textfield",
@@ -152,9 +148,13 @@
 		"desc": "",
 		"subitems":
 		[{
-			"key": "PKGWIZ_SYNC_SYNOCERT",
+			"key": "PKGWIZ_K_SYNC_SYNOCERT",
 			"desc": "Sync and refresh Synology SSL default certificate into Kopano container for web-/mail-server.",
 			"defaultValue": true
+		 },{
+			"key": "PKGWIZ_K_FORCE_SSL",
+			"desc": "Force SSL using above certificates not exposing unecrypted ports (9080, 8080, 236, 110, 143).",
+			"defaultValue": false
 		 },{
 			"key": "PKGWIZ_SMTPD_TLS",
 			"desc": "Enable SMTPD-TLS opportunistic encrpytion for Mail-Server on port 25 using above certificates.",

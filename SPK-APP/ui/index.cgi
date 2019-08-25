@@ -1331,8 +1331,8 @@ if ($page eq 'cfg')
     my $svrcfg = '/etc/kopano/server.cfg'; # server cfg file location
     my $defcfg = '/etc/kopano/default'; # kopano default cfg file location
     my $mycfg = '/var/packages/MariaDB10/etc/my.cnf'; # MariaDB10 cfg file location
-    my @pkgtags = ('kshare','kbackup','kfsattach','kgateway','kical','ksearch','kmonitor','dbname','dbuser','http',
-                   'https','ical','icals','wrtc','kwrtc','ksyncssl','slocale','keep','knotify','ntarget','stuning');
+    my @pkgtags = ('kshare','kbackup','kfsattach','kgateway','kical','ksearch','kmonitor','dbname','dbuser','http','https','ical','icals',
+                   'imap','imaps','pop3','pop3s','ksyncssl','kforcessl','kwrtc','wrtc','ksnr','slocale','keep','knotify','ntarget','stuning');
     my @mytags = ('innobuff','mpacket'); # mysql cfg tags
     my %cfgparam; # key value tag to cfg paramater
     $cfgparam{'kshare'} = 'K_SHARE'; # path to kopano share
@@ -1349,9 +1349,15 @@ if ($page eq 'cfg')
     $cfgparam{'https'} = 'HTTPS_PORT'; # container https port
     $cfgparam{'ical'} = 'ICAL_PORT'; # container ical port
     $cfgparam{'icals'} = 'ICALS_PORT'; # container icals port
-    $cfgparam{'wrtc'} = 'WRTC_PORT'; # container web-rtc port
-    $cfgparam{'kwrtc'} = 'K_WEBMEETINGS'; # kopano-webmeetings on or off
+    $cfgparam{'imap'} = 'IMAP_PORT'; # container imap port
+    $cfgparam{'imaps'} = 'IMAPS_PORT'; # container imaps port
+    $cfgparam{'pop3'} = 'POP3_PORT'; # container pop3 port
+    $cfgparam{'pop3s'} = 'POP3S_PORT'; # container pop3s port
     $cfgparam{'ksyncssl'} = 'K_SYNC_SYNOCERT'; # sync with synology certificates on or off
+    $cfgparam{'kforcessl'} = 'K_FORCE_SSL'; # enforce ssl by disabling other ports on or off
+    $cfgparam{'kwrtc'} = 'K_WEBMEETINGS'; # kopano-webmeetings on or off
+    $cfgparam{'wrtc'} = 'WRTC_PORT'; # container web-rtc port
+    $cfgparam{'ksnr'} = 'K_SNR'; # kopano serial number
     $cfgparam{'slocale'} = 'LOCALE'; # kopano-locale language
     $cfgparam{'keep'} = 'KEEP_BACKUPS'; # how many backups to kee
     $cfgparam{'knotify'} = 'NOTIFY';  # notification e.g. backup status on or off
@@ -1409,8 +1415,8 @@ if ($page eq 'cfg')
             $newtaghtml{$tag} = param ($tag);
         }
         my @strtags = ('kshare','kbackup','kfsattach','kgateway','kical','ksearch','kmonitor',
-                       'dbname','dbuser','kwrtc','ksyncssl','slocale','knotify','ntarget');
-        my @numtags = ('http','https','ical','icals','wrtc','keep','stuning');
+                       'dbname','dbuser','kwrtc','ksyncssl','kforcessl','ksnr','slocale','knotify','ntarget');
+        my @numtags = ('http','https','ical','icals','imap','imaps','pop3','pop3s','wrtc','keep','stuning');
         $newtaghtml{'kfsattach'} = $newtaghtml{'kfsattach'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
         $newtaghtml{'kgateway'} = $newtaghtml{'kgateway'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
         $newtaghtml{'kical'} = $newtaghtml{'kical'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
@@ -1419,6 +1425,7 @@ if ($page eq 'cfg')
         $newtaghtml{'knotify'} = $newtaghtml{'knotify'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
         $newtaghtml{'kwrtc'} = $newtaghtml{'kwrtc'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
         $newtaghtml{'ksyncssl'} = $newtaghtml{'ksyncssl'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
+        $newtaghtml{'kforcessl'} = $newtaghtml{'kforcessl'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
         chop($newtaghtml{'stuning'}); # remove the %
         # special cases for attachments and k-services changed also update kopano-server.cfg / default 
         if ( $newtaghtml{'kfsattach'} ne $tmplhtml{'kfsattach'} ) {
@@ -1550,6 +1557,7 @@ if ($page eq 'cfg')
     $tmplhtml{'chkmonitor'} = $tmplhtml{'kmonitor'} eq 'ON' ? 'checked' : '';
     $tmplhtml{'chkkwrtc'} = $tmplhtml{'kwrtc'} eq 'ON' ? 'checked' : '';
     $tmplhtml{'chksyncssl'} = $tmplhtml{'ksyncssl'} eq 'ON' ? 'checked' : '';
+    $tmplhtml{'chkforcessl'} = $tmplhtml{'kforcessl'} eq 'ON' ? 'checked' : '';
     $tmplhtml{'chknotify'} = $tmplhtml{'knotify'} eq 'ON' ? 'checked' : '';
     $tmplhtml{'cfgtxt'} = $cfgtxt;
     $tmplhtml{'cfgcmb'} = '';
@@ -1706,16 +1714,18 @@ if ($page eq 'log')
     my $logtxt = '';
     my $slog = '';
     my $logpath = '';
+    my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
+    my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
     my $logcmb = '';
     my $mode = param('mode'); # last 100 entries or all
     my @logfiles = ('server.log', 'spooler.log', 'mail.log', 'mail.info', 'mail.warn', 'mail.err', 'amavis.log', 'dagent.log', 'licensed.log', 'monitor.log', 'search.log',
-                    'gateway.log','ical.log', 'presence.log', 'webmeetings.log', 'z-push.log', 'z-push-error.log', 'fetchmail.log', 'nginx.log', 'backup.log', 'sqlbackup.log');
+                    'gateway.log','ical.log', 'presence.log', 'webmeetings.log', 'z-push.log', 'z-push-error.log', 'fetchmail.log', 'nginx.log', 'mySqlDump.log', 'backup-user.log', 'restore-user.log');
     # process command first
     if ($action eq "Truncate") {
         $slog = param('slog'); # the log selected to show
         $logpath = '/var/log/kopano';
         $logpath .= '/z-push' if ($slog =~ /z-push/);
-        $logpath = '/var/packages/Kopano4s/target/log' if ($slog =~ /sqlbackup.log/);
+        $logpath = $buppath if ($slog =~ /-user.log/) || ($slog =~ /mySqlDump.log/);
         if ( $mode eq 'all' ) {
             system("/bin/echo '*** log truncated to zero ***' > $logpath/$slog");
         }
@@ -1732,6 +1742,7 @@ if ($page eq 'log')
         $slog = param('slog'); # the log selected to show
         $logpath = '/var/log/kopano';
         $logpath .= '/z-push' if ($slog =~ /z-push/);
+        $logpath = $buppath if ($slog =~ /-user.log/) || ($slog =~ /mySqlDump.log/);
         if ( $mode eq 'all' ) {
             if (open(IN,"$logpath/$slog")) 
             {
@@ -1777,8 +1788,10 @@ if ($page eq 'cmd')
     my $rcmd='';
     my $params='';
     my $cmdcmb='';
-    my @commands = ('kopano-admin', 'kopano-cli', 'kopano-storeadm', 'kopano-status', 'kopano-restart', 'kopano4s-init', 'kopano4s-optionals', 'kopano-postfix', 'kopano-fetchmail', 'kopano-backup',
-                    'kopano4s-backup', 'kopano4s-restore-user', 'kopano4s-downgrade', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
+    my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
+    my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
+    my @commands = ('kopano-admin', 'kopano-cli', 'kopano-storeadm', 'kopano-status', 'kopano-restart', 'kopano4s-init', 'kopano4s-optionals', 'kopano-postfix', 'kopano-fetchmail', 'kopano-backup', 'kopano4s-restore-user', 
+                    'kopano4s-backup', 'kopano4s-downgrade', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
     # process command first
     if ($action eq "Run") {
         $rcmd = param('rcmd');
@@ -1792,23 +1805,47 @@ if ($page eq 'cmd')
 
         if ( ($rcmd eq "kopano-backup" || $rcmd eq "kopano4s-backup") && $params ne "help" && $params ne "restore" ) {
             if ( $rcmd eq "kopano4s-backup" ) {
-               system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano4s-backup.sh $params >/tmp/kopano4s-backup.out &");
+               system("/var/packages/Kopano4s/scripts/addon/kopano4s-backup.sh $params &>/dev/null 2>&1 &");
+               $cmdline = "$buppath/mySqlDump.log";
+               $cmdtxt = "Initial output of $buppath/mySqlDump.log please check log later\n ";
             }
             else {
                $params .= " -l INFO" if !($params =~ /-l/);
-               system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-backup.sh $params >/tmp/kopano-backup.out &");
+               system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-backup.sh $params &>$buppath/backup-user.log 2>&1 &");
+               $cmdline = "$buppath/backup-user.log";
+               $cmdtxt = "Initial output of $buppath/backup-user.log please check log later\n ";
             }
-            sleep 1;
+            sleep 3;
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $cmdtxt .= "$reply\n ";
+                }
+            }
             $cmdtxt .= "Started as log running background job; check notification and logs for backup completion..  "
         }
 		elsif ( ($rcmd eq "kopano4s-restore-user" || $rcmd eq "kopano4s-downgrade") && ($params eq "start" || $params eq "all") ) {
             if ( $rcmd eq "kopano4s-restore-user" ) {
-               system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano4s-restore-user.sh $params >/tmp/kopano4s-restore-user.out &");
+               system("/var/packages/Kopano4s/scripts/addon/kopano4s-restore-user.sh $params &>/dev/null 2>&1 &");
+               $cmdline = "$buppath/restore-user.log";
+               $cmdtxt = "Initial output of $buppath/restore-user.log please check log later\n ";
             }
             else {
-               system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano4s-downgrade.sh $params >/tmp/kopano4s-downgrade.out &");
+               system("/var/packages/Kopano4s/scripts/addon/kopano4s-downgrade.sh $params &>/dev/null 2>&1 &");
+               $cmdline = "$buppath/downgrade-steps.log";
+               $cmdtxt = "Initial output of $buppath/downgrade-steps.log please check log later\n ";
             }
-            sleep 1;
+            sleep 3;
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $cmdtxt .= "$reply\n ";
+                }
+            }
             $cmdtxt .= "Started as log running background job; check notification and logs for job completion..  "
         }
         else {

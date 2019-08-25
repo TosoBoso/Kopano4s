@@ -19,8 +19,9 @@ fi
 case "$1" in
 	start)
 		ENABLE_UI
-		# update certificates from synology into container if out of sync
+		# update certificates from synology into container if out of sync same for locale
 		SYNC_K_CERTIFICATE
+		SYNC_K_LOCALE
 		# do not start in active slave mode as it breaks replication
 		if [ "$K_REPLICATION" = "SLAVE" ] && ( $SUDO kopano4s-replication | grep -q "running" )
 		then

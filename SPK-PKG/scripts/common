@@ -53,6 +53,10 @@ then
 	PKGWIZ_ICAL_PORT_PREFIX=8000
 	IMAP_PORT=143
 	IMAPS_PORT=993
+	POP3_PORT=110
+	POP3S_PORT=995
+	PKGWIZ_K_SYNC_SYNOCERT="true"
+	PKGWIZ_K_FORCE_SSL="false"
 	PKGWIZ_WRTC_PORT=8090
 	PKGWIZ_TLS_SERVER_NAME="mail.mydomain.me"
 	PKGWIZ_SMTPD_TLS="false"
@@ -61,7 +65,7 @@ then
 	PKGWIZ_FILES_DOC="false"
 	PKGWIZ_COTURN="false"
 	PKGWIZ_BUILD="false"
-	PKGWIZ_ATTACHMENT_ON_FS="false"
+	PKGWIZ_ATTACHMENT_ON_FS="true"
 
 	PKGWIZ_MAIL_DOMAINS="mail.mydomain.me"
 	PKGWIZ_ALIAS_SYS=""
@@ -300,6 +304,8 @@ GET_WIZZARD_CFG()
 	# IMAP port currently not via pkwizzard so set default
 	IMAP_PORT=143
 	IMAPS_PORT=993
+	POP3_PORT=110
+	POP3S_PORT=995
 	if [ "$PKGWIZ_TLS_SERVER_NAME" != "mail.mydomain.me" ]
 	then
 		TLS_SERVER_NAME="$PKGWIZ_TLS_SERVER_NAME"
@@ -375,6 +381,12 @@ GET_WIZZARD_CFG()
 		K_SYNC_SYNOCERT="ON"
 	else
 		K_SYNC_SYNOCERT="OFF"
+	fi
+	if [ "$PKGWIZ_K_FORCE_SSL" = "true" ]
+	then
+		K_FORCE_SSL="ON"
+	else
+		K_FORCE_SSL="OFF"
 	fi
 	if [ "$PKGWIZ_SMTPD_TLS" = "true" ]
 	then
@@ -905,6 +917,13 @@ INIT_UPDATE()
 	else
 		ATTACHMENT_ON_FS="OFF"
 	fi
+	# add admin.cfg for local folders
+	if [ ! -e "$ETC_PATH/kopano/admin.cfg" ]
+	then
+		if [ ! -e "$ETC_PATH"/kopano/admin.cfg.init ] ; then cp "$TARGET_PATH"/merge/admin.cfg.init "$ETC_PATH"/kopano ; fi 
+		sed -i -e "s~#default_store_locale =~default_store_locale =\"$LOCALE~" $ETC_PATH/kopano/admin.cfg.init
+		cp "$ETC_PATH"/kopano/admin.cfg.init "$ETC_PATH"/kopano/admin.cfg
+	fi
 	# disable coredump in server.log to avoid log warnings and issues
 	if grep -q "#coredump_enabled" /etc/kopano/server.cfg
 	then
@@ -921,6 +940,22 @@ INIT_UPDATE()
 	# init IMAP(S)_PORT by enabled when it did not exist aka is empty (-z)
 	if [ -z "$IMAP_PORT" ] ; then IMAP_PORT=143 ; fi
 	if [ -z "$IMAPS_PORT" ] ; then IMAPS_PORT=993 ; fi
+	if [ -z "$POP3_PORT" ] ; then POP3_PORT=110 ; fi
+	if [ -z "$POP3S_PORT" ] ; then POP3S_PORT=995 ; fi
+	if [ -z "$K_FORCE_SSL" ] ; then K_FORCE_SSL="OFF" ; fi
+	# gateway and ical-cfg changed recently from imaps_port to imaps_listen
+	if [ "$K_GATEWAY" = "ON" ] && [ "$K_EDITION" != "Migration" ]
+	then
+		if [ ! -e "$ETC_PATH"/kopano/gateway.cfg.init ] ; then cp "$TARGET_PATH"/merge/gateway.cfg.init "$ETC_PATH"/kopano ; fi
+		if [ ! -e "$ETC_PATH"/kopano/gateway.cfg ] ; then cp "$ETC_PATH"/kopano/gateway.cfg.init "$ETC_PATH"/kopano/gateway.cfg ; fi
+		if grep -q imaps_port "$ETC_PATH"/kopano/gateway.cfg ; then cp "$ETC_PATH"/kopano/gateway.cfg.init "$ETC_PATH"/kopano/gateway.cfg ; fi
+	fi
+	if [ "$K_ICAL" = "ON" ] && [ "$K_EDITION" != "Migration" ]
+	then
+		if [ ! -e "$ETC_PATH"/kopano/ical.cfg.init ] ; then cp "$TARGET_PATH"/merge/ical.cfg.init "$ETC_PATH"/kopano ; fi
+		if [ ! -e "$ETC_PATH"/kopano/gateway.cfg ] ; then cp "$ETC_PATH"/kopano/ical.cfg.init "$ETC_PATH"/kopano/ical.cfg ; fi
+		if grep -q imaps_port "$ETC_PATH"/kopano/ical.cfg ; then cp "$ETC_PATH"/kopano/ical.cfg.init "$ETC_PATH"/kopano/ical.cfg ; fi
+	fi
 	# init K_SEARCH by enabled when it did not exist aka is empty (-z)
 	if [ -z "$K_SEARCH" ] ; then K_SEARCH="ON" ; fi
 	# amavis now holds spamassasin and clamav in same directory and soft links are used in container
@@ -986,6 +1021,7 @@ INIT_SHARE_ETC()
 	if [ ! -e "$ETC_PATH/kopano/custom" ] ; then mkdir -p "$ETC_PATH/kopano/custom" ; fi
 	if [ ! -e "$ETC_PATH/kopano/postfix" ] ; then mkdir -p "$ETC_PATH/kopano/postfix" ; fi
 	if [ ! -e "$ETC_PATH/kopano/ssl" ] ; then mkdir -p "$ETC_PATH/kopano/ssl" ; fi
+	if [ ! -e "$ETC_PATH/kopano/ssl/clients" ] ; then mkdir -p "$ETC_PATH/kopano/ssl/clients" ; fi
 	if [ ! -e "$ETC_PATH/kopano/web" ] ; then mkdir -p "$ETC_PATH/kopano/web" ; fi
 	chown -R root.kopano "$ETC_PATH/kopano"
 	find "$ETC_PATH/kopano" -type d -exec chmod 750 "{}" ";"
@@ -993,7 +1029,8 @@ INIT_SHARE_ETC()
 	chmod 751 "$ETC_PATH/z-push"
 	chmod 751 "$ETC_PATH/kopano/custom"
 	chmod 751 "$ETC_PATH/kopano/postfix"
-	chmod 700 "$ETC_PATH/kopano/ssl"
+	chmod 751 "$ETC_PATH/kopano/ssl"
+	chmod 755 "$ETC_PATH/kopano/ssl/clients"
 	chmod 751 "$ETC_PATH/kopano/web"
 }
 INIT_DATABASE()
@@ -1280,7 +1317,9 @@ SET_OPTIONALS()
 	fi
 	if [ "$K_MONITOR" = "ON" ] ; then $SUDO sed -i -e 's~MONITOR_ENABLED.*~MONITOR_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
 	if [ "$K_GATEWAY" = "ON" ] ; then $SUDO sed -i -e 's~GATEWAY_ENABLED.*~GATEWAY_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
+	if [ "$K_GATEWAY" = "ON" ] && [ "$K_EDITION" != "Migration" ] ; then $SUDO cp "$ETC_PATH"/kopano/gateway.cfg.init "$ETC_PATH"/kopano/gateway.cfg ; fi
 	if [ "$K_ICAL" = "ON" ] ; then $SUDO sed -i -e 's~ICAL_ENABLED.*~ICAL_ENABLED=yes~' "$ETC_PATH"/kopano/default.ini ; fi
+	if [ "$K_ICAL" = "ON" ] && [ "$K_EDITION" != "Migration" ] ; then $SUDO cp "$ETC_PATH"/kopano/ical.cfg.init "$ETC_PATH"/kopano/ical.cfg ; fi
 	if [ "$K_POSTGREY" = "ON" ] ; then $SUDO sed -i -e 's~POSTGREY_ENABLED.*~POSTGREY_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
 	if [ "$K_AMAVISD" = "ON" ] ; then $SUDO sed -i -e 's~AMAVISD_ENABLED.*~AMAVISD_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
 	if [ "$K_CLAMAVD" = "ON" ] ; then $SUDO sed -i -e 's~CLAMAVD_ENABLED.*~CLAMAVD_ENABLED=yes~' "$ETC_PATH"/kopano/default.init ; fi
@@ -1296,16 +1335,40 @@ SET_OPTIONALS()
 }
 SET_K_CERTIFICATE()
 {
-	LOG_MESSAGE "Importing SSL certificates from synology default area to container for NGINX and Postfix"
-	chmod 600 "$ETC_PATH"/kopano/ssl/*
+	local MSG
+	MSG="Importing SSL certificates from synology default area to container for NGINX, Postfix, Kopano components"
+	if [ "$SUDO" = "sudo" ]
+	then
+		echo "$MSG"
+	else
+		LOG_MESSAGE "$MSG"
+	fi
+	if [ -e /usr/syno/etc/certificate/system/default/cert.pem ]
+	then
+		$SUDO cp /usr/syno/etc/certificate/system/default/cert.pem "$ETC_PATH"/kopano/ssl/server.crt
+	fi
+	if [ -e /usr/syno/etc/certificate/system/default/privkey.pem ]
+	then
+		$SUDO cp /usr/syno/etc/certificate/system/default/privkey.pem "$ETC_PATH"/kopano/ssl/server.key
+	fi
+	if [ -e /usr/syno/etc/certificate/system/default/chain.pem ]
+	then
+		$SUDO cp /usr/syno/etc/certificate/system/default/chain.pem "$ETC_PATH"/kopano/ssl/cacert.pem
+	fi
 	if [ -e /usr/syno/etc/certificate/system/default/fullchain.pem ]
 	then
-		cp /usr/syno/etc/certificate/system/default/fullchain.pem "$ETC_PATH"/kopano/ssl/svrcertbundle.pem
+		$SUDO cp /usr/syno/etc/certificate/system/default/fullchain.pem "$ETC_PATH"/kopano/ssl/svrcertbundle.pem
 	else
-		cp /usr/syno/etc/certificate/system/default/cert.pem "$ETC_PATH"/kopano/ssl/svrcertbundle.pem
+		if [ -e /usr/syno/etc/certificate/system/default/chain.pem ]
+		then
+			$SUDO cp /usr/syno/etc/certificate/system/default/chain.pem "$ETC_PATH"/kopano/ssl/svrcertbundle.pem
+		else
+			$SUDO cp /usr/syno/etc/certificate/system/default/cert.pem "$ETC_PATH"/kopano/ssl/svrcertbundle.pem
+		fi
 	fi
-	cp /usr/syno/etc/certificate/system/default/privkey.pem "$ETC_PATH"/kopano/ssl/server.key
-	chmod 400 "$ETC_PATH"/kopano/ssl/*
+	$SUDO chown -R root.kopano "$ETC_PATH"/kopano/ssl
+	$SUDO chmod 640 "$ETC_PATH"/kopano/ssl/*
+	$SUDO chmod 755 "$ETC_PATH"/kopano/ssl/clients
 }
 SYNC_K_CERTIFICATE()
 {
@@ -1313,25 +1376,36 @@ SYNC_K_CERTIFICATE()
 	then
 		if ! $SUDO diff -s "$ETC_PATH/kopano/ssl/server.key" /usr/syno/etc/certificate/system/default/privkey.pem | grep -q "identical"
 		then
-			echo "Importing Synology SSL certificates into Kopano container due to updated certs"
-			LOG_MESSAGE "Importing Synology SSL certificates into Kopano container due to updated certs"
-			if $SUDO [ -e /usr/syno/etc/certificate/system/default/fullchain.pem ]
-			then
-				$SUDO cp /usr/syno/etc/certificate/system/default/fullchain.pem "$ETC_PATH/kopano/ssl/svrcertbundle.pem"
-			else
-				$SUDO cp /usr/syno/etc/certificate/system/default/cert.pem "$ETC_PATH/kopano/ssl/svrcertbundle.pem"
-			fi
-			$SUDO cp /usr/syno/etc/certificate/system/default/privkey.pem "$ETC_PATH/kopano/ssl/server.key"
+			SET_K_CERTIFICATE
+			if ! $SUDO docker ps | grep -q kopano4s ; then $SUDO docker start kopano4s ; fi
+			sleep 1
+			echo -e "\n" | $SUDO docker exec -i kopano4s init.sh ssl
 		fi
 	fi
 }
 SET_K_LOCALE()
 {
 	# ** change kopano-etc-default entry for locales if non-en_US selected
-	if [ "$LOCALE" != "en_US.UTF-8" ]
+	if [ "$LOCALE" != "en_US.UTF-8" ] || ! grep -q 'KOPANO_LOCALE="C"' "$ETC_PATH"/kopano/default.init
 	then
-		sed -i -e "s~KOPANO_LOCALE=\"C~KOPANO_LOCALE=\"$LOCALE~" $ETC_PATH/kopano/default.init
-		sed -i -e "s~KOPANO_USERSCRIPT_LOCALE=\"C~KOPANO_USERSCRIPT_LOCALE=\"$LOCALE~" $ETC_PATH/kopano/default.init
+		$SUDO sed -i -e "s~KOPANO_LOCALE.*~KOPANO_LOCALE=\"$LOCALE\"~" "$ETC_PATH"/kopano/default.init
+		$SUDO sed -i -e "s~KOPANO_USERSCRIPT_LOCALE.*~KOPANO_USERSCRIPT_LOCALE=\"$LOCALE\"~" "$ETC_PATH"/kopano/default.init
+		if [ ! -e "$ETC_PATH"/kopano/default ] ; then $SUDO cp "$ETC_PATH"/kopano/default.init "$ETC_PATH"/kopano/default ; fi
+		$SUDO sed -i -e "s~KOPANO_LOCALE.*~KOPANO_LOCALE=\"$LOCALE\"~" "$ETC_PATH"/kopano/default
+		$SUDO sed -i -e "s~KOPANO_USERSCRIPT_LOCALE.*~KOPANO_USERSCRIPT_LOCALE=\"$LOCALE\"~" "$ETC_PATH"/kopano/default
+		$SUDO sed -i -e "s~#default_store_locale~default_store_locale~" "$ETC_PATH"/kopano/admin.cfg.init
+		$SUDO sed -i -e "s~default_store_locale.*~default_store_locale =\"$LOCALE\"~" "$ETC_PATH"/kopano/admin.cfg.init
+		$SUDO cp "$ETC_PATH"/kopano/admin.cfg.init "$ETC_PATH"/kopano/admin.cfg
+	fi
+}
+SYNC_K_LOCALE()
+{
+	# ** compare default local with k_local and adjust if different as cfg changed
+	. "$ETC_PATH"/kopano/default
+	if [ "$KOPANO_LOCALE" != "$LOCALE" ]
+	then
+		SET_K_LOCALE
+		echo "end"
 	fi
 }
 SET_SQL_CONF()
@@ -1391,11 +1465,14 @@ SET_PKG_CFG()
 		echo ICALS_PORT=$ICALS_PORT
 		echo IMAP_PORT=$IMAP_PORT
 		echo IMAPS_PORT=$IMAPS_PORT
+		echo POP3_PORT=$POP3_PORT
+		echo POP3S_PORT=$POP3S_PORT
 		echo DOCKER_PATH="\"$DOCKER_PATH\""
 		echo DOCKER_HOST="\"$DOCKER_HOST\""
 		echo DOCKER_NW="\"$DOCKER_NW\""
 		echo IMAGE_BUILD="\"$IMAGE_BUILD\""
 		echo K_SYNC_SYNOCERT="\"$K_SYNC_SYNOCERT\""
+		echo K_FORCE_SSL="\"$K_FORCE_SSL\""
 		echo K_REPLICATION="\"$K_REPLICATION\""
 		echo K_REPLICATION_PWD="\"$K_REPLICATION_PWD\""
 		echo K_SEARCH="\"$K_SEARCH\""
@@ -1489,19 +1566,29 @@ SET_DOCKER_ENV()
 	DOCKER_MOUNTS="-v $M_SOCK:/run/mysqld:ro -v $K_RUN:/run/kopano -v $K_LT:/etc/localtime:ro -v $K_TZ:/etc/timezone:ro -v $K_ETC:/etc/kopano -v $Z_ETC:/etc/z-push \
 	-v $K_AMV:/var/lib/amavis -v $K_ARC:/var/lib/kopano/archive -v $K_ATC:/var/lib/kopano/attachments -v $K_BUP:/var/lib/kopano/backup \
 	-v $K_LOG:/var/log/kopano -v $K_GRY:/var/lib/postgrey -v $K_SRC:/var/lib/kopano/search -v $K_SPL:/var/spool/postfix -v $K_ZPU:/var/lib/z-push"
-	K_HOST="kopano4s.$MY_DOMAIN"	
-	DOCKER_PORTS="-p 236:236 -p 237:237 -p 25:25 -p 2003:2003 -p $HTTP_PORT:9080 -p $HTTPS_PORT:9443"
+	# set tls name preferred so core componets like server expose with right name via 237
+	if [ -n "$TLS_SERVER_NAME" ]
+	then
+		K_HOST="$TLS_SERVER_NAME"	
+	else
+		K_HOST="kopano4s.$MY_DOMAIN"	
+	fi
+	DOCKER_PORTS="-p 237:237 -p 25:25 -p 2003:2003 -p $HTTPS_PORT:9443"
+	if [ "$K_FORCE_SSL" != "ON" ] ; then DOCKER_PORTS="$DOCKER_PORTS -p 236:236 -p $HTTP_PORT:9080" ; fi
 	if [ "$K_GATEWAY" = "ON" ]
 	then
-		DOCKER_PORTS="$DOCKER_PORTS -p $IMAP_PORT:143 -p $IMAPS_PORT:993"
+		DOCKER_PORTS="$DOCKER_PORTS -p $IMAPS_PORT:993 -p $POP3S_PORT:995"
+		if [ "$K_FORCE_SSL" != "ON" ] ; then DOCKER_PORTS="$DOCKER_PORTS -p $POP3_PORT:110 -p $IMAP_PORT:143" ; fi
 	fi
 	if [ "$K_ICAL" = "ON" ]
 	then
-		DOCKER_PORTS="$DOCKER_PORTS -p $ICAL_PORT:8080 -p $ICALS_PORT:8443"
+		DOCKER_PORTS="$DOCKER_PORTS -p $ICALS_PORT:8443"
+		if [ "$K_FORCE_SSL" != "ON" ] ; then DOCKER_PORTS="$DOCKER_PORTS -p $ICAL_PORT:8080" ; fi
 	fi
 	if [ "$K_ARCHIVE_IMAP" = "ON" ]
 	then
-		DOCKER_PORTS="$DOCKER_PORTS -p 144:144 -p 994:994"
+		DOCKER_PORTS="$DOCKER_PORTS -p 994:994"
+		if [ "$K_FORCE_SSL" != "ON" ] ; then DOCKER_PORTS="$DOCKER_PORTS -p 144:144" ; fi
 	fi
 	if [ "$K_WEBMEETINGS" = "ON" ]
 	then

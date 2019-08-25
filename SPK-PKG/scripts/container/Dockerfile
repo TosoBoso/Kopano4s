@@ -398,5 +398,5 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 WORKDIR /var/lib/kopano/backup
 ENTRYPOINT ["/usr/local/bin/init.sh"]
 CMD ["alive"]
-# ports kopano(s): 236/237, dagent-lmtp 2003, postfix 25, imap(s) 143/144/993/994, ical(s) 8080/8443, webmeetings 8090, Spreed 1935, STUN 3478
-EXPOSE 236 237 2003 25 143 144 993 994 8080 8443 9080 9443 8090 1935 3478
+# ports kopano(s): 236/237, dagent-lmtp 2003, postfix 25, imap(s) 143/144/993/994, pop3(s) 110/995, ical(s) 8080/8443, webmeetings 8090, Spreed 1935, STUN 3478
+EXPOSE 236 237 2003 25 110 143 144 993 994 995 8080 8443 9080 9443 8090 1935 3478

@@ -1,4 +1,5 @@
-[2019-08-18 v.1.0.2  [Scripts for kopano4s-restore-user, kopano4s-downgrade, kopano4s-migration-zarafa]
+[2019-08-25 v.1.0.3  [Fix for SSL via kopano4s-init ssl, Admin-UI background jobs backup, restore, downgrade]
+[2019-08-18 v.1.0.2  [Scripts kopano4s-restore-user/-downgrade/-migration-zarafa, localize fix for new users]
 [2019-08-03 v.1.0.1  [Split Stable vs. Beta nIghtly builds; intro Default Stable; fix to webapp-mdm connect]
 [2019-03-17 v.1.0.0  [Fix to z-push issues incl. kopano4s-init mobiles, fix to logrotate init.rc warnings]
 [2019-03-03 v.0.9.9  [Refactoring directory structures, beta vs stable images, k4s-init for previous image]

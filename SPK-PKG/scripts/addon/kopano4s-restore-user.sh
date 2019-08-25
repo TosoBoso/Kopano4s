@@ -35,12 +35,12 @@ for USR in $USRLIST; do
 	if [ -e "$K_BACKUP_PATH/$USR/user" ]
 	then
 		MSG="Restoring user $USR"
-		if ! kopano-cli --list-users | grep -v SYSTEM | grep -v Homeserver | grep -v "User list for Default" | grep -v "\-\-\-" | grep -q $USR
+		if ! kopano-cli --list-users | grep -v SYSTEM | grep -v Homeserver | grep -v "User list for Default" | grep -v "\-\-\-" | grep -q ^$USR
 		then
 			GRPLIST=""
 			if [ -e "$K_BACKUP_PATH/$USR/user-details" ]
 			then
-				NAME=$(grep "Full name:" "$K_BACKUP_PATH/$USR/user-details" | cut -d ":" -f2- | sed "s~^[\t]*~~" | sed "s~ ~~g")
+				NAME=$(grep "Full name:" "$K_BACKUP_PATH/$USR/user-details" | cut -d ":" -f2- | sed "s~^[\t]*~~" | sed "s~^ *~~")
 				MAIL=$(grep "Email address:" "$K_BACKUP_PATH/$USR/user-details" | cut -d ":" -f2- | sed "s~^[\t]*~~" | sed "s~ ~~g")
 				ACTIVE=$(grep "Active:" "$K_BACKUP_PATH/$USR/user-details" | cut -d ":" -f2- | sed "s~^[\t]*~~" | sed "s~ ~~g")
 				ADMIN=$(grep "Administrator:" "$K_BACKUP_PATH/$USR/user-details" | cut -d ":" -f2- | sed "s~^[\t]*~~" | sed "s~ ~~g")
@@ -78,7 +78,9 @@ for USR in $USRLIST; do
 				ADMFLAG=0			
 			fi
 			# add user then set localize folder with LOCAL as --lang doen not seam to work
-			kopano-cli --create --user "${USR}" --fullname "${NAME}" --email "${MAIL}" --admin-level ${ADMFLAG} --password 'M1gr@t1on'
+			echo "kopano-cli --create --user ${USR} --fullname ${NAME} --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'"
+		
+			kopano-cli --create --user "$USR" --fullname="${NAME}" --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'
 			kopano-localize-folders -u "${USR}" --lang "${LOCALE}"
 			if [ -n $USRPH ]
 			then

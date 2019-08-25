@@ -323,7 +323,10 @@ set_acl()
 	# other chmod etc-kopano root, sasl_pwd, z-push, webapp, 
 	chmod 751 /etc/kopano
 	if [ -e /etc/kopano/postfix/sasl_passwd ] ; then chmod 600 /etc/kopano/postfix/sasl_passwd ; fi
-
+	chmod 751 /etc/kopano/ssl
+	chmod 640 /etc/kopano/ssl/*
+	chmod 755 /etc/kopano/ssl/clients
+	chmod 644 /etc/kopano/ssl/clients/*
 	chown -R root.www-data /etc/z-push
 	chmod 751 /etc/z-push
 	chmod 640 /etc/z-push/*
@@ -404,32 +407,62 @@ set_acl()
 }
 install_ssl()
 {
-	if [ -e /etc/kopano/ssl/svrcertbundle.pem ] && [ -e /etc/kopano/ssl/server.key ]
+	if [ -e /etc/kopano/ssl/server.key ] && [ -e /etc/kopano/ssl/server.crt ] && [ -e /etc/kopano/ssl/cacert.pem ]
 	then
+		# combine key and cert see https://github.com/zokradonh/kopano-docker/blob/master/ssl/start.sh
+		cp /etc/kopano/ssl/server.key /etc/kopano/ssl/server.pem
+		cat /etc/kopano/ssl/server.crt >> /etc/kopano/ssl/server.pem
+		chown root.kopano /etc/kopano/ssl/server.pem
+		openssl x509 -in /etc/kopano/ssl/server.crt -pubkey -noout >  /etc/kopano/ssl/clients/server-public.pem
+		# soflinks in etc-ssl for nginx, replace of self-cert snakeoil by kopano and enable kopano-core ssl
 		ln -sf /etc/kopano/ssl/svrcertbundle.pem /etc/ssl/certs/ssl-cert-kopano.pem
+		ln -sf /etc/kopano/ssl/cacert.pem /etc/ssl/certs/ssl-cacert-kopano.pem
 		ln -sf /etc/kopano/ssl/server.key /etc/ssl/private/ssl-cert-kopano.key
-		sed -i -e 's~cert-snakeoil~cert-kopano~g' /etc/kopano/web/kopano-web.conf
-		cat /etc/kopano/ssl/server.key /etc/kopano/ssl/svrcertbundle.pem > /etc/kopano/ssl/server.pem
-		sed -i -e 's~replace-with-server-cert-password~~' /etc/kopano/server.cfg
-		sed -i -e 's~/etc/kopano/ssl/cacert.pem~~' /etc/kopano/server.cfg
 		mkdir -p /etc/kopano/ical
 		ln -sf /etc/kopano/ssl/server.key /etc/kopano/ical/privkey.pem
-		ln -sf /etc/kopano/ssl/svrcertbundle.pem /etc/kopano/ical/cert.pem
+		ln -sf /etc/kopano/ssl/server.crt /etc/kopano/ical/cert.pem
 		mkdir -p /etc/kopano/gateway
 		ln -sf /etc/kopano/ssl/server.key /etc/kopano/gateway/privkey.pem
-		ln -sf /etc/kopano/ssl/svrcertbundle.pem /etc/kopano/gateway/cert.pem
+		ln -sf /etc/kopano/ssl/server.crt /etc/kopano/gateway/cert.pem
+		sed -i -e 's~cert-snakeoil~cert-kopano~g' /etc/kopano/web/kopano-web.conf
+		sed -i -e 's~replace-with-server-cert-password~~' /etc/kopano/server.cfg
+		sed -i -e 's~server_listen_tls.*~server_listen_tls = *:237~' /etc/kopano/server.cfg
+		sed -i -e 's~^#server_ssl_key_file~server_ssl_key_file~' /etc/kopano/server.cfg
+		sed -i -e 's~^#server_ssl_ca_file~server_ssl_ca_file~' /etc/kopano/server.cfg
+		sed -i -e 's~^#ssl_private_key_file~ssl_private_key_file~' /etc/kopano/gateway.cfg
+		sed -i -e 's~^#ssl_certificate_file~ssl_certificate_file~' /etc/kopano/gateway.cfg
+		sed -i -e 's~^#imaps_listen~imaps_listen~' /etc/kopano/gateway.cfg
+		sed -i -e 's~^imaps_listen.*~imaps_listen = *:993~' /etc/kopano/gateway.cfg
+		sed -i -e 's~^#pop3s_listen~pop3s_listen~' /etc/kopano/gateway.cfg
+		sed -i -e 's~^pop3s_listen.*~pop3s_listen = *:995~' /etc/kopano/gateway.cfg
+		sed -i -e 's~^#ssl_private_key_file~ssl_private_key_file~' /etc/kopano/ical.cfg
+		sed -i -e 's~^#ssl_certificate_file~ssl_certificate_file~' /etc/kopano/ical.cfg
+		sed -i -e 's~^#icals_listen~icals_listen~' /etc/kopano/ical.cfg
+		sed -i -e 's~^icals_listen.*~icals_listen = *:8443~' /etc/kopano/ical.cfg
 	fi
 }
 disable_ssl()
 {
-	echo "kopano: disabling SLL due to errors"
-	echo "" > /var/log/kopano/server.log
-
+	echo "kopano: disabling SLL for core components due to errors; check logs"
+	echo "$(date "+%Y-%m-%d-%H:%M"): disabling SLL for core components due to errors; check logs" > /var/log/kopano/server.log
+	sed -i -e 's~server_listen_tls.*~server_listen_tls =~' /etc/kopano/server.cfg
+	sed -i -e 's~^server_ssl_key_file~#server_ssl_key_file~' /etc/kopano/server.cfg
+	sed -i -e 's~^server_ssl_ca_file~#server_ssl_ca_file~' /etc/kopano/server.cfg
+	sed -i -e 's~^ssl_private_key_file~#ssl_private_key_file~' /etc/kopano/gateway.cfg
+	sed -i -e 's~^ssl_certificate_file~#ssl_certificate_file~' /etc/kopano/gateway.cfg
+	sed -i -e 's~^imaps_listen.*~imaps_listen = ~' /etc/kopano/gateway.cfg
+	sed -i -e 's~^imaps_listen~#imaps_listen~' /etc/kopano/gateway.cfg
+	sed -i -e 's~^pop3s_listen.*~pop3s_listen = ~' /etc/kopano/gateway.cfg
+	sed -i -e 's~^pop3s_listen~#pop3s_listen~' /etc/kopano/gateway.cfg
+	sed -i -e 's~^ssl_private_key_file~#ssl_private_key_file~' /etc/kopano/ical.cfg
+	sed -i -e 's~^ssl_certificate_file~#ssl_certificate_file~' /etc/kopano/ical.cfg
+	sed -i -e 's~^icals_listen.*~icals_listen = ~' /etc/kopano/ical.cfg
+	sed -i -e 's~^icals_listen~#icals_listen~' /etc/kopano/ical.cfg
 }
 default_ssl()
 {
 	echo "nginx: going back to default self signed SSL to deal with SSL errors"
-	echo "" > /var/log/nginx/error.log
+	echo "$(date "+%Y-%m-%d-%H:%M") going back to default self signed SSL to deal with SSL errors" > /var/log/nginx/error.log
 	sed -i -e 's,cert-kopano,cert-snakeoil,g' /etc/kopano/web/kopano-web.conf
 }
 # for supported version validate license against download portal
@@ -1256,7 +1289,8 @@ case $1 in
 		if ls /var/run/kopano/*.pid 1> /dev/null 2>&1; then rm /var/run/kopano/*.pid ; fi
 		mysql_sock_on && start_kopano
 		if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default ; then freshclam > /dev/null 2>&1; fi
-		if ! w_srv_on nginx ; then service nginx start ; fi
+		if ! w_srv_on nginx && tail -3 /var/log/nginx/error.log | grep -q ssl ; then default_ssl && service nginx start ; fi
+		if ! k_srv_on kopano-server && tail -3 /var/log/kopano/server.log | grep -q ssl ; then disable_ssl && service kopano-server start ; fi
 		echo "staying alive while kopano service is running.."
 		HEALTH_C_TIMER=0
 		while k_srv_on kopano-server
@@ -1274,7 +1308,6 @@ case $1 in
 				if ! s_srv_on rsyslog ; then service rsyslog start ; fi
 				if ! s_srv_on cron ; then service cron start ; fi
 				if ! m_srv_on postfix ; then service postfix start ; fi
-				if ! w_srv_on nginx && grep -q ssl /var/log/nginx/error.log ; then default_ssl ; fi
 				if ! w_srv_on nginx ; then service nginx start ; fi
 				if ! w_srv_on php${PHP_VER}-fpm ; then service php${PHP_VER}-fpm start ; fi
 				if ! m_srv_on clamav-daemon ; then service clamav-daemon start ; fi

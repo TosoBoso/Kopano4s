@@ -50,7 +50,7 @@ then
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/downgrade-steps.log
 else
-	MSG="step 1: create baseline datbase dump from kopano as fallback..."
+	MSG="step 1: create baseline database dump from kopano as fallback..."
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/downgrade-steps.log
 	kopano4s-backup
@@ -67,6 +67,8 @@ echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/downgrade-steps.log
 # stopping kopano, truncate database and switch to default version
 if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
 sed -i -e "s~K_EDITION=.*~K_EDITION=\"Default\""~ /var/packages/Kopano4s/etc/package.cfg
+sed -i -e "s~K_RELEASE=.*~K_RELEASE=\"Stable\""~ /var/packages/Kopano4s/etc/package.cfg
+sed -i -e "s~^report_url~#report_url"~ /var/packages/Kopano4s/INFO
 # get all kopano tables to truncate with DB_NAME DB_USER DB_PASS
 TABLES=$($MYSQL $DB_NAME -u$DB_USER -p$DB_PASS -e 'show tables' | awk '{ print $1}' | grep -v '^Tables' )
 for t in $TABLES
@@ -91,6 +93,8 @@ else
 	ROLLB=1
 	cp /var/log/kopano/server.log "$K_BACKUP_PATH"/downgrade-server.log
 	sed -i -e "s~K_EDITION=.*~K_EDITION=\"${K_EDITION_STATE}\""~ /var/packages/Kopano4s/etc/package.cfg
+	sed -i -e "s~K_RELEASE=.*~K_RELEASE=\"Stable\""~ /var/packages/Kopano4s/etc/package.cfg
+	sed -i -e "s~^#report_url~report_url"~ /var/packages/Kopano4s/INFO
 	kopano4s-init refresh
 	head -4 "$K_BACKUP_PATH"/downgrade-server.log
 fi
@@ -107,7 +111,7 @@ then
 	TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
 	MSG="Downgrading kopano4s to default edition completed in $TASKTIME. Reset user pwd and adjust full name where needed."
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/downgrade-steps.log
 	cp /var/log/kopano/server.log "$K_BACKUP_PATH"/downgrade-server.log
 	head -4 "$K_BACKUP_PATH"/downgrade-server.log
 else

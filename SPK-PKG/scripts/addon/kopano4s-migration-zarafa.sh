@@ -147,8 +147,8 @@ if [ -e $ETC_PATH/kopano/server.cfg ] && grep -q server_listen "$ETC_PATH"/kopan
 then
 	sed -i -e "s~^#server_listen~server_listen~" "$ETC_PATH"/kopano/server.cfg
 	sed -i -e "s~^#server_listen_tls~server_listen_tls~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~^server_tcp_enabled~~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~^server_tcp_port~~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~^server_tcp_enabled.*~~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~^server_tcp_port.*~~" "$ETC_PATH"/kopano/server.cfg
 fi
 kopano4s-backup restore $TS
 kopano4s-init refresh

@@ -285,10 +285,6 @@ STARTTIME=$(date +%s)
 #echo "$MYSQLDUMP $DUMP_ARGS $DB_NAME -u$DB_USER -p$DB_PASS"
 $MYSQLDUMP $DUMP_ARGS $DB_NAME -u$DB_USER -p$DB_PASS | gzip -c -9 > $DUMP_FILE_RUN
 
-ENDTIME=$(date +%s)
-DIFFTIME=$(( $ENDTIME - $STARTTIME ))
-TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
-
 RET=`cat $SQL_ERR`
 if [ "$RET" != "" ]
 then
@@ -300,19 +296,10 @@ then
 	fi
 fi
 mv -f $DUMP_FILE_RUN $DUMP_PATH/$DPREFIX-${TSTAMP}.sql.gz
-
-TS=$(date "+%Y.%m.%d-%H.%M.%S")
-MSG="dump for $DB_NAME completed in $TASKTIME"
-echo -e "$TS $MSG" >> $DUMP_LOG
-echo "$MSG"
-if [ "$NOTIFY" = "ON" ]
-then
-	/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s-Backup "$MSG"
-fi
 # backup attachements if they exist
 if [ "$ATTACHMENT_ON_FS" == "ON" ] && [ ! -d "ls -A $ATTM_PATH" ] 
 then
-	MSG="saving attachments linked to $DB_NAME..."
+	MSG="dump done, saving attachments linked to $DB_NAME..."
 	TS=$(date "+%Y.%m.%d-%H.%M.%S")
 	echo -e "$TS $MSG" >> $DUMP_LOG
 	echo -e "$MSG"
@@ -320,5 +307,16 @@ then
 	cd $K_SHARE
 	tar cfz $DUMP_PATH/attachments-${TSTAMP}.tgz attachments/
 	cd $CUR_PATH
+fi
+ENDTIME=$(date +%s)
+DIFFTIME=$(( $ENDTIME - $STARTTIME ))
+TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
+TS=$(date "+%Y.%m.%d-%H.%M.%S")
+MSG="dump for $DB_NAME completed in $TASKTIME"
+echo -e "$TS $MSG" >> $DUMP_LOG
+echo "$MSG"
+if [ "$NOTIFY" = "ON" ]
+then
+	/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s-Backup "$MSG"
 fi
 exit 0
