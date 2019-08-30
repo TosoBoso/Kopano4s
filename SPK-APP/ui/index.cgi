@@ -153,7 +153,7 @@ if ($page eq 'intro')
     my $kupdate = '';
     my $status = 'Kopano health status OK';
 
-    $cmdline = '/var/packages/Kopano4s/scripts/wrapper/kopano4s-hubtag.sh |';
+    $cmdline = '/var/packages/Kopano4s/scripts/addon/kopano4s-hubtag.sh |';
     if (open(DAT, $cmdline))
     {
         @rawDataCmd = <DAT>;
@@ -202,7 +202,7 @@ if ($page eq 'user')
             my $locale = getCfgValue($pkgcfg, 'LOCALE');
             my $admflag = $admin eq "on" ? 1 : 0;
             $status = "Adding $kuser with pwd $passwd.. ";
-            $cmdline = "kopano-cli --create --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";
+            $cmdline = "kopano-cli --create --create-store --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -1810,6 +1810,7 @@ if ($page eq 'cmd')
                $cmdtxt = "Initial output of $buppath/mySqlDump.log please check log later\n ";
             }
             else {
+               $params .= " -w 5" if !($params =~ /-w/);
                $params .= " -l INFO" if !($params =~ /-l/);
                system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-backup.sh $params &>$buppath/backup-user.log 2>&1 &");
                $cmdline = "$buppath/backup-user.log";

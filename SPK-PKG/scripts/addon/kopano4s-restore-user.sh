@@ -80,7 +80,7 @@ for USR in $USRLIST; do
 			# add user then set localize folder with LOCAL as --lang doen not seam to work
 			echo "kopano-cli --create --user ${USR} --fullname ${NAME} --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'"
 		
-			kopano-cli --create --user "$USR" --fullname="${NAME}" --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'
+			kopano-cli --create --create-store --user "$USR" --fullname="${NAME}" --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'
 			kopano-localize-folders -u "${USR}" --lang "${LOCALE}"
 			if [ -n $USRPH ]
 			then

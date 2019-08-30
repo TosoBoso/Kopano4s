@@ -58,29 +58,29 @@ GET_K_DOWNLOAD_RELEASE_TAG()
 if [ "$K_EDITION" = "Community" ]
 then
 	# community nightly build area broken so use latest web-repo
-	TAG1="8.7.82"
-	TAG2="3.5.8"
-	TAG3="2.5.0"
-	TAG4="0.29.5"
-#	TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/core:/" "Debian_9.0" )
+	#TAG1="8.7.82"
+	#TAG2="3.5.8"
+	#TAG3="2.5.0"
+	#TAG4="0.29.5"
+	TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/core:/" "Debian_9.0" )
 	if [ -z "$TAG1" ]
 	then
 		echo "Could not evaluate Kopano core release tag from download; exiting.."
 		exit 1
 	fi
-#	TAG2=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webapp:/" "Debian_9.0" )
+	TAG2=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webapp:/" "Debian_9.0" )
 	if [ -z "$TAG2" ]
 	then
 		echo "Could not evaluate Kopano webapp release tag from download; exiting.."
 		exit 1
 	fi
-#	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
 		echo "Could not evaluate Kopano z-push release tag from download; exiting.."
 		exit 1
 	fi
-#	TAG4=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webmeetings:/" "Debian_9.0" )
+	TAG4=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webmeetings:/" "Debian_9.0" )
 	if [ -z "$TAG4" ]
 	then
 		echo "Could not evaluate Kopano webmeetings release tag from download; exiting.."

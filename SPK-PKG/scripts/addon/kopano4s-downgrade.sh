@@ -26,7 +26,9 @@ then
 fi
 if ! find $K_BACKUP_PATH -name user -type f | head -1 | grep -q user
 then 
-	echo "you have to run at least an initial kopano-backup --differential --merge as baseline first to reduce the run-time of this script"
+	MSG="you have to run at least one initial kopano-backup as baseline first to reduce the run-time of this script"
+	echo "$MSG"
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" > "$K_BACKUP_PATH"/downgrade-steps.log
 	exit 1
 fi
 if [ "$LOGIN" != "root" ]
