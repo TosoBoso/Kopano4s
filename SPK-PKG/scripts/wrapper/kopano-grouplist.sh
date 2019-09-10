@@ -13,7 +13,7 @@ GRPLST=$(echo -e "\n" | docker exec -i kopano4s kopano-cli --list-groups | grep 
 for GRP in $GRPLST; do
 	echo -e "\n" | docker exec -i kopano4s kopano-cli --group $GRP >/tmp/kgrp
 	MAIL=$(grep "Email address:" /tmp/kgrp | cut -d ":" -f2- | sed "s~^[ \t]*~~")
-	SENDAS=$(grep "Send-as:" /tmp/kgrp | cut -d ":" -f2- | sed "s~^[\t]*~~" | sed "s~ ~~g")
+	SENDAS=$(grep "Send-as:" /tmp/kgrp | cut -d ":" -f2- | sed "s~^[\t]*~~" | sed "s~ ~~g" | sed "s~,~; ~g")
 	echo "$GRP,$MAIL,$SENDAS"
 done
 if [ -e /tmp/kgrp ] ; then rm /tmp/kgrp ; fi

@@ -1,0 +1,4 @@
+# inspected via dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n
+# spooled into apt-get remove -y --allow-unauthenticated --force-yes
+#mawk
+wget

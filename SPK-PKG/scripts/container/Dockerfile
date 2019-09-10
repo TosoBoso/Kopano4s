@@ -202,7 +202,7 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 # if web-repo arg is provided do wget instead of copying from interactive container which is saving ~100MB image size
 	if [ -n "$WEBREPO" ] ; then wget "$WEBREPO"/k4s-${EDITION}-repo.tgz ; fi && \ 
 # layer 2 step 8 or 9 prepare, download and install kopano
-	echo "** setup kopano: user, downoad, install core, licensed, webmeetings incl. add-ons, z-push incl. autodiscover...." && \
+	echo "** setup kopano: user, download, install core, licensed, webmeetings incl. add-ons, z-push incl. autodiscover...." && \
 	groupadd -g 65540 kopano && useradd -u 1030 -g 65540 -p$PASSWD -M kopano && \
 	usermod -d/usr/share/kopano kopano -s/bin/false -c'kopano demon with Synology UID' && usermod -Gkopano -a root && \
 	# change usr-grp-ids and add scanner users to respective groups to allow file handling for amavis under kopano

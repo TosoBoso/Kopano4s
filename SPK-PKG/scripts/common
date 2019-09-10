@@ -1528,7 +1528,7 @@ SET_DOCKER_ENV()
 	$SUDO ln -sf "$K_SHARE/amavis" "$DOCKER_PATH/kopano4s/amavis"
 	$SUDO ln -sf "$K_SHARE/archive" "$DOCKER_PATH/kopano4s/archive"
 	$SUDO ln -sf "$K_SHARE/attachments" "$DOCKER_PATH/kopano4s/attachments"
-	$SUDO ln -sf "$K_SHARE/backup" "$DOCKER_PATH/kopano4s/backup"
+	$SUDO ln -sf "$K_BACKUP_PATH" "$DOCKER_PATH/kopano4s/backup"
 	$SUDO ln -sf /etc/localtime "$DOCKER_PATH/kopano4s/localtime"
 	$SUDO ln -sf "$K_SHARE/log" "$DOCKER_PATH/kopano4s/log"
 	$SUDO ln -sf /run/mysqld "$DOCKER_PATH/kopano4s/mysocket"
@@ -1539,14 +1539,21 @@ SET_DOCKER_ENV()
 	$SUDO ln -sf "$K_SHARE/spool" "$DOCKER_PATH/kopano4s/spool"
 	$SUDO ln -sf /etc/TZ "$DOCKER_PATH/kopano4s/timezone"
 	$SUDO ln -sf "$K_SHARE/z-push" "$DOCKER_PATH/kopano4s/z-push"
-	# remove recursive softlinks kopano and z-push in etc, log, k-share
+	# remove recursive softlinks kopano, z-push, backup, attachments in etc, log, k-share
 	if [ -e /etc/kopano/kopano ] && [ -h /etc/kopano/kopano ] ; then $SUDO rm /etc/kopano/kopano ; fi
 	if [ -e /etc/kopano/z-push ] ; then $SUDO rm -R /etc/kopano/z-push ; fi
-	if [ -e /etc/z-push/z-push ] && [ -h /etc/z-push/z-push ] ; then $SUDO rm /etc/z-push/z-push ; fi
-	if [ -e "$K_SHARE/z-push/z-push" ] && [ -h "$K_SHARE/z-push/z-push" ] ; then $SUDO rm "$K_SHARE/z-push/z-push" ; fi
+	if [ -e /etc/z-push/z-push ] && [ -h /etc/z-push/z-push ] ; then $SUDO rm /etc/z-push/z-push ; fi	
 	if [ -e "$K_SHARE/run/run" ] && [ -h "$K_SHARE/run/run" ] ; then $SUDO rm "$K_SHARE/run/run" ; fi
+	if [ -e /run/mysqld/mysqld ] && [ -h /run/mysqld/mysqld  ] ; then $SUDO rm /run/mysqld/mysqld ; fi
 	if [ -e /var/log/kopano/kopano ] && [ -h /var/log/kopano/kopano ] ; then $SUDO rm /var/log/kopano/kopano ; fi
-
+	if [ -e "$K_SHARE/amavis/amavis" ] && [ -h "$K_SHARE/amavis/amavis"  ] ; then $SUDO rm "$K_SHARE/amavis/amavis" ; fi
+	if [ -e "$K_SHARE/archive/archive" ] && [ -h "$K_SHARE/archive/archive"  ] ; then $SUDO rm "$K_SHARE/archive/archive" ; fi
+	if [ -e "$K_SHARE/attachments/attachments" ] && [ -h "$K_SHARE/attachments/attachments"  ] ; then $SUDO rm "$K_SHARE/attachments/attachments" ; fi
+	if [ -e "$K_BACKUP_PATH/backup" ] && [ -h "$K_BACKUP_PATH/backup"  ] ; then $SUDO rm "$K_BACKUP_PATH/backup" ; fi
+	if $SUDO [ -e "$K_SHARE/postgrey/postgrey" ] && $SUDO [ -h "$K_SHARE/postgrey/postgrey" ] ; then $SUDO rm "$K_SHARE/postgrey/postgrey" ; fi
+	if [ -e "$K_SHARE/search/search" ] && [ -h "$K_SHARE/search/search"  ] ; then $SUDO rm "$K_SHARE/search/search" ; fi
+	if $SUDO [ -e "$K_SHARE/spool/spool" ] && $SUDO [ -h "$K_SHARE/spool/spool"  ] ; then $SUDO rm "$K_SHARE/spool/spool" ; fi
+	if [ -e "$K_SHARE/z-push/z-push" ] && [ -h "$K_SHARE/z-push/z-push" ] ; then $SUDO rm "$K_SHARE/z-push/z-push" ; fi
 	local K_ETC="$DOCKER_PATH/kopano4s/etc-kopano"
 	local Z_ETC="$DOCKER_PATH/kopano4s/etc-z-push"
 	local K_AMV="$DOCKER_PATH/kopano4s/amavis"

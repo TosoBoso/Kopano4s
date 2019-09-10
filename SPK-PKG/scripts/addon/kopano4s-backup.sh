@@ -15,8 +15,24 @@ if [ -e "$SQL_ERR" ] ; then rm "$SQL_ERR" ; fi
 if [ -e /var/packages/Kopano4s/etc/package.cfg ] && [ "$1" != "legacy" ] && [ "$4" != "legacy" ]
 then
 	. /var/packages/Kopano4s/etc/package.cfg
-	MYSQL="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql"
-	MYSQLDUMP="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysqldump"
+	# repair anomaly attachment files vs. package-cfg
+	if [ "$ATTACHMENT_ON_FS" != "ON" ] && grep ^attachment_storage /etc/kopano/server.cfg | grep -q files
+	then
+		ATTACHMENT_ON_FS="ON"
+		sed -i -e 's~ATTACHMENT_ON_FS.*~ATTACHMENT_ON_FS="ON"~' /var/packages/Kopano4s/etc/package.cfg
+	fi
+	# running with MariaDB10 as default unless stays on MariaDB-5 e.g. for migration under DSM 5.2
+	if [ -e /var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql ]
+	then
+		MYSQL="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql"
+		MYSQLDUMP="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysqldump"
+	else
+		if [ -e /var/packages/MariaDB/target/usr/bin/mysql ]
+		then
+			MYSQL="/var/packages/MariaDB/target/usr/bin/mysql"
+			MYSQLDUMP="/var/packages/MariaDB/target/usr/bin/mysqldump"
+		fi
+	if
 	if [ "$2" == "legacy" ] || [ "$3" == "legacy" ]
 	then
 		# resore of zarafa-dump into kopano-migration edition only
@@ -37,8 +53,11 @@ else
 		MYSQL="/var/packages/MariaDB/target/usr/bin/mysql"
 		MYSQLDUMP="/var/packages/MariaDB/target/usr/bin/mysqldump"
 	else
-		MYSQL="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql"
-		MYSQLDUMP="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysqldump"
+		if [ -e /var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql ]
+		then
+			MYSQL="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql"
+			MYSQLDUMP="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysqldump"
+		fi
 	fi
 	if [ -e /etc/zarafa4h/server.cfg ] || [ -e /etc/zarafa/server.cfg ]
 	then
@@ -73,6 +92,11 @@ else
 		exit 1
 	fi
 fi
+if [ -z "$MYSQL" ]
+then
+	echo "No Mysql binaries found (expected /var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql) exiting now.."
+	ecit 1
+fi
 if [ "_$BACKUP_PATH" != "_" ] && [ -e $BACKUP_PATH ]
 then
 	DUMP_PATH=$BACKUP_PATH
@@ -82,6 +106,8 @@ fi
 ATTM_PATH="$K_SHARE/attachments"
 DUMP_LOG="$DUMP_PATH/mySqlDump.log"
 SQL_ERR="$DUMP_PATH/mySql.err"
+# remove looped softlink
+if [ -h "$DUMP_PATH/backup" ] ; then rm "$DUMP_PATH/backup" ; fi
 # no --routines  as restore then requires root priviledges..
 DUMP_ARGS="--hex-blob --skip-lock-tables --single-transaction --log-error=$SQL_ERR"
 
@@ -104,7 +130,9 @@ then
 		then
 			TS="no files exist"
 		fi
-		echo "no valid restore argument was provided. Latest timestamp would be <$TS>"
+		MSG="no valid restore argument was provided. Latest timestamp would be <$TS>"
+		echo "$MSG"
+		echo -e "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> $DUMP_LOG
 		exit 1
 	fi
 	TSTAMP=$2
@@ -296,9 +324,10 @@ then
 	fi
 fi
 mv -f $DUMP_FILE_RUN $DUMP_PATH/$DPREFIX-${TSTAMP}.sql.gz
-# backup attachements if they exist
-if [ "$ATTACHMENT_ON_FS" == "ON" ] && [ ! -d "ls -A $ATTM_PATH" ] 
+if [ "$ATTACHMENT_ON_FS" == "ON" ]
 then
+	# remove looped softlink
+	if [ -h "$ATTM_PATH/attachments" ] ; then rm "$ATTM_PATH/attachments" ; fi
 	MSG="dump done, saving attachments linked to $DB_NAME..."
 	TS=$(date "+%Y.%m.%d-%H.%M.%S")
 	echo -e "$TS $MSG" >> $DUMP_LOG

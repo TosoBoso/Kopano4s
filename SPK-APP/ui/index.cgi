@@ -1803,7 +1803,7 @@ if ($page eq 'cmd')
         $params = "-h" if ( ( $rcmd eq "kopano-storeadm" || $rcmd eq "kopano-cli" ) && ( $params eq "" || $params eq "help" ) );
         #$rcmd = "/var/packages/Kopano4s/scripts/wrapper/kopano-storeadm.sh" if ( $rcmd eq "kopano-storeadm" );
 
-        if ( ($rcmd eq "kopano-backup" || $rcmd eq "kopano4s-backup") && $params ne "help" && $params ne "restore" ) {
+        if ( ($rcmd eq "kopano-backup" || $rcmd eq "kopano4s-backup") && $params ne "help" ) {
             if ( $rcmd eq "kopano4s-backup" ) {
                system("/var/packages/Kopano4s/scripts/addon/kopano4s-backup.sh $params &>/dev/null 2>&1 &");
                $cmdline = "$buppath/mySqlDump.log";
@@ -1825,7 +1825,7 @@ if ($page eq 'cmd')
                     $cmdtxt .= "$reply\n ";
                 }
             }
-            $cmdtxt .= "Started as log running background job; check notification and logs for backup completion..  "
+            $cmdtxt .= "Started as long running background job; check notification and logs for backup completion..  "
         }
 		elsif ( ($rcmd eq "kopano4s-restore-user" || $rcmd eq "kopano4s-downgrade") && ($params eq "start" || $params eq "all") ) {
             if ( $rcmd eq "kopano4s-restore-user" ) {
@@ -1847,7 +1847,7 @@ if ($page eq 'cmd')
                     $cmdtxt .= "$reply\n ";
                 }
             }
-            $cmdtxt .= "Started as log running background job; check notification and logs for job completion..  "
+            $cmdtxt .= "Started as long running background job; check notification and logs for job completion..  "
         }
         else {
             $cmdline = "$rcmd $params |";

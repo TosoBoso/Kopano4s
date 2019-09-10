@@ -71,7 +71,7 @@ if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/
 sed -i -e "s~K_EDITION=.*~K_EDITION=\"Default\""~ /var/packages/Kopano4s/etc/package.cfg
 sed -i -e "s~K_RELEASE=.*~K_RELEASE=\"Stable\""~ /var/packages/Kopano4s/etc/package.cfg
 sed -i -e "s~^report_url~#report_url"~ /var/packages/Kopano4s/INFO
-# get all kopano tables to truncate with DB_NAME DB_USER DB_PASS
+# get all kopano tables to truncate with DB_NAME DB_USER DB_PASS flush at the end
 TABLES=$($MYSQL $DB_NAME -u$DB_USER -p$DB_PASS -e 'show tables' | awk '{ print $1}' | grep -v '^Tables' )
 for t in $TABLES
 do
@@ -111,7 +111,7 @@ then
 	ENDTIME=$(date +%s)
 	DIFFTIME=$(( $ENDTIME - $STARTTIME ))
 	TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
-	MSG="Downgrading kopano4s to default edition completed in $TASKTIME. Reset user pwd and adjust full name where needed."
+	MSG="Downgrading kopano4s to default edition completed in $TASKTIME."
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/downgrade-steps.log
 	cp /var/log/kopano/server.log "$K_BACKUP_PATH"/downgrade-server.log
