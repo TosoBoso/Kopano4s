@@ -2,7 +2,7 @@
 # (c) 2018 vbettag - wraper script for zarafa-set-oof in Docker container
 
 # admins only plus set sudo for DSM 6 as root login is no longer possible
-LOGIN=`whoami`
+LOGIN=$(whoami)
 if [ $LOGIN != "root" ] && ! (grep administrators /etc/group | grep -q "$LOGIN")
 then 
 	echo "admins only"

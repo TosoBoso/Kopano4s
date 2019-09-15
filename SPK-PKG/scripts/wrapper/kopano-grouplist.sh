@@ -1,6 +1,6 @@
 #!/bin/sh
 # (c) 2017 vbettag - wraper script collecting kopano-groups in Docker container
-LOGIN=`whoami`
+LOGIN=$(whoami)
 if [ "$LOGIN" != "root" ]
 then 
 	echo "you have to run as root! alternatively as admin run with sudo prefix! exiting.."

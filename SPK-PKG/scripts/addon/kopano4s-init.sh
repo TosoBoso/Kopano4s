@@ -2,17 +2,10 @@
 # (c) 2018 vbettag - wraper script for kopano-init in Docker container
 # admins only plus set sudo for DSM 6 as root login is no longer possible
 LOGIN=$(whoami)
-if [ "$LOGIN" != "root" ] && ! (grep administrators /etc/group | grep -q "$LOGIN")
-then 
-	echo "admins only"
-	exit 1
-fi
 if [ "$LOGIN" != "root" ]
-then
-	echo "Switching in sudo mode. You may need to provide root password at initial call.."
-	SUDO="sudo"
-else
-	SUDO=""
+then 
+	echo "you have to run as root! alternatively as admin run with sudo prefix! exiting.."
+	exit 1
 fi
 # get common and config
 . /var/packages/Kopano4s/scripts/common
@@ -56,46 +49,62 @@ case "$1" in
 		PORT="OFF"
 		;;
 	edition)
-		if [ $# -gt 1 ] && ( [ "$2" == "Community" ] || [ "$2" == "Supported" ] )
+		if [ "$K_EDITION" == "Migration" ]
 		then
-			if [ "$K_EDITION" == "Community" ] && [ "$2" == "Supported" ]
-			then
-				echo "cannot switch from Community to Supported. Run kopano4s-downgrade instead"
-				exit 1
-			fi
+			# can swith to any combination
 			K_EDITION="$2"
-			if [ $# -gt 2 ] && [ "$K_EDITION" == "Supported" ]
+			# change server.cfg settings and copy over Gateway and Ical new cfg
+			sed -i -e "s~^#server_listen~server_listen~" /etc/kopano/server.cfg
+			sed -i -e "s~^#server_listen_tls~server_listen_tls~" /etc/kopano/server.cfg
+			sed -i -e "s~^server_tcp_enabled.*~~" /etc/kopano/server.cfg
+			sed -i -e "s~^server_tcp_port.*~~" /etc/kopano/server.cfg
+			cp /var/packages/Kopano4s/target/merge/gateway.cfg.init /etc/kopano
+			cp /var/packages/Kopano4s/target/merge/gateway.cfg.init /etc/kopano/gateway.cfg
+			cp /var/packages/Kopano4s/target/merge/ical.cfg.init /etc/kopano
+			cp /var/packages/Kopano4s/target/merge/ical.cfg.init /etc/kopano/ical.cfg
+		else
+			# shellcheck disable=SC2235
+			if [ $# -gt 1 ] && ( [ "$2" == "Community" ] || [ "$2" == "Supported" ] )
 			then
-				K_SNR=$3
-				DOWNLOAD_SOURCE="https://serial:${K_SNR}@${K_URL_SUP}/core:/"
-				if [ "$K_EDITION" == "Supported" ] && CHECK_DOWNLOAD_SOURCE $DOWNLOAD_SOURCE
+				if [ "$K_EDITION" == "Community" ] && [ "$2" == "Supported" ]
 				then
-					$SUDO sed -i -e "s~K_SNR.*~K_SNR=\"$K_SNR\""~ $ETC_PATH/package.cfg
-					$SUDO mkdir -p $ETC_PATH/kopano/license
-					$SUDO touch $ETC_PATH/kopano/license/base
-					$SUDO chmod 666 $ETC_PATH/kopano/license/base
-					echo -e $K_SNR > $ETC_PATH/kopano/license/base
-					$SUDO chmod 640 $ETC_PATH/kopano/license/base
-				else
-					echo "SNR could not be validated at Kopano download area ($K_SNR)"
+					echo "cannot switch from Community to Supported. Run kopano4s-downgrade instead"
 					exit 1
 				fi
-			fi
-			if [ $# -lt 2 ] && [ "$K_EDITION" == "Supported" ]
-			then
-				echo "Please provide SNR as 3rd parameter for Supported edition"
+				K_EDITION="$2"
+				if [ $# -gt 2 ] && [ "$K_EDITION" == "Supported" ]
+				then
+					K_SNR=$3
+					DOWNLOAD_SOURCE="https://serial:${K_SNR}@${K_URL_SUP}/core:/"
+					if [ "$K_EDITION" == "Supported" ] && CHECK_DOWNLOAD_SOURCE $DOWNLOAD_SOURCE
+					then
+						sed -i -e "s~K_SNR.*~K_SNR=\"$K_SNR\""~ $ETC_PATH/package.cfg
+						mkdir -p $ETC_PATH/kopano/license
+						touch $ETC_PATH/kopano/license/base
+						chmod 666 $ETC_PATH/kopano/license/base
+						echo -e $K_SNR > $ETC_PATH/kopano/license/base
+						chmod 640 $ETC_PATH/kopano/license/base
+					else
+						echo "SNR could not be validated at Kopano download area ($K_SNR)"
+						exit 1
+					fi
+				fi
+				if [ $# -lt 2 ] && [ "$K_EDITION" == "Supported" ]
+				then
+					echo "Please provide SNR as 3rd parameter for Supported edition"
+					exit 1
+				fi
+			else
+				echo "Please provide valid edition to switch to: Community/Supported (for Default use kopano4s-downgrade)"
 				exit 1
 			fi
-			GET_VER_TAG
-			echo "switching edition to $VER_TAG and initializing container "
-			$SUDO sed -i -e "s~K_EDITION=.*~K_EDITION=\"$K_EDITION\""~ $ETC_PATH/package.cfg
-			SET_SVR_CFG_NEW
-			CONT="ON"
-			IMG="ON"
-		else
-			echo "Please provide valid edition to swith to: Community/Supported (for Default us kopano4s-downgrade)"
-			exit 1
 		fi
+		GET_VER_TAG
+		echo "switching edition to $VER_TAG and initializing container "
+		sed -i -e "s~K_EDITION=.*~K_EDITION=\"$K_EDITION\""~ $ETC_PATH/package.cfg
+		SET_SVR_CFG_NEW
+		CONT="ON"
+		IMG="ON"
 		;;
 	etc)
 		echo "initializing kopano4s etc from last backup during install or upgrade"
@@ -151,7 +160,7 @@ fi
 if [ "$DOCKER_NW" != "$DNW" ]
 then
 	# set docker_network as parameter changed
-	$SUDO sed -i -e "s~DOCKER_NW=.*~DOCKER_NW=\"${DNW}\"~" /var/packages/Kopano4s/etc/package.cfg
+	sed -i -e "s~DOCKER_NW=.*~DOCKER_NW=\"${DNW}\"~" /var/packages/Kopano4s/etc/package.cfg
 	DOCKER_NW="$DNW"
 fi
 if [ "$MOB" == "ON" ]
@@ -159,16 +168,16 @@ then
 #find /usr/share/kopano-webapp -type d -exec chmod 750 "{}" ";"
 	# remove legacy z-push incl. state in kopano-etc and backup area
 	if [ -e $K_SHARE/backup/etc/kopano/z-push ] ; then rm -R $K_SHARE/backup/etc/kopano/z-push ; fi
-	if [ -e /etc/kopano/z-push ] && [ -h /etc/kopano/z-push ] ; then $SUDO rm /etc/kopano/z-push ; fi
-	if [ -e /etc/kopano/z-push ] && [ ! -h /etc/kopano/z-push ] ; then $SUDO rm -R /etc/kopano/z-push ; fi
+	if [ -e /etc/kopano/z-push ] && [ -h /etc/kopano/z-push ] ; then rm /etc/kopano/z-push ; fi
+	if [ -e /etc/kopano/z-push ] && [ ! -h /etc/kopano/z-push ] ; then rm -R /etc/kopano/z-push ; fi
 	# delete all subdirectories of z-push aka mindepth 1
-	SDIR=`find $K_SHARE/z-push -mindepth 1 -maxdepth 1 -type d -exec basename "{}" ";"`
-	for S in $SDIR ; do $SUDO rm -R $K_SHARE/z-push/$S ; done 
-	find $K_SHARE/z-push -type f -exec $SUDO rm "{}" ";"
+	SDIR=$(find $K_SHARE/z-push -mindepth 1 -maxdepth 1 -type d -exec basename "{}" ";")
+	for S in $SDIR ; do rm -R $K_SHARE/z-push/$S ; done 
+	find $K_SHARE/z-push -type f -exec rm "{}" ";"
 	if [ "$ACL" == "OFF" ]
 	then
-		$SUDO chown -R http.kopano $K_SHARE/z-push
-		$SUDO chmod 770 $K_SHARE/z-push
+		chown -R http.kopano $K_SHARE/z-push
+		chmod 770 $K_SHARE/z-push
 	fi
 fi
 if [ "$SSL" == "ON" ]
@@ -176,34 +185,34 @@ then
 	SET_K_CERTIFICATE
 	if [ "$ACL" == "OFF" ]
 	then
-		$SUDO chown -R root.kopano /etc/kopano/ssl
-		$SUDO chmod 751 /etc/kopano/ssl
+		chown -R root.kopano /etc/kopano/ssl
+		chmod 751 /etc/kopano/ssl
 	fi
 	if [ "$CONT" == "OFF" ]
 	then
-		echo -e "\n" | $SUDO docker exec -i kopano4s init.sh ssl
-		echo -e "\n" | $SUDO docker exec -i kopano4s init.sh restart
+		echo -e "\n" | docker exec -i kopano4s init.sh ssl
+		echo -e "\n" | docker exec -i kopano4s init.sh restart
 	fi
 fi
 if [ "$ETC" == "ON" ]
 then
-	$SUDO cp -R -f $K_SHARE/backup/etc/kopano $ETC_PATH
+	cp -R -f $K_SHARE/backup/etc/kopano $ETC_PATH
 fi
 if [ "$ACL" == "ON" ]
 then
 	INIT_SYNOACL
 	if [ "$CONT" == "OFF" ]
 	then
-		echo -e "\n" | $SUDO docker exec -i kopano4s init.sh acl
-		echo -e "\n" | $SUDO docker exec -i kopano4s init.sh restart
+		echo -e "\n" | docker exec -i kopano4s init.sh acl
+		echo -e "\n" | docker exec -i kopano4s init.sh restart
 	fi
 fi
 if [ "$UPG" == "ON" ]
 then
 	if [ "$CONT" == "OFF" ]
 	then
-		echo -e "\n" | $SUDO docker exec -i kopano4s init.sh upgrade
-		echo -e "\n" | $SUDO docker exec -i kopano4s init.sh restart
+		echo -e "\n" | docker exec -i kopano4s init.sh upgrade
+		echo -e "\n" | docker exec -i kopano4s init.sh restart
 	fi
 fi
 if [ "$CONT" == "ON" ]
@@ -219,17 +228,18 @@ then
 			else
 				GET_VER_TAG
 			fi
-			$SUDO sed -i -e "s~VER_TAG=.*~VER_TAG=\"$VER_TAG\""~ $ETC_PATH/package.cfg
+			sed -i -e "s~VER_TAG=.*~VER_TAG=\"$VER_TAG\""~ $ETC_PATH/package.cfg
 		fi
 		echo "init: remove and build kopano4s docker container from ${FRESH}image.. stop:"
 		# send enter and skip -t as it messes up when called from perl ui
-		echo -e "\n" | $SUDO docker stop kopano4s
+		echo -e "\n" | docker stop kopano4s
 		echo "remove:"
-		echo -e "\n" | $SUDO docker rm -f kopano4s
+		echo -e "\n" | docker rm -f kopano4s
 		if [ "$IMG" == "ON" ]
 		then
 			echo "remove image:"
-			echo -e "\n" | $SUDO docker rmi -f `$SUDO docker images | awk '$1 ~ /kopano4s/ {print $3}'`
+			# shellcheck disable=SC2046
+			echo -e "\n" | docker rmi -f $(docker images | awk '$1 ~ /kopano4s/ {print $3}')
 		fi
 		echo "build $VER_TAG:"
 		SET_DOCKER_ENV
@@ -244,7 +254,7 @@ then
 			DOCKER_CMD="maintenance"
 		fi
 		#echo "docker run $DOCKER_PARAMS $DOCKER_MOUNTS $DOCKER_PORTS $DOCKER_IMAGE $DOCKER_CMD .."
-		if ! ( $SUDO docker run $DOCKER_PARAMS $DOCKER_MOUNTS $DOCKER_PORTS $DOCKER_IMAGE $DOCKER_CMD )
+		if ! ( docker run $DOCKER_PARAMS $DOCKER_MOUNTS $DOCKER_PORTS $DOCKER_IMAGE $DOCKER_CMD )
 		then
 			echo "failed to rebuild Kopano"
 			exit 1
@@ -260,5 +270,5 @@ then
 		if [ $# -gt 1 ] && [ "$2" == "nowait" ] ; then WAIT=1 ; fi
 		echo "waiting for services to restart: ${WAIT}s.."
 		sleep $WAIT
-		echo -e "\n" | $SUDO docker exec -i kopano4s init.sh status
+		echo -e "\n" | docker exec -i kopano4s init.sh status
 fi

@@ -18,9 +18,9 @@
 	<form action="index.cgi" method="get">
 		<input type="hidden" name="page" value="user"/><input type="hidden" name="form" value="user"/>
 		&nbsp;User:&nbsp;<input type="text" name="kuser" size="10" value=""/>&nbsp;
-		Password:&nbsp;<input type="password" onfocusout="pwdObfuscate()" id="pwd" name="passwd" size="12" value=""/>&nbsp;
-		Name:&nbsp;<input type="text" name="name" size="15" value=""/>&nbsp;
-		eMail:&nbsp;<input type="text" name="email" size="15" value=""/>&nbsp;<input type="checkbox" name="admin" value="on"/>Admin
+		Password:&nbsp;<input type="password" onfocusout="pwdObfuscate()" id="pwd" name="passwd" size="11" value=""/>&nbsp;
+		Name:&nbsp;<input type="text" name="name" size="14" value=""/>&nbsp;
+		eMail:&nbsp;<input type="text" name="email" size="14" value=""/>&nbsp;<input type="checkbox" name="admin" value="on"/>Admin
 		<input type="checkbox" name="imap" value="on"/>Imap&nbsp;<input type="checkbox" name="pop3" value="on"/>Pop3&nbsp;
 		<input type="submit" id="btnModUsr" onclick="pwdObfuscate()" name="action" value="Add"/>
 	<hr>
@@ -47,7 +47,7 @@
 		&nbsp;<input type="submit" name="action" value="Added"/>&nbsp;<input type="submit" name="action" value="Removed"/>
 	<hr>
 	</form></section>
-	<textarea name="status" rows="1" cols="111"> <!--:status:--> </textarea><p>
+	<textarea name="status" rows="1" cols="140"> <!--:status:--> </textarea><p>
 	<table>
 		<tr>
 			<th>K-User</th><th>Name</th><th>eMail</th><th>act.</th><th>adm.</th><th>Features</th><th>Store Size</th><th>Groups</th><th>SendAs</th>

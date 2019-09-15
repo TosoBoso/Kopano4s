@@ -42,6 +42,8 @@ then
 	# since synoautoblock does not work with --deny we go for sqllite as shown by ruedi61
 	# Convert IPv4 to IPv6 :)
 	IPv4=$(echo "$BLOCKED_IP" | sed 's/\./ /g')
+	# shellcheck disable=SC2183
+	# need to rewrite to not run into SC2183: format string has 2 variables, but is passed 1 argument
 	IPv6=$(printf "0000:0000:0000:0000:0000:FFFF:%02X%02X:%02X%02X" $IPv4)
 	CHECK_IF_EXISTS=$(sqlite3 /etc/synoautoblock.db "SELECT DENY FROM AutoBlockIP WHERE IP = '$BLOCKED_IP'" | wc -l)
 	if [[ $CHECK_IF_EXISTS -lt 1 ]]

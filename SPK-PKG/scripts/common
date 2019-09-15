@@ -2,14 +2,14 @@
 # ** (c) 2017-19 TosoBoso - common lib for Kopano-4-Synology in Docker container
 # ** set environment
 # Image tags: Default is from 02.05./17.05.2019 and Migration from 15.12./15.12.2017
-DEFAULT_TAG="Core-8.7.1.0_Webapp-3.5.6_Z-Push-2.5.1_WMeet-0.29.5"
 MIGRATION_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
-SUPPORTED_TAG="Core-8.7.5_Webapp-3.5.9_Z-Push-2.5.1_WMeet-0.29.5"
-COMMUNITY_TAG="Core-8.7.82_Webapp-3.5.9_Z-Push-2.5.1_WMeet-0.29.5"
-DEFAULT_SIZE=173
+DEFAULT_TAG="Core-8.7.1.0_Webapp-3.5.6_Z-Push-2.5.1_WMeet-0.29.5"
+SUPPORTED_TAG="Core-8.7.5_Webapp-3.5.10_Z-Push-2.5.1_WMeet-0.29.5"
+COMMUNITY_TAG="Core-8.7.82_Webapp-3.5.10_Z-Push-2.5.1_WMeet-0.29.5"
 MIGRATION_SIZE=142
+DEFAULT_SIZE=173
 SUPPORTED_SIZE=172
-COMMUNITY_SIZE=173
+COMMUNITY_SIZE=172
 RELEASE="Stable"
 PHP_VER="7.0"
 PKG_NAME=Kopano4s
@@ -17,7 +17,15 @@ ETC_PATH="/usr/syno/etc/packages/$PKG_NAME"
 TARGET_PATH="/var/packages/$PKG_NAME/target"
 UI_PATH="/usr/syno/synoman/webman/3rdparty"
 LOG="$TARGET_PATH/log/package.log"
-MYSQL="/usr/local/mariadb10/bin/mysql"
+# MariaDB10 is default even if also MariaDB5 is installed, but 5 is fallback fo DSM 5.2
+if [ -e /usr/local/mariadb10/bin/mysql ]
+then
+	MYSQL="/usr/local/mariadb10/bin/mysql"
+	MYETC="/var/packages/MariaDB10/etc"
+else 
+	MYSQL="/bin/mysql"
+	MYETC="/var/packages/MariaDB/etc"
+fi
 # ** download areas
 K_URL_COM="download.kopano.io/community"
 K_URL_SUP="download.kopano.io/supported"
@@ -882,6 +890,11 @@ INIT_USR_GRP()
 }
 INIT_UPDATE()
 {
+	# check and warn for MariaDb5 used in msql socket
+	if grep mysql_socket /etc/kopano/server.cfg | grep -q mysqld.sock
+	then
+		GUI_MESSAGE "Detected migration setting using MariaDb5 in server.cfg. Please run backup then change mysql_socket to mysqld10.sock, run kaopano4s-backup restore to migrate to Mariadb10 "
+	fi
 	# perform any inits of later realease missing in install by update mode
 	if [ ! -e "$K_SHARE/z-push" ] ; then mkdir -p "$K_SHARE/z-push" && chmod 750 "$K_SHARE/z-push" ; fi
 	if [ ! -e "$ETC_PATH/z-push" ] ; then mkdir -p "$ETC_PATH/z-push" && chmod 750 "$ETC_PATH/z-push" ; fi
@@ -1142,6 +1155,11 @@ SET_CFG_OPTIONS()
 		sed -i -e "s~^server_listen_tls~#server_listen_tls~" "$TARGET_PATH"/merge/server.cfg.init
 		sed -i -e "s~^surveyclient_interval~#surveyclient_interval~" "$TARGET_PATH"/merge/server.cfg.init
 	fi
+	# special case when running under DSM 5.2 go for MariaDB-5 socket
+	if [ "$MYSQL" = "/bin/mysql" ]
+	then
+		sed -i -e "s~mysqld10.sock~mysqld.sock~" "$TARGET_PATH"/merge/server.cfg.init
+	fi
 	# ** update user and group id which has 5 digits in init script
 	KUSRID=$(id -u kopano)
 	AUSRID=$(id -u k4samavis)
@@ -1202,10 +1220,6 @@ SET_CFG_OPTIONS()
 	then
 		sed -i -e "s~mydomain.me~${MY_DOMAIN}~g" "$TARGET_PATH/merge/postfix/main.cf"
 	fi
-	if [ -n "$MY_DOMAIN" ]
-	then
-		sed -i -e "s~mydomain.me~${MY_DOMAIN}~g" "$TARGET_PATH/merge/postfix/main.cf"
-	fi
 	if [ -n "$TLS_SERVER_NAME" ]
 	then
 		sed -i -e "s~myhostname =.*~myhostname = ${TLS_SERVER_NAME}~" "$TARGET_PATH/merge/postfix/main.cf"
@@ -1213,11 +1227,10 @@ SET_CFG_OPTIONS()
 	hostname > "$TARGET_PATH/merge/postfix/hostname"
 	sed -i -e "s~bat|com~$BLOCK_ATTACHMENTS~" "$TARGET_PATH/merge/postfix/header_checks"
 	echo "$MAIL_DOMAINS" > "$TARGET_PATH/merge/postfix/vdomains"
-	if [ -z "$ALIAS_SYS" ]
+	if [ -n "$ALIAS_SYS" ]
 	then
 		echo "postmaster@${MY_DOMAIN}	$ALIAS_SYS" > "$TARGET_PATH/merge/postfix/valiases"
 		echo "root@${MY_DOMAIN}	$ALIAS_SYS" >> "$TARGET_PATH/merge/postfix/valiases"
-		echo "admin@${MY_DOMAIN}	$ALIAS_SYS" >> "$TARGET_PATH/merge/postfix/valiases"
 	fi
 	cp -f $TARGET_PATH/merge/postfix/* "$ETC_PATH/kopano/postfix"
 	# ** set webserver environment like port or reverse proxy directory
@@ -1411,35 +1424,35 @@ SYNC_K_LOCALE()
 SET_SQL_CONF()
 {
 	MYCF_CHG=0
-	if [ ! -e  /var/packages/MariaDB10/etc/my.cnf ] ; then touch /var/packages/MariaDB10/etc/my.cnf ; fi
-	if ! (grep -q "[mysqld]" /var/packages/MariaDB10/etc/my.cnf) ; then echo -e "[mysqld]" >> /var/packages/MariaDB10/etc/my.cnf ; fi
+	if [ ! -e  "$MYETC"/my.cnf ] ; then touch "$MYETC"/my.cnf ; fi
+	if ! (grep -q "[mysqld]" "$MYETC"/my.cnf) ; then echo -e "[mysqld]" >> "$MYETC"/my.cnf ; fi
 	# only set for non-existent master / slave as during active replication mysql will stop
 	if [ "$K_REPLICATION" = "MASTER" ]
 	then
 		RHOST=$(hostname)
-		if ! (grep -q "server-id" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "server-id = 101" >> /var/packages/MariaDB10/etc/my.cnf ; fi
-		if ! (grep -q "report-host" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "report-host = $RHOST" >> /var/packages/MariaDB10/etc/my.cnf ;fi
-		if ! (grep -q "log-bin" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "log-bin" >> /var/packages/MariaDB10/etc/my.cnf ; fi
-		if ! (grep -q "log_error" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "log_error = mysqld-bin-log.err" >> /var/packages/MariaDB10/etc/my.cnf ; fi
-		if ! (grep -q "binlog-format" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "binlog-format = mixed" >> /var/packages/MariaDB10/etc/my.cnf ; fi
-		if ! (grep -q "binlog_do_db" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "binlog_do_db = $DB_NAME" >> /var/packages/MariaDB10/etc/my.cnf ; fi
-		if ! (grep -q "sync_binlog" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "sync_binlog = 1" >> /var/packages/MariaDB10/etc/my.cnf ; fi
-		if ! (grep -q "expire_logs_days" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "expire_logs_days = 5" >> /var/packages/MariaDB10/etc/my.cnf ; fi
-		if ! (grep -q "innodb_flush_log_at_trx_commit" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "innodb_flush_log_at_trx_commit = 1" >> /var/packages/MariaDB10/etc/my.cnf ; fi
-		if ! (grep -q "max_allowed_packet" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1 ; echo -e "max_allowed_packet = 16M" >> /var/packages/MariaDB10/etc/my.cnf ; fi
-		sed -i -e "s~max_allowed_packet = 10M~max_allowed_packet = 16M~" /var/packages/MariaDB10/etc/my.cnf
+		if ! (grep -q "server-id" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "server-id = 101" >> "$MYETC"/my.cnf ; fi
+		if ! (grep -q "report-host" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "report-host = $RHOST" >> "$MYETC"/my.cnf ;fi
+		if ! (grep -q "log-bin" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "log-bin" >> "$MYETC"/my.cnf ; fi
+		if ! (grep -q "log_error" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "log_error = mysqld-bin-log.err" >> "$MYETC"/my.cnf ; fi
+		if ! (grep -q "binlog-format" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "binlog-format = mixed" >> "$MYETC"/my.cnf ; fi
+		if ! (grep -q "binlog_do_db" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "binlog_do_db = $DB_NAME" >> "$MYETC"/my.cnf ; fi
+		if ! (grep -q "sync_binlog" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "sync_binlog = 1" >> "$MYETC"/my.cnf ; fi
+		if ! (grep -q "expire_logs_days" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "expire_logs_days = 5" >> "$MYETC"/my.cnf ; fi
+		if ! (grep -q "innodb_flush_log_at_trx_commit" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "innodb_flush_log_at_trx_commit = 1" >> "$MYETC"/my.cnf ; fi
+		if ! (grep -q "max_allowed_packet" "$MYETC"/my.cnf) ; then MYCF_CHG=1 ; echo -e "max_allowed_packet = 16M" >> "$MYETC"/my.cnf ; fi
+		sed -i -e "s~max_allowed_packet = 10M~max_allowed_packet = 16M~" "$MYETC"/my.cnf
 		# replication prepared but not enabled
 		K_REPLICATION="OFF"
 	fi
-	if [ "$TUNING_BUFFER" -gt 0 ] && ! (grep -q kopano4s /var/packages/MariaDB10/etc/my.cnf)
+	if [ "$TUNING_BUFFER" -gt 0 ] && ! (grep -q kopano4s "$MYETC"/my.cnf)
 	then
 		MYCF_CHG=1
-		echo -e "#kopano4s overwrite default innodb_buffer as 16M" >> /var/packages/MariaDB10/etc/my.cnf
-		echo -e "innodb_buffer_pool_size = ${INNODB_BUFFER}M" >> /var/packages/MariaDB10/etc/my.cnf
+		echo -e "#kopano4s overwrite default innodb_buffer as 16M" >> "$MYETC"/my.cnf
+		echo -e "innodb_buffer_pool_size = ${INNODB_BUFFER}M" >> "$MYETC"/my.cnf
 		# innodb_log_file_size should be 25% of buffer_pool_size but default has no setting
 		LOG_MESSAGE "Tuning mysql innodb-chache from 16M to ${INNODB_BUFFER}M. Restarting MariaDB to make it effecive"
 	fi
-	if ! (grep -q "max_allowed_packet" /var/packages/MariaDB10/etc/my.cnf) ; then MYCF_CHG=1; echo -e "max_allowed_packet = 10M" >> /var/packages/MariaDB10/etc/my.cnf ; fi
+	if ! (grep -q "max_allowed_packet" "$MYETC"/my.cnf) ; then MYCF_CHG=1; echo -e "max_allowed_packet = 10M" >> "$MYETC"/my.cnf ; fi
 	# restarting mariadb
 	if [ $MYCF_CHG -gt 0 ]
 	then
@@ -1665,6 +1678,7 @@ SET_SOFTLINKS()
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/sendmail.sh /usr/sbin/sendmail
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/z-push-admin.sh /usr/local/bin/z-push-admin
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-autoblock.sh /usr/local/bin/kopano4s-autoblock
+	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-attachment-tofs.sh /usr/local/bin/kopano4s-attachment-tofs
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-backup.sh /usr/local/bin/kopano4s-backup
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-downgrade.sh /usr/local/bin/kopano4s-downgrade
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-hubtag.sh /usr/local/bin/kopano4s-hubtag
@@ -1676,8 +1690,6 @@ SET_SOFTLINKS()
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/kopano-cmdline
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/kopano4s
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/k4s
-	touch "$K_SHARE/backup/mySqlDump.log"
-	ln -sf "$K_SHARE/backup/mySqlDump.log" "$TARGET_PATH/log/sqlbackup.log"
 	ln -sf "$ETC_PATH/kopano" /etc/kopano
 	ln -sf "$ETC_PATH/z-push" /etc/z-push
 	ln -sf "$K_SHARE/run" /var/run/kopano
@@ -1899,7 +1911,7 @@ DROP_MYSQL_TUNING()
 	if [ "$TUNING_BUFFER" -gt 0 ]
 	then
 		REMOVE="innodb_buffer_pool_size = ${INNODB_BUFFER}M"
-		sed -i -e "s~$REMOVE~~" /var/packages/MariaDB10/etc/my.cnf
-		sed -i -e "s~#kopano4s overwrite default innodb_buffer as 16M~~" /var/packages/MariaDB10/etc/my.cnf
+		sed -i -e "s~$REMOVE~~" "$MYETC"/my.cnf
+		sed -i -e "s~#kopano4s overwrite default innodb_buffer as 16M~~" "$MYETC"/my.cnf
 	fi
 }

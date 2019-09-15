@@ -11,9 +11,12 @@ if grep -q ^MONITOR_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVIC
 if grep -q ^GATEWAY_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-gateway" ; fi
 if grep -q ^ICAL_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-ical" ; fi
 W_SERVICES="nginx php${PHP_VER}-fpm"
-if grep -q ^PRESENCE_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES kopano-presence" ; fi
-if grep -q ^WEBMEETINGS_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES kopano-webmeetings" ; fi
-if grep -q ^COTURN_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES coturn" ; fi
+if [ "$EDITION" != "Migration" ]
+then
+	if grep -q ^PRESENCE_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES kopano-presence" ; fi
+	if grep -q ^WEBMEETINGS_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES kopano-webmeetings" ; fi
+	if grep -q ^COTURN_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES coturn" ; fi
+fi
 M_SERVICES="postfix"
 if grep -q ^POSTGREY_ENABLED=yes /etc/kopano/default ; then M_SERVICES="$M_SERVICES postgrey" ; fi
 if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default ; then M_SERVICES="$M_SERVICES clamav-daemon" ; fi
@@ -55,22 +58,32 @@ IMAPDPID="/var/run/courier/imapd.pid"
 
 mysql_sock_on()
 {
-	# loop some time waiting fo mysql socket
-	if [ ! -e  /run/mysqld/mysqld10.sock ] 
+	# if we have not initialized theremight be no server.cfg
+	if [ -e /etc/init.done ]
 	then
-		echo "waiting for mysql socket being available at /run/mysqld/mysqld10.sock..." 
-	fi
-	for i in 0 1 2 3 4 5 6 7 8 9
-	do
-		if [ -e /run/mysqld/mysqld10.sock ]
+		SQL_SOCK=$(grep mysql_socket /etc/kopano/server.cfg | cut -d "=" -f2- | sed "s~^ *~~")
+		if [ -z "$SQL_SOCK" ]
 		then
-			return 0
+			echo "missing mysql_socket definition in server.cfg (should be: /run/mysqld/mysqld10.sock); exiting..."
+			return 1	
 		fi
-		sleep 10
-	done
-	echo "giving up no MySQL found; restart package or run kopano-init reset to address mount issues"
-	touch /etc/kopano/mount.issue
-	return 1
+		# loop some time waiting fo mysql socket
+		if [ ! -e "$SQL_SOCK" ] 
+		then
+			echo "waiting for mysql socket being available at $SQL_SOCK ..." 
+		fi
+		for i in 0 1 2 3 4 5 6 7 8 9
+		do
+			if [ -e "$SQL_SOCK" ]
+			then
+				return 0
+			fi
+			sleep 10
+		done
+		echo "giving up no MySQL found; restart package or run kopano-init reset to address mount issues"
+		touch /etc/kopano/mount.issue
+		return 1
+	fi
 }
 # status for all kopano core daemons defined in K_SERVICES
 k_srv_on()
@@ -138,7 +151,7 @@ w_srv_on()
 		return 0
 	fi
 }
-# status for all kopano web daemons defined in W_SERVICES
+# status for all kopano system daemons defined in W_SERVICES
 s_srv_on()
 {
 	local DAEMON=$1
@@ -280,6 +293,7 @@ set_secrets()
 	fi
 	if [ -e /etc/kopano/presence.cfg ]
 	then
+		sed -i -e "s~^#plugins~plugins"~ /etc/kopano/presence.cfg
 		sed -i -e "s~^#server_secret_key =~server_secret_key ="~ /etc/kopano/presence.cfg
 		sed -i -e "s~server_secret_key =.*~server_secret_key = $PRESENCE_SHARED_SECRET"~ /etc/kopano/presence.cfg
 		sed -i -e "s~#data_path.*~data_path = /var/lib/kopano/backup/presence/~" /etc/kopano/presence.cfg

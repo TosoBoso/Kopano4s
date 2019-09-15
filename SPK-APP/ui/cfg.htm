@@ -10,8 +10,8 @@
 	<!--:menu:-->
 	<form action="index.cgi" method="get">
 		<input type="hidden" name="page" value="cfg"/>
-		&nbsp;Share:<input type="text" name="kshare" size="15" value="<!--:kshare:-->"/>
-		&nbsp;Backup:<input type="text" name="kbackup" size="21" value="<!--:kbackup:-->"/>
+		&nbsp;Share:<input type="text" name="kshare" size="13" value="<!--:kshare:-->"/>
+		&nbsp;Backup:<input type="text" name="kbackup" size="18" value="<!--:kbackup:-->"/>
 		&nbsp;<input type="checkbox" name="kfsattach" value="on"/<!--:chkfsattach:-->>Attachments on FileS.
 		<input type="checkbox" name="kgateway" value="on"/<!--:chkgateway:-->>Gateway
 		&nbsp;<input type="checkbox" name="kical" value="on"/<!--:chkical:-->>ICAL
@@ -36,9 +36,9 @@
 		&nbsp;Locale:&nbsp;<select name="slocale"><!--:localecmb:--></select>
 		&nbsp;Keep-Backups:<input type="text" name="keep" size="1" value="<!--:keep:-->"/>
 		&nbsp;<input type="checkbox" name="knotify" value="on"/<!--:chknotify:-->>Notify
-		Target:<input type="text" name="ntarget" size="12" value="<!--:ntarget:-->"/>
+		Target:<input type="text" name="ntarget" size="10" value="<!--:ntarget:-->"/>
 		&nbsp;MyMaxPacket:<input type="text" name="mpacket" size="1" value="<!--:mpacket:-->"/>
-		&nbsp;InnoDbBuffer:<input type="text" name="innobuff" size="3" value="<!--:innobuff:-->"/>
+		&nbsp;InnoDbBuffer:<input type="text" name="innobuff" size="2" value="<!--:innobuff:-->"/>
 		&nbsp;Tuning:&nbsp;<select name="stuning"><!--:tuningcmb:--></select>		
 	</form>
 	<form action="index.cgi" method="get">
@@ -47,21 +47,21 @@
 		&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Show"/>
 		&nbsp;<input type="submit" name="action" value="Reset"/>
 		&nbsp;<input type="submit" name="action" value="Update"/>
-		&nbsp;CFG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="cfgentry" size="70" value="<!--:cfgentry:-->"/>
+		&nbsp;CFG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="cfgentry" size="56" value="<!--:cfgentry:-->"/>
 	</form>
 	<form action="index.cgi" method="get">
 		<input type="hidden" name="page" value="cfg"/> <input type="hidden" name="section" value="plg"/>
 		&nbsp;Plugins:&nbsp;<select name="splg"><!--:plgcmb:--></select>
-		&nbsp;<input type="submit" name="action" value="Show"/>
+		&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Show"/>
 		&nbsp;<input type="submit" name="action" value="Reset"/>
 		&nbsp;<input type="submit" name="action" value="Replace"/>
-		&nbsp;PLG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="plgentry" size="70" value="<!--:plgentry:-->"/>
+		&nbsp;PLG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="plgentry" size="56" value="<!--:plgentry:-->"/>
 	</form>
-	<textarea name="cfgtxt" rows="16" cols="111"> <!--:cfgtxt:--></textarea>
+	<textarea name="cfgtxt" rows="14" cols="140"> <!--:cfgtxt:--></textarea>
 	<p><b><u>Tips:</u></b>&nbsp;To update entries select respective cfg / plg and use key = value for cfgs (e.g. KOPANO_LOCALE="C") or full new line to be replaced for plgs. 
 	<!-- style for bottom position -->
 	<div style='position:absolute;bottom:0;padding:0px 0px;'>
-		<textarea name="status" rows="1" cols="111"> <!--:status:--> </textarea>
+		<textarea name="status" rows="1" cols="140"> <!--:status:--> </textarea>
 	</div>
 	<!-- end of style and section main body right hand side to navigation -->
 	</div>

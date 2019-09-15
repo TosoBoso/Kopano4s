@@ -1,7 +1,7 @@
 #!/bin/sh
 # (c) 2018 vbettag - msql replication for Kopano script for setup and monitoring
 # admins only plus set sudo for DSM 6 as root login is no longer possible
-LOGIN=`whoami`
+LOGIN=$(whoami)
 if [ $LOGIN != "root" ] && ! (grep administrators /etc/group | grep -q "$LOGIN")
 then 
 	echo "admins only"
@@ -30,33 +30,39 @@ else
 	CFG="/etc/zarafa/replication.cfg"
 	if [ -e /etc/zarafa/server.cfg ]
 	then
-		DB_NAME=`grep ^mysql_database /etc/zarafa/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*'`
-		DB_USER=`grep ^mysql_user /etc/zarafa/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*'`
-		DB_PASS=`grep ^mysql_password /etc/zarafa/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*'`
+		DB_NAME=$(grep ^mysql_database /etc/zarafa/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*')
+		DB_USER=$(grep ^mysql_user /etc/zarafa/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*')
+		DB_PASS=$(grep ^mysql_password /etc/zarafa/server.cfg | cut -f2 -d'=' | grep -o '[^\t ].*')
 	else
 		echo "no Zarafa present to replicate (no /etc/zarafa/server.cfg); exit now"
 		exit 1
 	fi
-	if [ ! -e $CFG ]
+	if [ ! -e "$CFG" ]
 	then
-		echo "NOTIFY=1" > $CFG
-		echo "NOTIFYTARGET=\"@administrators\"" >> $CFG
-		echo "K_REPLICATION=\"OFF\"" >> $CFG
-		echo "K_REPLICATION_PWD=\"\"" >> $CFG
-		echo "K_SHARE=\"/volume1/kopano\"" >> $CFG
+		# not considering using { cmd1; cmd2}
+		# shellcheck disable=SC2129
+		echo "NOTIFY=1" > "$CFG"
+		# shellcheck disable=SC2129
+		echo "NOTIFYTARGET=\"@administrators\"" >> "$CFG"
+		# shellcheck disable=SC2129
+		echo "K_REPLICATION=\"OFF\"" >> "$CFG"
+		# shellcheck disable=SC2129
+		echo "K_REPLICATION_PWD=\"\"" >> "$CFG"
+		# shellcheck disable=SC2129
+		echo "K_SHARE=\"/volume1/kopano\"" >> "$CFG"
 	fi
 fi
 # read config and add sql dump path
-. $CFG
-if [ "_$NOTIFY" == "_" ] ; then NOTIFY=0 ; fi
-if [ "_$BACKUP_PATH" != "_" ] && [ -e $BACKUP_PATH ]
+. "$CFG"
+if [ "_$NOTIFY" = "_" ] ; then NOTIFY=0 ; fi
+if [ "_$BACKUP_PATH" != "_" ] && [ -e "$BACKUP_PATH" ]
 then
-	DUMP_PATH=$BACKUP_PATH
+	DUMP_PATH="$BACKUP_PATH"
 else
 	DUMP_PATH="$K_SHARE/backup"
 fi
 
-if [ $# -gt 0 ] && [ "$1" == "help" ]
+if [ $# -gt 0 ] && [ "$1" = "help" ]
 then
 	echo "kopano-replication (c) TosoBoso: script for kopano replication via mysql."
 	echo "Usage: kopano-replication [action] with status as default."
@@ -76,7 +82,7 @@ then
 	exit 0
 fi
 
-if [ $# -gt 0 ] && [ "$1" == "master" ]
+if [ $# -gt 0 ] && [ "$1" = "master" ]
 then
 	if [ $# -lt 4 ]
 	then
@@ -103,55 +109,55 @@ then
 	fi
 	# modify mysql configuration section followed by restart if needed
 	test -e /var/packages/MariaDB10/etc/my.cnf || $SUDO touch /var/packages/MariaDB10/etc/my.cnf
-	if [ "$SUDO" == "sudo" ]
+	if [ "$SUDO" = "sudo" ]
 	then
 		# sudo echo or grep does not work so temporarily open the files for read
 		sudo chmod 666 /var/packages/MariaDB10/etc/my.cnf
 	fi
-	if !(grep -q "server-id" /var/packages/MariaDB10/etc/my.cnf) || !(grep -q "log-bin" /var/packages/MariaDB10/etc/my.cnf)
+	if ! grep -q "server-id" /var/packages/MariaDB10/etc/my.cnf || ! grep -q "log-bin" /var/packages/MariaDB10/etc/my.cnf
 	then
-		if !(grep -q "[mysqld]" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "[mysqld]" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "[mysqld]" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "server-id" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "server-id" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "server-id = $ID" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "report-host" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "report-host" /var/packages/MariaDB10/etc/my.cnf
 		then
-			RHOST=`hostname`
+			RHOST=$(hostname)
 			echo -e "report-host = $RHOST" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "log-bin" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "log-bin" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "log-bin" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "log_error" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "log_error" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "log_error = mysqld-bin-log.err" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "binlog-format" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "binlog-format" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "binlog-format = mixed" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "binlog-format" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "binlog-format" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "binlog-format = mixed" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "binlog_do_db" /var/packages/MariaDB10/etc/my.cnf) || !(grep -q "$DB_NAME" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "binlog_do_db" /var/packages/MariaDB10/etc/my.cnf || ! grep -q "$DB_NAME" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "binlog_do_db = $DB_NAME" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "sync_binlog" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "sync_binlog" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "sync_binlog = 1" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "expire_logs_days" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "expire_logs_days" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "expire_logs_days = 5" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "innodb_flush_log_at_trx_commit" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "innodb_flush_log_at_trx_commit" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "innodb_flush_log_at_trx_commit = 1" >> /var/packages/MariaDB10/etc/my.cnf
 		fi		
@@ -159,16 +165,16 @@ then
 		$SUDO chmod 600 /var/packages/MariaDB10/etc/my.cnf
 		$SUDO /var/packages/MariaDB10/scripts/start-stop-status restart
 	fi
-	if [ "$SUDO" == "sudo" ]
+	if [ "$SUDO" = "sudo" ]
 	then
 		sudo chmod 600 /var/packages/MariaDB10/etc/my.cnf
 	fi
-	sed -i -e "s~K_REPLICATION=\"$K_REPLICATION\"~K_REPLICATION=\"MASTER\"~" $CFG
-	sed -i -e "s~K_REPLICATION_PWD=\"$K_REPLICATION_PWD\"~K_REPLICATION_PWD=\"$RPWD\"~" $CFG
+	sed -i -e "s~K_REPLICATION=\"$K_REPLICATION\"~K_REPLICATION=\"MASTER\"~" "$CFG"
+	sed -i -e "s~K_REPLICATION_PWD=\"$K_REPLICATION_PWD\"~K_REPLICATION_PWD=\"$RPWD\"~" "$CFG"
 	echo "replication master set up including slave users to allow connection.."
 	exit 0
 fi
-if [ $# -gt 0 ] && [ "$1" == "slave" ]
+if [ $# -gt 0 ] && [ "$1" = "slave" ]
 then
 	if [ $# -lt 4 ]
 	then
@@ -195,36 +201,36 @@ then
 	fi	
 	# modify mysql configuration section followed by restart if needed
 	test -e /var/packages/MariaDB10/etc/my.cnf || $SUDO touch /var/packages/MariaDB10/etc/my.cnf
-	if [ "$SUDO" == "sudo" ]
+	if [ "$SUDO" = "sudo" ]
 	then
 		# sudo echo or grep does not work so temporarily open the files for read
 		sudo chmod 666 /var/packages/MariaDB10/etc/my.cnf
 	fi
 	# key entry to identify slave combined with server-id
-	if !(grep -q "server-id" /var/packages/MariaDB10/etc/my.cnf) || !(grep -q "log-slave-updates" /var/packages/MariaDB10/etc/my.cnf)
+	if ! grep -q "server-id" /var/packages/MariaDB10/etc/my.cnf || ! grep -q "log-slave-updates" /var/packages/MariaDB10/etc/my.cnf
 	then
-		if !(grep -q "[mysqld]" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "[mysqld]" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "[mysqld]" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "server-id" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "server-id" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "server-id = $ID" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "report-host" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "report-host" /var/packages/MariaDB10/etc/my.cnf
 		then
-			RHOST=`hostname`
+			RHOST=$(hostname)
 			echo -e "report-host = $RHOST" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "relay-log" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "relay-log" /var/packages/MariaDB10/etc/my.cnf
 		then 
 			echo -e "relay-log = mysql-relay-bin" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "log-slave-updates" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "log-slave-updates" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "log-slave-updates = 1" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
-		if !(grep -q "read-only" /var/packages/MariaDB10/etc/my.cnf)
+		if ! grep -q "read-only" /var/packages/MariaDB10/etc/my.cnf
 		then
 			echo -e "read-only = 1" >> /var/packages/MariaDB10/etc/my.cnf
 		fi
@@ -234,7 +240,7 @@ then
 		$SUDO chmod 600 /var/packages/MariaDB10/etc/my.cnf
 		$SUDO /var/packages/MariaDB10/scripts/start-stop-status restart
 	fi
-	if [ "$SUDO" == "sudo" ]
+	if [ "$SUDO" = "sudo" ]
 	then
 		sudo chmod 600 /var/packages/MariaDB10/etc/my.cnf
 	fi
@@ -248,12 +254,12 @@ then
 		cat /tmp/out.sql
 		exit 1
 	fi
-	$SUDO sed -i -e "s~K_REPLICATION=\"$K_REPLICATION\"~K_REPLICATION=\"SLAVE\"~" $CFG
-	$SUDO sed -i -e "s~K_REPLICATION_PWD=\"$K_REPLICATION_PWD\"~K_REPLICATION_PWD=\"$RPWD\"~" $CFG
+	$SUDO sed -i -e "s~K_REPLICATION=\"$K_REPLICATION\"~K_REPLICATION=\"SLAVE\"~" "$CFG"
+	$SUDO sed -i -e "s~K_REPLICATION_PWD=\"$K_REPLICATION_PWD\"~K_REPLICATION_PWD=\"$RPWD\"~" "$CFG"
 	echo "replication slave set up and connected; run full resync or syncin action to start with master-log-pos from restore.."
 	exit 0
 fi
-if [ $# -gt 0 ] && [ "$1" == "slave-add" ]
+if [ $# -gt 0 ] && [ "$1" = "slave-add" ]
 then
 	if [ "$K_REPLICATION" != "MASTER" ]
 	then
@@ -280,7 +286,7 @@ then
 	echo "added slave $SHOST to connect to this master"
 	exit 0
 fi
-if [ $# -gt 0 ] && [ "$1" == "syncin" ]
+if [ $# -gt 0 ] && [ "$1" = "syncin" ]
 then
 	if [ "$K_REPLICATION" != "SLAVE" ]
 	then
@@ -292,9 +298,9 @@ then
 		echo "pleae provide myqsl root pwd for this operation"
 		exit 1
 	fi
-	if [ -e $DUMP_PATH/master-logpos-* ]
+	if [ -e "$DUMP_PATH/master-logpos-*" ]
 	then 
-			LOGSYNC=`cat $DUMP_PATH/master-logpos-*`
+			LOGSYNC=$(cat "$DUMP_PATH/master-logpos-*")
 	else
 		echo "no $DUMP_PATH/master-logpos-* found; run restore first using dump with master-log information; exiting.."
 		exit 1
@@ -315,7 +321,7 @@ then
 		$SUDO /var/packages/MariaDB10/scripts/start-stop-status restart
 	fi
 fi
-if [ $# -gt 0 ] && [ "$1" == "resync" ]
+if [ $# -gt 0 ] && [ "$1" = "resync" ]
 then
 	if [ "$K_REPLICATION" != "SLAVE" ]
 	then
@@ -336,8 +342,8 @@ then
 		cat /tmp/out.sql
 		exit 1
 	fi
-	MSVR=`grep Master_Host /tmp/out.sql | cut -d':' -f2-`	
-	MUSR=`grep Master_User /tmp/out.sql | cut -d':' -f2-`
+	MSVR=$(grep Master_Host /tmp/out.sql | cut -d':' -f2-)	
+	MUSR=$(grep Master_User /tmp/out.sql | cut -d':' -f2-)
 	SQL="SHOW MASTER STATUS\G;"
 	$SUDO $MYSQL -u$MUSR -p$K_REPLICATION_PWD -h$MSVR -e "$SQL" >/tmp/out.sql 2>&1
 	ERR=$?
@@ -347,8 +353,8 @@ then
 		cat /tmp/out.sql
 		exit 1
 	fi
-	LFNO=`grep File /tmp/out.sql | cut -d':' -f2- | cut -c 2-`
-	LPOS=`grep Position /tmp/out.sql | cut -d':' -f2- | cut -c 2-`
+	LFNO=$(grep File /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+	LPOS=$(grep Position /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
 	LOGSYNC="CHANGE MASTER TO MASTER_LOG_FILE='${LFNO}', MASTER_LOG_POS=${LPOS}"
 	SQL="STOP SLAVE; RESET SLAVE; $LOGSYNC; START SLAVE;"
 	$SUDO $MYSQL -uroot -p$2 -e "$SQL" >/tmp/out.sql 2>&1
@@ -366,7 +372,7 @@ then
 		$SUDO /var/packages/MariaDB10/scripts/start-stop-status restart
 	fi
 fi
-if [ $# -gt 0 ] && [ "$1" == "start" ]
+if [ $# -gt 0 ] && [ "$1" = "start" ]
 then
 	if [ "$K_REPLICATION" != "SLAVE" ]
 	then
@@ -388,7 +394,7 @@ then
 		exit 1
 	fi
 fi
-if [ $# -gt 0 ] && [ "$1" == "stop" ]
+if [ $# -gt 0 ] && [ "$1" = "stop" ]
 then
 	if [ "$K_REPLICATION" != "SLAVE" ]
 	then
@@ -410,7 +416,7 @@ then
 		exit 1
 	fi
 fi
-if [ $# -gt 0 ] && [ "$1" == "skip" ]
+if [ $# -gt 0 ] && [ "$1" = "skip" ]
 then
 	if [ "$K_REPLICATION" != "SLAVE" ]
 	then
@@ -432,7 +438,7 @@ then
 		exit 1
 	fi
 fi
-if [ $# -gt 0 ] && [ "$1" == "remove" ]
+if [ $# -gt 0 ] && [ "$1" = "remove" ]
 then
 	if [ "$K_REPLICATION" != "SLAVE" ]
 	then
@@ -460,12 +466,12 @@ then
 	$SUDO sed -i -e "s~log-slave-updates = 1~~" /var/packages/MariaDB10/etc/my.cnf
 	$SUDO sed -i -e "s~;read-only = 1~~" /var/packages/MariaDB10/etc/my.cnf
 	$SUDO sed -i '/^$/d' /var/packages/MariaDB10/etc/my.cnf
-	$SUDO sed -i -e "s~K_REPLICATION=\"$K_REPLICATION\"~K_REPLICATION=\"OFF\"~" $CFG
+	$SUDO sed -i -e "s~K_REPLICATION=\"$K_REPLICATION\"~K_REPLICATION=\"OFF\"~" "$CFG"
 	echo "removal and reset all for slave done restarting mysql"
 	$SUDO /var/packages/MariaDB10/scripts/start-stop-status restart
 	exit 0
 fi
-if [ $# -gt 0 ] && [ $1 == "rw" ]
+if [ $# -gt 0 ] && [ $1 = "rw" ]
 then
 	if [ "$K_REPLICATION" != "SLAVE" ]
 	then
@@ -477,7 +483,7 @@ then
 	$SUDO /var/packages/MariaDB10/scripts/start-stop-status restart
 	exit 0
 fi
-if [ $# -gt 0 ] && [ "$1" == "ro" ]
+if [ $# -gt 0 ] && [ "$1" = "ro" ]
 then
 	if [ "$K_REPLICATION" != "SLAVE" ]
 	then
@@ -489,7 +495,7 @@ then
 	$SUDO /var/packages/MariaDB10/scripts/start-stop-status restart
 	exit 0
 fi
-if [ $# -gt 0 ] && [ "$1" == "reset" ]
+if [ $# -gt 0 ] && [ "$1" = "reset" ]
 then
 	if [ "$K_REPLICATION" != "MASTER" ] && [ $K_REPLICATION != "SLAVE" ]
 	then
@@ -501,7 +507,7 @@ then
 		echo "pleae provide myqsl root pwd for this operation"
 		exit 1
 	fi
-	if [ "$K_REPLICATION" == "MASTER" ]
+	if [ "$K_REPLICATION" = "MASTER" ]
 	then
 		SQL="RESET MASTER;"
 	else
@@ -524,13 +530,13 @@ then
 	fi
 fi
 # default status mode
-if [ "$K_REPLICATION" == "OFF" ]
+if [ "$K_REPLICATION" = "OFF" ]
 then
 	echo "kopano mysql replication is disabled; select action 'master' or 'slave'; see help for details"
 	exit 1
 fi
 # default if no parameters or status is given
-if [ "$K_REPLICATION" == "SLAVE" ]
+if [ "$K_REPLICATION" = "SLAVE" ]
 then
 	SQL="SHOW SLAVE STATUS\G"
 	$SUDO $MYSQL -urslave -p$K_REPLICATION_PWD -e "$SQL" >/tmp/out.sql 2>&1
@@ -541,13 +547,13 @@ then
 		cat /tmp/out.sql
 		exit 1
 	fi
-	SLIO=`grep Slave_IO_Running /tmp/out.sql | cut -d':' -f2-`
+	SLIO=$(grep Slave_IO_Running /tmp/out.sql | cut -d':' -f2-)
 	# skip Slave_SQL_Running_State so only 1stl line via head -1
-	SLSQL=`grep Slave_SQL_Running /tmp/out.sql | head -1 | cut -d':' -f2-`
-	SLSEC=`grep Seconds_Behind_Master /tmp/out.sql | cut -d':' -f2- | cut -c 2-`
-	MSVR=`grep Master_Host /tmp/out.sql | cut -d':' -f2-`
-	MUSR=`grep Master_User /tmp/out.sql | cut -d':' -f2-`
-	SERR=`grep Last_Error /tmp/out.sql | cut -d':' -f2-`
+	SLSQL=$(grep Slave_SQL_Running /tmp/out.sql | head -1 | cut -d':' -f2-)
+	SLSEC=$(grep Seconds_Behind_Master /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+	MSVR=$(grep Master_Host /tmp/out.sql | cut -d':' -f2-)
+	MUSR=$(grep Master_User /tmp/out.sql | cut -d':' -f2-)
+	SERR=$(grep Last_Error /tmp/out.sql | cut -d':' -f2-)
 	MSG=""
 	RERR=0
 	if [ "$SLIO" != " Yes" ] && [ "$SLSQL" != " Yes" ]
@@ -565,7 +571,7 @@ then
 			MSG="sql replication stopped"
 			RERR=1
 		fi
-		if [ "$SLIO" == " Yes" ] && [ "$SLSQL" == " Yes" ]
+		if [ "$SLIO" = " Yes" ] && [ "$SLSQL" = " Yes" ]
 		then
 			MSG="io&sql replication running"
 		fi
@@ -583,7 +589,7 @@ then
 			RERR=1	
 		fi
 	fi
-	if [ $# -gt 0 ] && [ $1 == "health" ] && [ $RERR -eq 0 ]
+	if [ $# -gt 0 ] && [ $1 = "health" ] && [ $RERR -eq 0 ]
 	then
 		SQL="SHOW MASTER STATUS\G; SHOW SLAVE HOSTS\G"
 		$SUDO $MYSQL -u$MUSR -p$K_REPLICATION_PWD -h$MSVR -e "$SQL" >/tmp/out.sql 2>&1
@@ -594,9 +600,9 @@ then
 			cat /tmp/out.sql
 			exit 1
 		fi
-		LFNO=`grep File /tmp/out.sql | cut -d':' -f2-`
-		LPOS=`grep Position /tmp/out.sql | cut -d':' -f2-`
-		SSVR=`grep Host /tmp/out.sql | cut -d':' -f2- | cut -c 2-`
+		LFNO=$(grep File /tmp/out.sql | cut -d':' -f2-)
+		LPOS=$(grep Position /tmp/out.sql | cut -d':' -f2-)
+		SSVR=$(grep Host /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
 		MSG="${MSG}:${LFNO} at${LPOS}"
 	else
 		if [ $RERR -eq 0 ]
@@ -607,12 +613,12 @@ then
 	echo "$MSG"
 	if [ $RERR -gt 0 ] && [ $NOTIFY -gt 0 ]
 	then
-		/usr/syno/bin/synodsmnotify $NOTIFYTARGET kopano-replication "$MSG"
+		/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" kopano-replication "$MSG"
 		exit 1
 	fi
 	exit 0
 fi
-if [ "$K_REPLICATION" == "MASTER" ]
+if [ "$K_REPLICATION" = "MASTER" ]
 then
 	SQL="SHOW MASTER STATUS\G; SHOW SLAVE HOSTS\G"
 	$SUDO $MYSQL -urslave -p$K_REPLICATION_PWD -e "$SQL" >/tmp/out.sql 2>&1
@@ -623,14 +629,14 @@ then
 		cat /tmp/out.sql
 		exit 1
 	fi	
-	LFNO=`grep File /tmp/out.sql | cut -d':' -f2-`
-	LPOS=`grep Position /tmp/out.sql | cut -d':' -f2-`
-	SSVRS=`grep Host /tmp/out.sql | cut -d':' -f2- | cut -c 2-`
+	LFNO=$(grep File /tmp/out.sql | cut -d':' -f2-)
+	LPOS=$(grep Position /tmp/out.sql | cut -d':' -f2-)
+	SSVRS=$(grep Host /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
 	MSG=""
 	RERR=0
-	if [ $# -gt 0 ] && [ "$1" == "health" ]
+	if [ $# -gt 0 ] && [ "$1" = "health" ]
 	then
-		if [ "$SSVRS" == "" ]
+		if [ "$SSVRS" = "" ]
 		then
 			MSG="error: no connected replication slave(s)"
 			RERR=1
@@ -648,13 +654,13 @@ then
 					cat /tmp/out.sql
 					exit 1
 				fi
-				SLIO=`grep Slave_IO_Running /tmp/out.sql | cut -d':' -f2-`
-				SLSQL=`grep Slave_SQL_Running /tmp/out.sql | cut -d':' -f2-`
-				SLSEC=`grep Seconds_Behind_Master /tmp/out.sql | cut -d':' -f2- | cut -c 2-`
-				MSVR=`grep Master_Host /tmp/out.sql | cut -d':' -f2-`
-				MUSR=`grep Master_User /tmp/out.sql | cut -d':' -f2-`
-				SERR=`grep Last_Error /tmp/out.sql | cut -d':' -f2-`
-				SHST=`grep hostname /tmp/out.sql | cut -d':' -f2- | cut -c 2-`
+				SLIO=$(grep Slave_IO_Running /tmp/out.sql | cut -d':' -f2-)
+				SLSQL=$(grep Slave_SQL_Running /tmp/out.sql | cut -d':' -f2-)
+				SLSEC=$(grep Seconds_Behind_Master /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+				MSVR=$(grep Master_Host /tmp/out.sql | cut -d':' -f2-)
+				MUSR=$(grep Master_User /tmp/out.sql | cut -d':' -f2-)
+				SERR=$(grep Last_Error /tmp/out.sql | cut -d':' -f2-)
+				SHST=$(grep hostname /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
 				if [ "$SLIO" != " Yes" ] && [ "$SLSQL" != " Yes" ]
 				then
 					MSG="io&sql replication $SSVR stopped"
@@ -670,7 +676,7 @@ then
 						MSG="sql replication $SSVR stopped"
 						RERR=1
 					fi
-					if [ "$SLIO" == " Yes" ] && [ "$SLSQL" == " Yes" ]
+					if [ "$SLIO" = " Yes" ] && [ "$SLSQL" = " Yes" ]
 					then
 						MSG="io&sql replication $SSVR running"	
 					fi
@@ -696,7 +702,7 @@ then
 				echo "$MSG"
 				if [ $RERR -gt 0 ] && [ $NOTIFY -gt 0 ]
 				then
-					/usr/syno/bin/synodsmnotify $NOTIFYTARGET kopano-replication "$MSG"
+					/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" kopano-replication "$MSG"
 				fi
 			done
 		fi
@@ -706,7 +712,7 @@ then
 		echo "$MSG"
 		if [ $RERR -gt 0 ] && [ $NOTIFY -gt 0 ]
 		then
-			/usr/syno/bin/synodsmnotify $NOTIFYTARGET kopano-replication "$MSG"
+			/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" kopano-replication "$MSG"
 			exit 1
 		fi
 	fi

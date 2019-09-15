@@ -203,6 +203,7 @@ if ($page eq 'user')
             my $admflag = $admin eq "on" ? 1 : 0;
             $status = "Adding $kuser with pwd $passwd.. ";
             $cmdline = "kopano-cli --create --create-store --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";
+            #$status = $cmdline;
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -1791,7 +1792,7 @@ if ($page eq 'cmd')
     my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
     my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
     my @commands = ('kopano-admin', 'kopano-cli', 'kopano-storeadm', 'kopano-status', 'kopano-restart', 'kopano4s-init', 'kopano4s-optionals', 'kopano-postfix', 'kopano-fetchmail', 'kopano-backup', 'kopano4s-restore-user', 
-                    'kopano4s-backup', 'kopano4s-downgrade', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
+                    'kopano4s-backup', 'kopano4s-downgrade', 'kopano4s-attachment-tofs', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
     # process command first
     if ($action eq "Run") {
         $rcmd = param('rcmd');
@@ -1801,7 +1802,6 @@ if ($page eq 'cmd')
         $rcmd = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh" if ( $rcmd eq "kopano-admin" );
 		# kopano-storeadm / kopano-cli: blank or help = -h(elp)
         $params = "-h" if ( ( $rcmd eq "kopano-storeadm" || $rcmd eq "kopano-cli" ) && ( $params eq "" || $params eq "help" ) );
-        #$rcmd = "/var/packages/Kopano4s/scripts/wrapper/kopano-storeadm.sh" if ( $rcmd eq "kopano-storeadm" );
 
         if ( ($rcmd eq "kopano-backup" || $rcmd eq "kopano4s-backup") && $params ne "help" ) {
             if ( $rcmd eq "kopano4s-backup" ) {
@@ -1827,16 +1827,21 @@ if ($page eq 'cmd')
             }
             $cmdtxt .= "Started as long running background job; check notification and logs for backup completion..  "
         }
-		elsif ( ($rcmd eq "kopano4s-restore-user" || $rcmd eq "kopano4s-downgrade") && ($params eq "start" || $params eq "all") ) {
+		elsif ( ($rcmd eq "kopano4s-restore-user" || $rcmd eq "kopano4s-downgrade" || $rcmd eq "kopano4s-attachment-tofs" ) && ($params eq "start" || $params eq "all") ) {
             if ( $rcmd eq "kopano4s-restore-user" ) {
                system("/var/packages/Kopano4s/scripts/addon/kopano4s-restore-user.sh $params &>/dev/null 2>&1 &");
                $cmdline = "$buppath/restore-user.log";
                $cmdtxt = "Initial output of $buppath/restore-user.log please check log later\n ";
             }
-            else {
+            elsif ( $rcmd eq "kopano4s-downgrade" ) {
                system("/var/packages/Kopano4s/scripts/addon/kopano4s-downgrade.sh $params &>/dev/null 2>&1 &");
                $cmdline = "$buppath/downgrade-steps.log";
                $cmdtxt = "Initial output of $buppath/downgrade-steps.log please check log later\n ";
+            }
+            else {
+               system("/var/packages/Kopano4s/scripts/addon/kopano4s-attachment-tofs.sh $params &>/dev/null 2>&1 &");
+               $cmdline = "$buppath/attm2fs-steps.log";
+               $cmdtxt = "Initial output of $buppath/attm2fs-steps.log please check log later\n ";
             }
             sleep 3;
             if (open(DAT, $cmdline)) {

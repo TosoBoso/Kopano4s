@@ -310,6 +310,7 @@ case "$1" in
 	echo "baseline training from spamassassin.apache.org/old/publiccorpus.."
 	CPATH=`pwd`
 	cd /var/lib/amavis
+	wget --no-check-certificate -q https://github.com/TosoBoso/Kopano4s/releases/download/v0.9.9/spamtrain.tgz
 	tar xvf spamtrain.tgz >/dev/null 2>&1
 	chown -R amavis.debian-spamd /var/lib/amavis/spamtrain
 	echo "learning spam from training collection.."

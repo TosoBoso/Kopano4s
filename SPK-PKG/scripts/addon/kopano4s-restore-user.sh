@@ -1,5 +1,5 @@
 #!/bin/sh
-LOGIN=`whoami`
+LOGIN=$(whoami)
 # get config
 . /var/packages/Kopano4s/etc/package.cfg
 MYSQL="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql"
@@ -68,9 +68,12 @@ CREATE_K_USER()
 		if grep -a -q VSMTP "$K_BACKUP_PATH"/"$USR"/user
 		# old style before K 8.7x
 		then
+			# shellcheck disable=SC2002
 			NAME=$(cat "$K_BACKUP_PATH"/"$USR"/user | grep -v "/" | grep -v "mobile" | grep -v "imap" | grep ^V | head -1 | cut -d "V" -f2- )
+			# shellcheck disable=SC2002
 			MAIL=$(cat "$K_BACKUP_PATH"/"$USR"/user | grep ^VSMTP | cut -d ":" -f2- )
 		else
+			# shellcheck disable=SC2002
 			MAIL=$(cat "$K_BACKUP_PATH"/"$USR"/user | grep -a SMTP | cut -d ":" -f2- )
 		fi
 		ACTIVE="yes"
@@ -90,7 +93,7 @@ CREATE_K_USER()
 	#echo "kopano-cli --create --user ${USR} --fullname ${NAME} --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'"
 	kopano-cli --create --create-store --user "$USR" --fullname="${NAME}" --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'
 	kopano-localize-folders -u "${USR}" --lang "${LOCALE}"
-	if [ -n $USRPH ]
+	if [ -n "$USRPH" ]
 	then
 		SQL="update objectproperty set value='$USRPH' where propname='password' and objectid = (select objectid from objectproperty where propname='loginname' and value='$USR')\G;"
 		$MYSQL $DB_NAME -u$DB_USER -p$DB_PASS -e "$SQL"
@@ -141,10 +144,12 @@ for USR in $USRLIST; do
 		echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG.."
 		echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG.." >> "$K_BACKUP_PATH"/restore-user.log
 		# log also to log if running as part of k4s-downgrade or kopano4s-migration-zarafa
+		# shellcheck disable=SC2009
 		if ps -ef | grep -v grep | grep kopano4s-downgrade | tail -1 | grep -q kopano4s-downgrade
 		then
 			echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG.." >> "$K_BACKUP_PATH"/downgrade-steps.log
 		fi
+		# shellcheck disable=SC2009
 		if ps -ef | grep -v grep | grep kopano4s-migration-zarafa | tail -1 | grep -q kopano4s-migration-zarafa
 		then
 			echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG.." >> "$K_BACKUP_PATH"/migrate-steps.log

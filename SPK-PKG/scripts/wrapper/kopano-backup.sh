@@ -1,10 +1,15 @@
 #!/bin/sh
 # (c) 2018 vbettag - wraper script for kopano-backup in Docker container
 # admins only plus set sudo for DSM 6 as root login is no longer possible
-LOGIN=`whoami`
+LOGIN=$(whoami)
 # get the K_NOTIFY and K_BACKUP_PATH to list directories in backup folder which are linked to users
 . /var/packages/Kopano4s/etc/package.cfg
-MYSQL="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql"
+if [ -e /usr/local/mariadb10/bin/mysql ]
+then
+	MYSQL="/usr/local/mariadb10/bin/mysql"
+else 
+	MYSQL="/bin/mysql"
+fi
 if [ "$LOGIN" != "root" ]
 then 
 	echo "you have to run as root! alternatively as admin run with sudo prefix! exiting.."

@@ -20,7 +20,7 @@ then
 	echo "It is also reccomended to run this sript via Synology task scheduler to avoid time-out before completion when running via terminal"
 	exit 0
 fi
-if [ $# -eq 0 ] || ( [ $# -gt 0 ] && [ "$1" != "start" ] )
+if [ $# -eq 0 ] || [ "$1" != "start" ]
 then
 	echo "Usage: kopano4s-migration-zarafa plus start | help."
 	echo "To avoid accidential usage you have to provide start as parameter"
@@ -96,7 +96,9 @@ then
 	sed -i -e "s~^server_listen_tls~#server_listen_tls~" "$ETC_PATH"/kopano/server.cfg
 fi
 # get timestamp of zarafa dump and then start restore
-TS=$(ls -t1 "$K_BACKUP_PATH"/dump-zarafa-*.sql.gz | head -n 1 | grep -o [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
+# shellcheck disable=SC2012
+# need to rewrite SC2012: Use find instead of ls to better handle non-alpha
+TS=$(ls -t1 "$K_BACKUP_PATH"/dump-zarafa-*.sql.gz | head -n 1 | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]")
 MSG="step 3: restore zarafa dump of $TS into kopano..."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
@@ -125,7 +127,9 @@ then
 	kopano-backup -w 4 -l INFO > "$K_BACKUP_PATH"/backup-user.log 2>&1
 fi
 cp /var/log/kopano/server.log "$K_BACKUP_PATH"/migrate-server.log
-TS=$(ls -t1 "$K_BACKUP_PATH"/dump-kopano-*.sql.gz | head -n 1 | grep -o [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9])
+# shellcheck disable=SC2012
+# need to rewrite SC2012: Use find instead of ls to better handle non-alpha
+TS=$(ls -t1 "$K_BACKUP_PATH"/dump-kopano-*.sql.gz | head -n 1 | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]")
 if [ $ROLLB -eq 0 ]
 then
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting user import.." > /var/log/kopano/server.log

@@ -1,7 +1,7 @@
 #!/bin/sh
 # (c) 2018 vbettag - wraper script  to collect users via kopano-adminin Docker container
 # admins only plus set sudo for DSM 6 as root login is no longer possible
-LOGIN=`whoami`
+LOGIN=$(whoami)
 if [ "$LOGIN" != "root" ]
 then 
 	echo "you have to run as root! alternatively as admin run with sudo prefix! exiting.."
