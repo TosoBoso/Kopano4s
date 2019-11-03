@@ -94,6 +94,13 @@ sub setComment { # set comments on / off for pattern via sed utility
 
 my $isDebug = 1; # debug modus
 my $debug = ""; # debug text
+my $isAdmin = 0; # part of administrators group
+my $isDocker = 0; # part of docker group
+my $isKopano = 0; # part of kopano group
+my $cgiUser = $ENV{LOGNAME} || getpwuid($<) || $ENV{USER};
+my $uiUser =''; # user running ui session
+my $xsToken = !$ENV{'X-SYNO-TOKEN'} ? 'null' : $ENV{'X-SYNO-TOKEN'}; # synology token against xss in header
+my $dsmToken =''; #  synology dsm token against xss from dsm login.cgi
 my %tmplhtml; # array to capture all dynamic entries
 my $jscript = ''; # java script per page
 my $menu = ''; # menu html text highlighted with current page
@@ -108,25 +115,36 @@ my $dsmbuild = getCfgValue('/etc.defaults/VERSION', 'buildnumber');
 
 # *** common head: set html context, verify login, get global parameters, javascript, menu
 print "Content-type: text/html\n\n";
-
 # get the users priviledges and synotoken to verify login
-# app_priv not yet working for older versions
-#my ($isAdmin,$user,$token) = app_priv('SYNO.SDS._ThirdParty.App.kopano4s');
-my ($isAdmin,$user,$token) = usr_priv();
+($isAdmin,$uiUser,$dsmToken) = usr_priv();
+# app_priv used post usr_priv for non admin and is not yet working for older dsm versions b4 6.1
+($isAdmin,$uiUser,$dsmToken) = app_priv('SYNO.SDS._ThirdParty.App.kopano4s') if !$isAdmin;
 
-$isAdmin = 1 if (!$user && $isDebug); # tweak for debugging from cmd-line
+# autheticate in usr/app_priv returns uiUser null if it does not work e.g. in c,d-line mode
+if ($uiUser eq 'null' && $isDebug) { # tweak for debugging from cmd-line
+   $isAdmin = 1;
+   $uiUser = $cgiUser;
+}
+$isDocker = usr_ingrp($uiUser, 'docker'); 
+$isKopano = usr_ingrp($uiUser, 'kopano'); 
 $ENV{'QUERY_STRING'} = '' if !$ENV{'QUERY_STRING'} && $isDebug;
-$debug = "User: $user Adm: $isAdmin QueryStr: $ENV{'QUERY_STRING'}" if $isDebug;
+$debug = "CGI-User: $cgiUser, UI-User: $uiUser isAdmin: $isAdmin, isDocker: $isDocker, isKopano: $isKopano, dsmToken: $dsmToken, QueryStr: $ENV{'QUERY_STRING'}" if $isDebug;
 # exit with warning if not admin or in admin group
-if ( $isAdmin != 1) {
-    print "<HTML><HEAD><TITLE>Login Required</TITLE></HEAD><BODY>Please login as admin first, before using this webpage (user: $user)</BODY></HTML>\n";
+if ( !$isAdmin ) {
+    print "<HTML><HEAD><TITLE>Login Required</TITLE></HEAD><BODY><H3><BR>&nbsp;Please login as priviledged app user or admin first before using this webpage (user cgi / ui: $cgiUser / $uiUser, token: $dsmToken)</H3></BODY></HTML>\n";
     die;
 }
 
 $page = param ('page');
 $page = 'intro' if ! $page;
 $action = param('action');
-# get javascript and navigation menu
+# get javascript for main, page and navigation menu
+if (open(IN,"main.js")) {
+    while (<IN>) {
+        $jscript .= $_;
+    }
+    close(IN);
+}
 if (open(IN,"$page.js")) {
     while (<IN>) {
         $jscript .= $_;
@@ -152,6 +170,8 @@ if ($page eq 'intro')
     my $hubvertag = '';
     my $kupdate = '';
     my $status = 'Kopano health status OK';
+    #$status = 'Warning user $uiUser must be part of docker group to make the GUI cmds work' if ! $isDocker;
+    $status = "Debug: $debug" if $isDebug;
 
     $cmdline = '/var/packages/Kopano4s/scripts/addon/kopano4s-hubtag.sh |';
     if (open(DAT, $cmdline))
@@ -170,15 +190,15 @@ if ($page eq 'intro')
         $kupdate .= '<input type="submit" name="action" value="Run"/>&nbsp;image refresh to <B>' . $hubvertag . '</B></form>';
     }
 
-    # todo: health status e.g. all services running, nothing in hold / defer queueu
+    # todo: health status e.g. all services running, nothing in hold / defer queue
     $tmplhtml{'kvertag'} = $kvertag;
     $tmplhtml{'kupdate'} = $kupdate;
     $tmplhtml{'status'} = $status;
 }
 if ($page eq 'user') 
 {
-    my $usrtbl = ''; # collect the z-user table tr commands
-    my $grptbl = ''; # collect the z-group table tr commands
+    my $usrtbl = ''; # collect the k-user table tr commands
+    my $grptbl = ''; # collect the k-group table tr commands
     my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
 
     # process request to add, update, delete user first considering the input forms
@@ -200,9 +220,16 @@ if ($page eq 'user')
         }
         else {
             my $locale = getCfgValue($pkgcfg, 'LOCALE');
+            my $edition = getCfgValue($pkgcfg, 'K_EDITION');
             my $admflag = $admin eq "on" ? 1 : 0;
             $status = "Adding $kuser with pwd $passwd.. ";
-            $cmdline = "kopano-cli --create --create-store --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";
+            # migration edition fails when create-strore is used
+            if ($edition eq 'Migration') {
+                $cmdline = "kopano-cli --create --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";                
+            }
+            else {
+                $cmdline = "kopano-cli --create --create-store --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";
+            }
             #$status = $cmdline;
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
@@ -516,11 +543,11 @@ if ($page eq 'user')
         foreach my $reply (@rawDataCmd) {
             chomp($reply);
             #split up entries
-            my ($username, $fullname, $email, $active, $admin, $features, $size, $groups, $sendas) = split(",",$reply);
-            if(defined ($username))
+            my ($uiUsername, $fullname, $email, $active, $admin, $features, $size, $groups, $sendas) = split(",",$reply);
+            if(defined ($uiUsername))
             {
                 $usrtbl .= "<tr>";
-                $usrtbl .= "<td>$username</td>";
+                $usrtbl .= "<td>$uiUsername</td>";
                 $usrtbl .= "<td>$fullname</td>";
                 $usrtbl .= "<td>$email</td>";
                 $usrtbl .= "<td>$active</td>";
@@ -1333,7 +1360,7 @@ if ($page eq 'cfg')
     my $defcfg = '/etc/kopano/default'; # kopano default cfg file location
     my $mycfg = '/var/packages/MariaDB10/etc/my.cnf'; # MariaDB10 cfg file location
     my @pkgtags = ('kshare','kbackup','kfsattach','kgateway','kical','ksearch','kmonitor','dbname','dbuser','http','https','ical','icals',
-                   'imap','imaps','pop3','pop3s','ksyncssl','kforcessl','kwrtc','wrtc','ksnr','slocale','keep','knotify','ntarget','stuning');
+                   'imap','imaps','pop3','pop3s','ksyncssl','kforcessl','kwrtc','wrtc','ksnr','slocale','stimezone','keep','knotify','ntarget','stuning');
     my @mytags = ('innobuff','mpacket'); # mysql cfg tags
     my %cfgparam; # key value tag to cfg paramater
     $cfgparam{'kshare'} = 'K_SHARE'; # path to kopano share
@@ -1360,6 +1387,7 @@ if ($page eq 'cfg')
     $cfgparam{'wrtc'} = 'WRTC_PORT'; # container web-rtc port
     $cfgparam{'ksnr'} = 'K_SNR'; # kopano serial number
     $cfgparam{'slocale'} = 'LOCALE'; # kopano-locale language
+    $cfgparam{'stimezone'} = 'TIMEZONE'; # kopano-timezone for container
     $cfgparam{'keep'} = 'KEEP_BACKUPS'; # how many backups to kee
     $cfgparam{'knotify'} = 'NOTIFY';  # notification e.g. backup status on or off
     $cfgparam{'ntarget'} = 'NOTIFYTARGET'; # notification target
@@ -1377,6 +1405,10 @@ if ($page eq 'cfg')
     $tmplhtml{'mpacket'} = "1M" if ! $tmplhtml{'mpacket'};
     $tmplhtml{'status'} = '';
     my @locales = ('en_US.UTF-8', 'de_DE.UTF-8', 'fr_FR.UTF-8', 'es_ES.UTF-8', 'it_IT.UTF-8', 'nl_NL.UTF-8');
+    my @timezones = ('CET', 'EET', 'EST', 'GB', 'GMT', 'HST', 'MET', 'MST', 'NZ', 'PRC', 'ROC', 'ROK', 'UCT', 'UTC', 'US', 'WET',
+                     'Africa', 'America', 'Antarctica', 'Arctic', 'Asia', 'Atlantic', 'Australia', 'Brazil', 'Canada', 'Chile', 
+                     'Cuba', 'Egypt', 'Eire', 'Europe', 'Hongkong', 'Iceland', 'Indian', 'Iran', 'Israel', 'Jamaica', 'Japan',
+                     'Kwajalein', 'Libya', 'Mexico', 'Navajo', 'Pacific', 'Poland', 'Portugal', 'Singapore', 'Turkey', 'Zulu');
     my @tunings = ('0%', '20%', '40%', '60%');
     my $cfgtxt='';
     my $scfg='';
@@ -1416,7 +1448,7 @@ if ($page eq 'cfg')
             $newtaghtml{$tag} = param ($tag);
         }
         my @strtags = ('kshare','kbackup','kfsattach','kgateway','kical','ksearch','kmonitor',
-                       'dbname','dbuser','kwrtc','ksyncssl','kforcessl','ksnr','slocale','knotify','ntarget');
+                       'dbname','dbuser','kwrtc','ksyncssl','kforcessl','ksnr','slocale','stimezone','knotify','ntarget');
         my @numtags = ('http','https','ical','icals','imap','imaps','pop3','pop3s','wrtc','keep','stuning');
         $newtaghtml{'kfsattach'} = $newtaghtml{'kfsattach'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
         $newtaghtml{'kgateway'} = $newtaghtml{'kgateway'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
@@ -1579,6 +1611,12 @@ if ($page eq 'cfg')
         $tmplhtml{'localecmb'} .= "<option value=\"$locale\"";
         $tmplhtml{'localecmb'} .= "selected" if $locale eq $tmplhtml{'slocale'};
         $tmplhtml{'localecmb'} .= ">$locale</option>\n";
+    }
+    $tmplhtml{'timezonecmb'} = '';
+    foreach my $timezone (@timezones) {
+        $tmplhtml{'timezonecmb'} .= "<option value=\"$timezone\"";
+        $tmplhtml{'timezonecmb'} .= "selected" if $timezone eq $tmplhtml{'stimezone'};
+        $tmplhtml{'timezonecmb'} .= ">$timezone</option>\n";
     }
     $tmplhtml{'tuningcmb'} = '';
     foreach my $tuning (@tunings) {

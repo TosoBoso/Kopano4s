@@ -1,5 +1,5 @@
 [{
-	"step_title": "Kopano for Synology Install Core Settings -Stable Editions-",
+	"step_title": "Kopano for Synology Install Core Settings -Beta Edition-",
 	"items": 
 	[{
 		"type": "textfield",
@@ -32,25 +32,15 @@
 			"validator":{"allowBlank":false}
 		}]
 		},{
-		"type": "textfield",
-		"desc": "",
-		"subitems": 
-		[{
-			"key": "PKGWIZ_K_SNR",
-			"desc": "SerialNr (commercial subscription)",
-			"defaultValue": "",
-			"validator":{"allowBlank":true}
-		}]
-		},{
 		"type": "singleselect",
 		"subitems": 
 		[{
-			"key": "PKGWIZ_K_DEF",
-			"desc": "Kopano Default edition recent tested version 3-9 months old; free for home users.",
-			"defaultValue": true
+			"key": "PKGWIZ_K_COM",
+			"desc": "Kopano Community edition: beta version on nightly builds; free for brave users.",
+			"defaultValue": false
 		 },{
-			"key": "PKGWIZ_K_SUP",
-			"desc": "Kopano Supported edition: latest tested version with Subscription and SNR required.",
+			"key": "PKGWIZ_K_MIG",
+			"desc": "Kopano Migration edition (8.4.5-Web-3.4) to import Zarafa database and upgrade later.",
 			"defaultValue": false
 		}]
 		},{

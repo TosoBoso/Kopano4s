@@ -302,7 +302,7 @@
  *  For more information, see: https://wiki.z-hub.io/x/z4Aa
  */
     // Global Address Book functionality
-    define('KOE_CAPABILITY_GAB', true);
+    define('KOE_CAPABILITY_GAB', false);
     // Synchronize mail flags from the server to Outlook/KOE
     define('KOE_CAPABILITY_RECEIVEFLAGS', true);
     // Encode flags when sending from Outlook/KOE

@@ -807,7 +807,13 @@ init_kopano()
 	then 
 		sed -i -e "s~# $K_LOCALE~$K_LOCALE~" /etc/locale.gen
 		if [ ! -e /usr/share/locale/locale.alias ] ; then ln -s /etc/locale.alias /usr/share/locale/locale.alias ; fi
-		dpkg-reconfigure  -f noninteractive locales
+		dpkg-reconfigure -f noninteractive locales
+	fi
+	# setting different timezone to CET
+	if [ -n "$TIMEZONE" ] && [ "$TIMEZONE" != "CET" ] && [ -e /usr/share/zoneinfo/"$TIMEZONE" ]
+	then
+		ln -sf /usr/share/zoneinfo/"$TIMEZONE" /etc/localtime
+		dpkg-reconfigure -f noninteractive tzdata
 	fi
 	echo "setting acl, ssl, encryption shared secrets, fetchmail and plugins.."
 	# change run group for webmeetings for acls with synology

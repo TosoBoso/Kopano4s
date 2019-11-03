@@ -8,9 +8,6 @@ then
 	exit 1
 fi
 
-# avoid false alrms on sql-err from previous run
-if [ -e "$SQL_ERR" ] ; then rm "$SQL_ERR" ; fi
-
 # backup from legacy into dump-zarafa is via 1st argument, restore of legacy dump to legacy db is via 2x legacy aka 4th argument
 if [ -e /var/packages/Kopano4s/etc/package.cfg ] && [ "$1" != "legacy" ] && [ "$4" != "legacy" ]
 then
@@ -101,15 +98,16 @@ then
 	echo "No Mysql binaries found (expected /var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql) exiting now.."
 	ecit 1
 fi
-if [ "_$BACKUP_PATH" != "_" ] && [ -e "$BACKUP_PATH" ]
+if [ -n "$K_BACKUP_PATH" ] && [ -e "$K_BACKUP_PATH" ]
 then
-	DUMP_PATH="$BACKUP_PATH"
+	DUMP_PATH="$K_BACKUP_PATH"
 else
 	DUMP_PATH="$K_SHARE/backup"
 fi
 ATTM_PATH="$K_SHARE/attachments"
 DUMP_LOG="$DUMP_PATH/mySqlDump.log"
-SQL_ERR="$DUMP_PATH/mySql.err"
+SQL_ERR="$DUMP_PATH/Sql.err"
+ZIP_ERR="$DUMP_PATH/Zip.err"
 # remove looped softlink
 if [ -h "$DUMP_PATH/backup" ] ; then rm "$DUMP_PATH/backup" ; fi
 # no --routines  as restore then requires root priviledges..
@@ -131,7 +129,7 @@ then
 	then
 		# shellcheck disable=SC2012
 		# need to rewrite SC2012: Use find instead of ls to better handle non-alpha
-		TS=$(ls -t1 "$DUMP_PATH"/"$DPREFIX"-*.sql.gz | head -n 1 | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]")
+		TS=$(ls -t1 "$DUMP_PATH"/"$DPREFIX"-*.sql.gz 2>/dev/null | head -n 1 | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]")
 		if [ "$TS" = "" ]
 		then
 			TS="no files exist"
@@ -165,8 +163,9 @@ then
 		fi
 		exit 1
 	fi
+	STARTTIME=$(date +%s)
 	TS=$(date "+%Y.%m.%d-%H.%M.%S")
-	MSG="stoping kopano and starting restore of $DB_NAME from $DPREFIX-${TSTAMP}.sql.gz..."
+	MSG="stoping kopano for restore of $DB_NAME from dump of ${TSTAMP}..."
 	echo -e "$TS $MSG" >> "$DUMP_LOG"
 	echo "$MSG"
 	K_START=0
@@ -189,15 +188,36 @@ then
 			K_START=1
 		fi
 	fi
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") un-zipping dump sql file.."
-	gunzip "$DUMP_PATH/$DPREFIX-${TSTAMP}.sql.gz"
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") starting sql import.."
-	STARTTIME=$(date +%s)
+	TS=$(date "+%Y.%m.%d-%H.%M.%S")
+	MSG="un-zipping dump sql file $DPREFIX-${TSTAMP}.sql.gz.."
+	echo -e "$TS $MSG" >> "$DUMP_LOG"
+	echo "$TS $MSG"
+	gunzip "$DUMP_PATH/$DPREFIX-${TSTAMP}.sql.gz" >"$ZIP_ERR" 2>&1
+	if [ $? -ne 0 ]
+	then
+		RET=$(cat "$ZIP_ERR" | tr -d '\n')
+		TS=$(date "+%Y.%m.%d-%H.%M.%S")
+		MSG="stopping due to zip error: $RET.."
+		echo -e "$TS $MSG" >> "$DUMP_LOG"
+		echo "$TS $MSG"
+		if [ "$NOTIFY" = "ON" ]
+		then
+			/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" Kopano4s-Backup-Error "$MSG"
+		fi
+		exit 1
+	fi
+	TS=$(date "+%Y.%m.%d-%H.%M.%S")
+	MSG="starting sql import.."
+	echo -e "$TS $MSG" >> "$DUMP_LOG"
+	echo "$TS $MSG"
 	$MYSQL $DB_NAME -u$DB_USER -p$DB_PASS < $DUMP_PATH/$DPREFIX-${TSTAMP}.sql >"$SQL_ERR" 2>&1
 	RET=$(cat "$SQL_ERR")
 	if [ "$RET" != "" ]
 	then
-		echo -e "MySQL returned error: $RET"
+		TS=$(date "+%Y.%m.%d-%H.%M.%S")
+		MSG="MySQL returned error: $RET"
+		echo -e "$TS $MSG" >> "$DUMP_LOG"
+		echo "$TS $MSG"
 	fi
 	# restoring attachements if they exist
 	if [ "$ATTACHMENT_ON_FS" = "ON" ] && [ -e "$DUMP_PATH"/attachments-${TSTAMP}.tgz ] 
@@ -262,8 +282,24 @@ then
 		fi
 	fi
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") doing cleanup zipping back imported dump.sql file.."
-	gzip -9 "$DUMP_PATH"/"$DPREFIX"-${TSTAMP}.sql
+	gzip -9 "$DUMP_PATH"/"$DPREFIX"-${TSTAMP}.sql  >"$ZIP_ERR" 2>&1
+	if [ $? -ne 0 ]
+	then
+		RET=$(cat "$ZIP_ERR" | tr -d '\n')
+		TS=$(date "+%Y.%m.%d-%H.%M.%S")
+		MSG="stopping due to zip error: $RET.."
+		echo -e "$TS $MSG" >> "$DUMP_LOG"
+		echo "$TS $MSG"
+		if [ "$NOTIFY" = "ON" ]
+		then
+			/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" Kopano4s-Backup-Error "$MSG"
+		fi
+		exit 1
+	fi
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") done.."
+	# avoid false alrms on sql-err from previous run
+	if [ -e "$SQL_ERR" ] ; then rm "$SQL_ERR" ; fi
+	if [ -e "$ZIP_ERR" ] ; then rm "$ZIP_ERR" ; fi
 	exit 0
 fi
 
@@ -327,16 +363,19 @@ STARTTIME=$(date +%s)
 # ** start mysql-dump logging to $SQL_ERR to compressed file during run time use suffix RUNNING
 #echo "$MYSQLDUMP $DUMP_ARGS $DB_NAME -u$DB_USER -p$DB_PASS"
 $MYSQLDUMP $DUMP_ARGS $DB_NAME -u$DB_USER -p$DB_PASS | gzip -c -9 > "$DUMP_FILE_RUN"
-
 RET=$(cat "$SQL_ERR")
 if [ "$RET" != "" ]
 then
-	echo -e "$RET"
-	echo -e "$RET" >> "$DUMP_LOG"
+	TS=$(date "+%Y.%m.%d-%H.%M.%S")
+	MSG="SqlDump error: $RET.."
+	echo -e "$TS $MSG" >> "$DUMP_LOG"
+	echo "$TS $MSG"
 	if [ "$NOTIFY" = "ON" ]
 	then
-		/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" Kopano4s-Backup-Error "$RET"
+		/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" Kopano4s-Backup-Error "$MSG"
 	fi
+	rm "$DUMP_FILE_RUN"
+	exit 1
 fi
 mv -f "$DUMP_FILE_RUN" "$DUMP_PATH/$DPREFIX-${TSTAMP}.sql.gz"
 if [ "$ATTACHMENT_ON_FS" = "ON" ]
@@ -363,4 +402,7 @@ if [ "$NOTIFY" = "ON" ]
 then
 	/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" Kopano4s-Backup "$MSG"
 fi
+# avoid false alrms on sql-err from previous run
+if [ -e "$SQL_ERR" ] ; then rm "$SQL_ERR" ; fi
+if [ -e "$ZIP_ERR" ] ; then rm "$ZIP_ERR" ; fi
 exit 0

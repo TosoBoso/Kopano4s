@@ -103,8 +103,16 @@ case "$1" in
 	chown root.kopano /var/log/kopano/dagent.log
 	chmod 660 /var/log/kopano/dagent.log
 	# ensure rotate log of fetchmail
-	echo -e "/var/log/kopano/fetchmail.log {" > /etc/logrotate.d/fetchmail
-	echo -e "su root kopano\nweekly\nmissingok\nrotate 4\ncompress\ndelaycompress\n}" >> /etc/logrotate.d/fetchmail
+	cat <<-EOF > "/etc/logrotate.d/fetchmail" 
+		/var/log/kopano/fetchmail.log {
+		su root kopano
+		weekly
+		missingok
+		rotate 4
+		compress
+		delaycompress
+	}
+	EOF
 	if service fetchmail status | grep -q "fetchmail is running"
 	then
 		service fetchmail stop
@@ -118,7 +126,7 @@ case "$1" in
 		echo "no poll entries so far"
 		exit 1
 	fi	
-	USRLIST='z-user; r-user; r-pwd; server; protocol; port; ssl; folder(s)'
+	USRLIST='k-user; r-user; r-pwd; server; protocol; port; ssl; folder(s)'
 	while read LINE
 	do
 		IFS=" "
@@ -189,7 +197,7 @@ case "$1" in
 	add)
 	if [ $# -lt 9 ]
 	then
-		echo "please provide all fetch-mail parameters in order: z-user r-user r-pwd server protocol port ssl folder (INBOX or n/a for pop3)"
+		echo "please provide all fetch-mail parameters in order: k-user r-user r-pwd server protocol port ssl folder (INBOX or n/a for pop3)"
 		exit 1
 	fi
 	ZUSR=$2
@@ -241,7 +249,7 @@ case "$1" in
 	fi
 	echo "poll $SVR protocol $PROT port $PORT user $USR pass '${PWD}'${SSL}${FLD} ${DELIVER}${PRECON}" >> $FRC
 	chmod 600 $FRC
-	echo "OK adding fetchmail entry for z-user $ZUSR as $USR at $SVR."
+	echo "OK adding fetchmail entry for k-user $ZUSR as $USR at $SVR."
 	if [ $NOINIT -gt 0 ]
 	then
 		echo "post adding first entry you have to run kopano-fetchmail init."
@@ -266,7 +274,7 @@ case "$1" in
 		echo "no match found for $2:$3"
 		exit 1
 	fi
-	echo "removed fetchmail entry for z-user $2 as $3."
+	echo "removed fetchmail entry for k-user $2 as $3."
 	killall -q -9 fetchmail
 	sleep 2
 	if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm /var/run/fetchmail/fetchmail.pid ; fi

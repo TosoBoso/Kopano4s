@@ -1,13 +1,16 @@
 #!/bin/sh
 # ** get common procedures, settings, tags and download urls
-#echo "$(date '+%Y.%m.%d-%H:%M:%S') preupgrade" >> /tmp/inst.log
 MYDIR=$(dirname "$0")
 . "$MYDIR"/common
+if [ "$RELEASE" = "Beta" ] && [ -e /tmp/k4sinst.log ] && [ "$SYNOPKG_PKG_STATUS" = "UPGRADE" ] ; then rm /tmp/k4sinst.log ; fi
+if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') preupgrade start" >> /tmp/k4sinst.log ; fi
 if [ ! -e "$ETC_PATH"/package.cfg ] ; then touch "$ETC_PATH"/package.cfg ; fi
+
 GET_PKG_CFG
+if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') preupgrade state:${INSTALL_STATE}, edition:${K_EDITION}, tag:${VER_TAG}, mode:${SYNOPKG_PKG_STATUS}" >> /tmp/k4sinst.log ; fi
 if [ -z "$INSTALL_STATE" ] || [ "$INSTALL_STATE" != "completed" ]
 then
-	GUI_MESSAGE "No upgrade to previously uncompleted or legacy install. Please remove and install again. "
+	GUI_MESSAGE "No upgrade to previously uncompleted or legacy install. Please remove and install again."
 	exit 1
 fi
 if [ "$RELEASE" = "Stable" ] && [ "$K_EDITION" = "Community" ]
@@ -23,8 +26,8 @@ GET_VER_TAG
 if [ "$OLD_VER_TAG" != "$VER_TAG" ]
 then
 	DROP_OLD_DOCKER
-	echo "$(date '+%Y.%m.%d-%H:%M:%S') preupgrade: drop docker $OLD_VER_TAG" >> /tmp/inst.log
+	if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') preupgrade: drop $OLD_VER_TAG" >> /tmp/k4sinst.log ; fi
 fi
-#echo "$(date '+%Y.%m.%d-%H:%M:%S') preupgrade done" >> /tmp/inst.log
+if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') preupgrade done" >> /tmp/k4sinst.log ; fi
 exit 0
 

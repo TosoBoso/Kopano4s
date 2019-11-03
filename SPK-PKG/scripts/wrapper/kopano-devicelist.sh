@@ -1,26 +1,26 @@
 #!/bin/sh
-# (c) 2018 vbettag - wraper script for devicelist via z-push-admin in Docker container
-# admins only plus set sudo for DSM 6 as root login is no longer possible
+# (c) 2018-19 vbettag - wraper script for devicelist via z-push-admin in Docker container
+# admins and docker members only otherwise set sudo for DSM 6 as root login is no longer possible
 LOGIN=$(whoami)
 if [ $LOGIN != "root" ] && ! (grep administrators /etc/group | grep -q "$LOGIN")
 then 
 	echo "admins only"
 	exit 1
 fi
-if [ "$LOGIN" != "root" ]
+if [ "$LOGIN" != "root" ] && ! (grep docker /etc/group | grep -q "$LOGIN")
 then
-	echo "Switching in sudo mode. You may need to provide root password at initial call.."
+	echo "switching in sudo mode for ${LOGIN} as you are not in docker group. You may need to provide root password initially and post timeout.."
 	SUDO="sudo"
 else
 	SUDO=""
 fi
-if [ $# -gt 0 ] && [ $1 == "csv" ]
+if [ $# -gt 0 ] && [ $1 = "csv" ]
 then
 	CSV="YES"
 else
 	CSV="NO"
 fi
-if [ "$CSV" == "YES" ]
+if [ "$CSV" = "YES" ]
 then
 	echo "k-user, device name, last sync, attention, device-id"
 else
@@ -42,11 +42,11 @@ for DEV in $DEVLST; do
 		DTYPE=$(grep type /tmp/kdev | cut -d ":" -f2- | sed "s~^[ \t]*~~")
 		LSYNC=$(grep Last /tmp/kdev | cut -d ":" -f2- | sed "s~^[ \t]*~~")
 		ATTN=$(grep Attention /tmp/kdev | cut -d ":" -f2- | sed "s~^[ \t]*~~")
-		if [ "_$DNAME" == "_" ]
+		if [ "_$DNAME" = "_" ]
 		then
 			DNAME=$DTYPE
 		fi
-		if [ "$CSV" == "YES" ]
+		if [ "$CSV" = "YES" ]
 		then
 			echo "$KUSER,$DNAME,$LSYNC,$ATTN,$DEV"
 		else

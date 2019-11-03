@@ -74,7 +74,12 @@ GET_K_DOWNLOAD_RELEASE_TAG()
 	local URL="$1"
 	local TAG="[[:graph:]]*${2}[[:graph:]]*"
 	# get basename from download URL for tag (e.g. Debian_9) which is recognized in between double-brackets
-	local DOWNL_FILE=$(basename $(curl --silent "$URL" | grep -o "$TAG" | head -1 | cut -f2 -d \"))
+	local DOWNL=$(curl --silent "$URL" | grep -o "$TAG" | head -1 | cut -f2 -d \")
+	if [ -z "$DOWNL" ]
+	then
+		echo ""
+	fi
+	DOWNL_FILE=$(basename "$DOWNL")
 	if [ -n "$DOWNL_FILE" ]
 	then
 		# based on download file split off as major release only the 1st 3 secions on . delimiter
@@ -98,7 +103,7 @@ then
 		echo "Could not evaluate Kopano webapp release tag from download; exiting.."
 		exit 1
 	fi
-	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
 		echo "Could not evaluate Kopano z-push release tag from download; exiting.."
@@ -130,7 +135,7 @@ then
 		echo "Could not evaluate Kopano webapp release tag from download; exiting.."
 		exit 1
 	fi
-	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
 		echo "Could not evaluate Kopano z-push release tag from download; exiting.."
@@ -153,7 +158,7 @@ if [ "$K_EDITION" = "Default" ]
 then
 	TAG1="8.7.1.0"
 	TAG2="3.5.6"
-	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
 		echo "Could not evaluate Kopano z-push release tag from download; exiting.."

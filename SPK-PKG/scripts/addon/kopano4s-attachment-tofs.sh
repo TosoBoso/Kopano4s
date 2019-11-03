@@ -96,7 +96,7 @@ rm -R "$K_SHARE"/attachments
 mkdir -p "$K_SHARE"/attachments
 chown kopano.kopano "$K_SHARE"/attachments
 chmod 770 "$K_SHARE"/attachments
-kopano4s-init refresh
+kopano4s-init reset
 echo "$(date "+%Y.%m.%d-%H.%M.%S") sleep 1 min to run smoothly and tables re-created.."
 sleep 60
 # no point to continue if kopano migration version stopped for any reason
@@ -107,7 +107,7 @@ else
 	ROLLB=1
 	sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"OFF\""~ /var/packages/Kopano4s/etc/package.cfg
 	sed -i -e "s~attachment_storage.*~attachment_storage	= database~" /etc/kopano/server.cfg
-	kopano4s-init refresh
+	kopano4s-init reset
 	head -4 "$K_BACKUP_PATH"/downgrade-server.log
 fi
 /var/packages/Kopano4s/scripts/start-stop-status start

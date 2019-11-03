@@ -79,6 +79,8 @@ if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/
 ATTACHMENT_STATE="$ATTACHMENT_ON_FS"
 K_EDITION_STATE="$K_EDITION"
 sed -i -e "s~K_EDITION=.*~K_EDITION=\"Migration\""~ $ETC_PATH/package.cfg
+# migration edition cannot handle default_store_locale
+if [ -e /etc/kopano/admin.cfg ] ; then sed -i -e "s~^default_store_locale~#default_store_locale~" /etc/kopano/admin.cfg ; fi
 if [ "$ATTACHMENT_ON_FS" = "ON" ]
 then
 	sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"OFF\""~ "$ETC_PATH"/package.cfg
@@ -103,6 +105,11 @@ MSG="step 3: restore zarafa dump of $TS into kopano..."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 kopano4s-backup restore $TS legacy
+# reset attachements
+rm -R "$K_SHARE"/attachments
+mkdir -p "$K_SHARE"/attachments
+chown root.kopano "$K_SHARE"/attachments
+chmod 770 "$K_SHARE"/attachments
 MSG="step 4: starting kopano migration (8.4.5) to run user export..."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
@@ -141,6 +148,7 @@ echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
 sed -i -e "s~K_EDITION=.*~K_EDITION=\"${K_EDITION_STATE}\""~ $ETC_PATH/package.cfg
+if [ -e /etc/kopano/admin.cfg ] ; then sed -i -e "s~^#default_store_locale~default_store_locale~" /etc/kopano/admin.cfg ; fi
 if [ "$ATTACHMENT_STATE" = "ON" ]
 then
 	sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"ON\""~ "$ETC_PATH"/package.cfg

@@ -1,3 +1,5 @@
+/* css style sheet for Synology Diskstation Manager 3rd party WebUI incl. menus, tabs */
+/* default style elements for body incl. fonts, paragraph, images, text, table, headers, hide  */
 body {
 	background-color: #FFFFFF;
 	font-family: verdana, tahoma, arial, helvetica, sans-serif;
@@ -9,20 +11,13 @@ body {
 	text-align: left;
 	margin: 0;
 }
-
-.hide { 
-	display: none; 
-}
-
 p {
 	font-size: 14px;
 	line-height: normal;
 }
-
 img {
 	vertical-align: middle;
 }
-
 ul {
 	list-style-type: none;
 	margin: 0;
@@ -34,36 +29,6 @@ ul {
 	border-right-style: solid;
 	border-color: #D3D3D3;
 	overflow: auto;
-}
-
-li a {
-	display: block;
-	color: #000;
-	padding: 3px 3px 3px 3px;
-	font-weight: bold;
-	font-size: 20px;
-	line-height: 20px;
-	text-decoration: none;
-}
-li a.active {
-	background-color: #1E90FF;
-	color: white;
-}
-
-li a:hover:not(.active):not(.spacer) {
-	background-color: #555;
-	color: white;
-}
-
-li a.spacer {
-	padding: 2px 2px;
-}
-
-li a.line {
-	padding: 0px 1px;
-	border-top-style: none;
-	border-bottom-style: solid;
-	border-color: #D3D3D3;
 }
 table {
 	background-color: #FFFFFF;
@@ -128,7 +93,6 @@ div.h3 {
 	padding-top: 0px;
 	top: auto;
 }
-
 h3 {
 	background-color: #FFFFFF;
 	border-bottom-color: #505a64;
@@ -152,4 +116,61 @@ h3 {
 	padding-right: 4px;
 	padding-top: 1px;
 	width: auto;
+}
+.hide { 
+	display: none; 
+}
+/* menu style with .a and li */
+li a {
+	display: block;
+	color: #000;
+	padding: 3px 3px 3px 3px;
+	font-weight: bold;
+	font-size: 20px;
+	line-height: 20px;
+	text-decoration: none;
+}
+li a.active {
+	background-color: #1E90FF;
+	color: white;
+}
+li a:hover:not(.active):not(.spacer) {
+	background-color: #555;
+	color: white;
+}
+
+li a.spacer {
+	padding: 2px 2px;
+}
+li a.line {
+	padding: 0px 1px;
+	border-top-style: none;
+	border-bottom-style: solid;
+	border-color: #D3D3D3;
+}
+/* tab style with .tab  */
+.tab {
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+}
+/* buttons used to open the tab content */
+.tab button {
+  background-color: inherit;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+}
+
+/* background color of buttons changed on hover */
+.tab button:hover {
+  background-color: #ddd;
+}
+
+/* active / current tablink class */
+.tab button.active {
+  background-color: #ccc;
 }

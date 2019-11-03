@@ -66,14 +66,14 @@
 		document.getElementById('frmGroup').style.display = "none";
 		document.getElementById('frmGroup2User').style.display = "none";
 		document.getElementById('frmSendAs').style.display = "block";
-		document.getElementById('lblSend').innerHTML = "Z-User:";
-		document.getElementById('valSend').name = "zuser";
+		document.getElementById('lblSend').innerHTML = "K-User:";
+		document.getElementById('valSend').name = "kuser";
 	}
 	function sendGroup() {
 		document.getElementById('frmUser').style.display = "none";
 		document.getElementById('frmGroup').style.display = "none";
 		document.getElementById('frmGroup2User').style.display = "none";
 		document.getElementById('frmSendAs').style.display = "block";
-		document.getElementById('lblSend').innerHTML = "Z-Group:";
-		document.getElementById('valSend').name = "zgroup";		
+		document.getElementById('lblSend').innerHTML = "K-Group:";
+		document.getElementById('valSend').name = "kgroup";		
 	}

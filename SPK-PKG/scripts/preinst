@@ -1,9 +1,10 @@
 #!/bin/sh
 # ** (c) 2018 vbettag - install for Kopano4Syno in Docker container
-#echo "$(date '+%Y.%m.%d-%H:%M:%S') preinst" >> /tmp/inst.log
 # ** get common procedures, settings, tags and download urls
 MYDIR=$(dirname "$0")
 . "$MYDIR"/common
+if [ "$RELEASE" = "Beta" ] && [ -e /tmp/k4sinst.log ] && [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ] ; then rm /tmp/k4sinst.log ; fi
+if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') preinst start" >> /tmp/k4sinst.log ; fi
 # ** install only modus
 if [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ]
 then
@@ -15,6 +16,8 @@ else
 	GET_PKG_CFG
 	GET_VER_TAG
 fi
+if [ "$RELEASE" = "Beta" ] ; then echo "preinst edition:${K_EDITION}, tag:${VER_TAG}, mode:${SYNOPKG_PKG_STATUS}" >> /tmp/k4sinst.log ; fi
+
 # ** install and upgrade: download the latest image
 K4S_IMAGE="tosoboso/kopano4s"
 if [ "$PKGWIZ_BUILD" != "true" ] && ! docker images | grep "$K4S_IMAGE" | grep -q "$VER_TAG"
@@ -22,7 +25,7 @@ then
 	DOCKER_PATH="$(synoshare --get docker | grep $"\t Path" | sed "s/.*\[\(.*\)].*/\1/")"
 	SPIN_HELPER_TIMEOUT
 	GET_K4S_SIZE
-	#echo "$(date '+%Y.%m.%d-%H:%M:%S') preinst: get image $VER_TAG" >> /tmp/inst.log
+	if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') preinst pull image size: $K4S_SIZE" >> /tmp/k4sinst.log ; fi
 	# ** usage:/var/packages/Docker/target/tool/helper JOB: image_name image_tag image_path image_download_size_mb
 	# ** SYNOPKG_PKG_PROGRESS_PATH = /tmp/install_progress_Kopano4s will be needed to show and run aka only in GUI mode
 	if [ "$PKGWIZ_NO_GUI" = "true" ]
@@ -37,5 +40,5 @@ then
 		LOG_MESSAGE "Failed pulling $K4S_IMAGE $VER_TAG"
 	fi
 fi
-#echo "$(date '+%Y.%m.%d-%H:%M:%S') preinst done" >> /tmp/inst.log
+if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') preinst done" >> /tmp/k4sinst.log ; fi
 exit 0

@@ -1,4 +1,5 @@
-[2019-09-14 v.1.0.5  [Support to run k4s beta on DSM 5.2 for migration, enhancements kopano4s-restore-user]
+[2019-10-27 v.1.0.6  [Fix migration edition add user via gui & restore-user, fix Admin-GUI issues show users]
+[2019-09-15 v.1.0.5  [Support to run k4s beta on DSM 5.2 for migration, enhancements kopano4s-restore-user]
 [2019-08-30 v.1.0.4  [Fix User creation issues linked to store in internal routines, fix GUI image refresh]
 [2019-08-25 v.1.0.3  [Fix SSL via kopano4s-init ssl, Admin-UI background jobs backup, restore, downgrade]
 [2019-08-18 v.1.0.2  [Scripts kopano4s-restore-user/-downgrade/-migration-zarafa, localize fix for new users]

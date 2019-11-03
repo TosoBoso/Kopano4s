@@ -172,6 +172,7 @@ ENV BUILD=${Build} \
 	LANG="en_GB.UTF-8" \
 	LANGUAGE="en_GB.UTF-8" \
 	LC_ALL="en_GB.UTF-8" \
+	TIMEZONE="CET" \
 	TERM=ansi \
 	DEBIAN_FRONTEND=noninteractive
 WORKDIR /root
@@ -179,7 +180,7 @@ COPY /container/dpkg-remove /root/dpkg-remove
 COPY /container/*.png /root/
 COPY /container/*.sh /usr/local/bin/
 RUN PASSWD="openssl rand -base64 32"
-# layer 2 step 16 or 17: merging run layers to save space in nested docker file syatem
+# layer 2 step 16 or 17: merging run layers to save space in nested docker file system
 RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix, fetchmail, amavisd, spamassassin, clamav, postgrey...." && \ 
 	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends --assume-yes \ 
 	wget locales apt-transport-https ssl-cert ca-certificates rsyslog dialog nginx-light && \

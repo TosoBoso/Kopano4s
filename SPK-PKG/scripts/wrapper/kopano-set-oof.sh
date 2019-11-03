@@ -1,23 +1,18 @@
 #!/bin/sh
-# (c) 2018 vbettag - wraper script for zarafa-set-oof in Docker container
-
-# admins only plus set sudo for DSM 6 as root login is no longer possible
+# (c) 2018-19 vbettag - wraper script for zarafa-set-oof in Docker container
+# admins and docker members only otherwise set sudo for DSM 6 as root login is no longer possible
 LOGIN=$(whoami)
 if [ $LOGIN != "root" ] && ! (grep administrators /etc/group | grep -q "$LOGIN")
 then 
 	echo "admins only"
 	exit 1
 fi
-if [ "$LOGIN" != "root" ]
+if [ "$LOGIN" != "root" ] && ! (grep docker /etc/group | grep -q "$LOGIN")
 then
-	echo "Switching in sudo mode. You may need to provide root password at initial call.."
+	echo "switching in sudo mode for ${LOGIN} as you are not in docker group. You may need to provide root password initially and post timeout.."
 	SUDO="sudo"
 else
 	SUDO=""
 fi
-# get common and config
-. /var/packages/Zarafa4home/scripts/common
-. "$ETC_PATH"/package.cfg
-
 # send enter and skip -t as it messes up when called from perl ui
 echo -e "\n" | $SUDO docker exec -i kopano4s kopano-set-oof "$@"

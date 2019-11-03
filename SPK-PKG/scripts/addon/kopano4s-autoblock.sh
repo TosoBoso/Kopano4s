@@ -2,8 +2,7 @@
 # (c) 2018-19 vbettag - wraper for synoautoblock and notification to be used by fail2ban
 # inspired by ruedi61: https://www.synology-forum.de/showthread.html?80679-Automatischer-Import-einer-Blockliste
 # DSM 6.2 AutoBlockIP Table via .sqlite3 /etc/synoautoblock.db & .schema AutoBlockIP:
-#CREATE TABLE AutoBlockIP(IP varchar(50) PRIMARY KEY,RecordTime date NOT NULL,ExpireTime date NOT NULL,Deny boolean NOT NULL,IPStd varchr(50) NOT NULL,Type INTEGER,Meta varchar(256));
-# CREATE TABLE AutoBlockIP(IP varchar(50) PRIMARY KEY,RecordTime date NOT NULL,ExpireTime date NOT NULL,Deny boolean NOT NULL,IPStd varchr(50) NOT NULL); 
+# CREATE TABLE AutoBlockIP(IP varchar(50) PRIMARY KEY,RecordTime date NOT NULL,ExpireTime date NOT NULL,Deny boolean NOT NULL,IPStd varchr(50) NOT NULL,Type INTEGER,Meta varchar(256));
 DELETE_IP_AFTER="3"
 LOGIN=$(whoami)
 if [ "$LOGIN" != "root" ]

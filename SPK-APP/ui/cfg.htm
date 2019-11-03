@@ -31,12 +31,13 @@
 		&nbsp;SNR:&nbsp;<input type="text" name="ksnr" size="27" value="<!--:ksnr:-->"/>
 		&nbsp;<input type="checkbox" name="ksyncssl" value="on"/<!--:chksyncssl:-->>SyncSSL from Syno
 		&nbsp;<input type="checkbox" name="kforcessl" value="on"/<!--:chkforcessl:-->>Enforce SSL
+		&nbsp;<input type="checkbox" name="knotify" value="on"/<!--:chknotify:-->>Notify Target:
+		<input type="text" name="ntarget" size="10" value="<!--:ntarget:-->"/>
 		&nbsp;<input type="checkbox" name="kwrtc" value="on"/<!--:chkkwrtc:-->>&nbsp;WebRTC / Port:
 		&nbsp;<input type="text" name="wrtc" size="1" value="<!--:wrtc:-->"/><br><br>
 		&nbsp;Locale:&nbsp;<select name="slocale"><!--:localecmb:--></select>
+		&nbsp;TimeZone:&nbsp;<select name="stimezone"><!--:timezonecmb:--></select>
 		&nbsp;Keep-Backups:<input type="text" name="keep" size="1" value="<!--:keep:-->"/>
-		&nbsp;<input type="checkbox" name="knotify" value="on"/<!--:chknotify:-->>Notify
-		Target:<input type="text" name="ntarget" size="10" value="<!--:ntarget:-->"/>
 		&nbsp;MyMaxPacket:<input type="text" name="mpacket" size="1" value="<!--:mpacket:-->"/>
 		&nbsp;InnoDbBuffer:<input type="text" name="innobuff" size="2" value="<!--:innobuff:-->"/>
 		&nbsp;Tuning:&nbsp;<select name="stuning"><!--:tuningcmb:--></select>		
@@ -57,11 +58,11 @@
 		&nbsp;<input type="submit" name="action" value="Replace"/>
 		&nbsp;PLG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="plgentry" size="56" value="<!--:plgentry:-->"/>
 	</form>
-	<textarea name="cfgtxt" rows="14" cols="140"> <!--:cfgtxt:--></textarea>
+	<textarea name="cfgtxt" rows="14" cols="111"> <!--:cfgtxt:--></textarea>
 	<p><b><u>Tips:</u></b>&nbsp;To update entries select respective cfg / plg and use key = value for cfgs (e.g. KOPANO_LOCALE="C") or full new line to be replaced for plgs. 
 	<!-- style for bottom position -->
 	<div style='position:absolute;bottom:0;padding:0px 0px;'>
-		<textarea name="status" rows="1" cols="140"> <!--:status:--> </textarea>
+		<textarea name="status" rows="1" cols="111"> <!--:status:--> </textarea>
 	</div>
 	<!-- end of style and section main body right hand side to navigation -->
 	</div>

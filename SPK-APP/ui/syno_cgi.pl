@@ -11,12 +11,12 @@
 #  Copyright:   2016-2017 by QTip & TosoBoso                               #
 #  License:     GNU GPLv3 (see LICENSE)                                    #
 #  ------------------------------------------------------------------- --  #
-#  Version:     0.1 - 04/23/2017                                           #
+#  Version:     0.2 - 10/27/2019                                           #
 #**************************************************************************#
 my $rpInitialised = 0; # to have requestParams only loaded once
 my $reqParams; # html query string captured from cgi
 
-sub param { # only works for html-get parameters
+sub param { # only works for html-get parameters to be independent of cgi.pm
     my $rp = shift; # the get request parameter
     return '' if ( !$rp || !$ENV{'REQUEST_METHOD'} ); # exit if no request set
     # parse once url params from query string this will catch anything after the "?"
@@ -33,112 +33,129 @@ sub param { # only works for html-get parameters
     }    
     return $reqParams->{$rp};
 }
+sub usr_ingrp { # check if user is in particular group
+    my $user = shift; # the user parameter
+    my $group = shift; # the group parameter
+    my $isInGroup = 0;
+    return 0 if (!$user || !$group); # no point for empty parameters
+    if (open (IN,"/etc/group")) {
+        while(<IN>) {
+            $isInGroup = 1 if ( /$group:/ && /$user/ );
+        }
+        close(IN);
+    }
+    return ($isInGroup);
+}
 sub usr_priv { # old way: admin priviledge on system level via etc-group
-     my $isAdmin = 0;
-     my $user = '';
-     my $token = '';
-     # save http_get environment and restore later to get syno-cgi working for token and user
-     my $tmpenv = $ENV{'QUERY_STRING'};
-     my $tmpreq = $ENV{'REQUEST_METHOD'};
-     $ENV{'QUERY_STRING'}="";
-     $ENV{'REQUEST_METHOD'} = 'GET';
-     # get the synotoken to verify login
-     if (open (IN,"/usr/syno/synoman/webman/login.cgi|")) {
-         while(<IN>) {
-             if (/SynoToken/) { ($token)=/SynoToken" *: *"([^"]+)"/; }
-         }
-         close(IN);
-     }
-     if ( $token ne '' ) { # no token no query respecively in cmd-line mode
-         $ENV{'QUERY_STRING'}="SynoToken=$token";
-         $ENV{'X-SYNO-TOKEN'} = $token;
-         if (open (IN,"/usr/syno/synoman/webman/modules/authenticate.cgi|")) {
-             $user=<IN>;
-             chop($user);
-             close(IN);
-         }
-         $ENV{QUERY_STRING} = $tmpenv;
-         $ENV{'REQUEST_METHOD'} = $tmpreq;
-     }
-     else
-     {
-         $ENV{QUERY_STRING} = $tmpenv;
-         $ENV{'REQUEST_METHOD'} = $tmpreq;
-         return (0,'','');
-     }
+    my $isAdmin = 0;
+    my $user = '';
+    my $token = '';
+    # save http_get environment and restore later to get syno-cgi working for token and user
+    my $tmpenv = $ENV{'QUERY_STRING'};
+    my $tmpreq = $ENV{'REQUEST_METHOD'};
+    $ENV{'QUERY_STRING'}="";
+    $ENV{'REQUEST_METHOD'} = 'GET';
+    # get the synotoken to verify login
+    if (open (IN,"/usr/syno/synoman/webman/login.cgi|")) {
+        while(<IN>) {
+            if (/SynoToken/) { ($token)=/SynoToken" *: *"([^"]+)"/; }
+        }
+        close(IN);
+    }
+    else {
+        $token = 'no-permission login.cgi';
+    }
+    if ( $token ne '' && $token ne 'no-permission login.cgi' ) { # no token no query respectively in cmd-line mode
+        $ENV{'QUERY_STRING'}="SynoToken=$token";
+        $ENV{'X-SYNO-TOKEN'} = $token;
+        if (open (IN,"/usr/syno/synoman/webman/modules/authenticate.cgi|")) {
+            $user=<IN>;
+            chop($user);
+            close(IN);
+        }
+        $ENV{QUERY_STRING} = $tmpenv;
+        $ENV{'REQUEST_METHOD'} = $tmpreq;
+    }
+    else {
+        $ENV{QUERY_STRING} = $tmpenv;
+        $ENV{'REQUEST_METHOD'} = $tmpreq;
+        return (0,'null',$token);
+    }
      # verify if active user is part of administrators group
-     if ( $user eq 'admin' ) { # that was easy
-         $isAdmin = 1;
-     }
-     else { # verify user being part of system admin group
-         if (open (IN,"/etc/group")) {
-             while(<IN>) {
-                 $isAdmin = 1 if ( /administrators:/ && /$user/ );
-             }
-             close(IN);
-         }
-     }     
-     return ($isAdmin,$user,$token);
+    if ( $user eq 'admin' ) { # that was easy
+        $isAdmin = 1;
+    }
+    else { # verify user being part of system admin group
+        if (open (IN,"/etc/group")) {
+            while(<IN>) {
+                $isAdmin = 1 if ( /administrators:/ && /$user/ );
+            }
+            close(IN);
+        }
+    }     
+    return ($isAdmin,$user,$token);
 }
 sub app_priv { # new way: admin priviledge on syno app level
-     my $appName = shift;
-     my $appPrivilege = 0;
-     my $isAdmin = 0;
-     my $user = '';
-     my $token = '';
-     my $rawData = '';
-     use JSON::XS;
-     use Data::Dumper;
-     # save http_get environment and restore later to get syno-cgi working for token and user
-     my $tmpenv = $ENV{'QUERY_STRING'};
-     my $tmpreq = $ENV{'REQUEST_METHOD'};
-     $ENV{'QUERY_STRING'}="";
-     $ENV{'REQUEST_METHOD'} = 'GET';
-     # get the synotoken to verify login
-     if (open (IN,"/usr/syno/synoman/webman/login.cgi|")) {
-         while(<IN>) {
-             if (/SynoToken/) { ($token)=/SynoToken" *: *"([^"]+)"/; }
-         }
-         close(IN);
-     }
-     if ( $token ne '' ) { # no token no query respecively in cmd-line mode
-         my $tmpenv = $ENV{'QUERY_STRING'};
-         my $tmpreq = $ENV{'REQUEST_METHOD'};
-         $ENV{'QUERY_STRING'}="SynoToken=$token";
-         $ENV{'X-SYNO-TOKEN'} = $token;
-         if (open (IN,"/usr/syno/synoman/webman/modules/authenticate.cgi|")) {
-             $user=<IN>;
-             chop($user);
-             close(IN);
-         }
-         $ENV{QUERY_STRING} = $tmpenv;
-         $ENV{'REQUEST_METHOD'} = $tmpreq;
-     }
-     else
-     {
-         $ENV{QUERY_STRING} = $tmpenv;
-         $ENV{'REQUEST_METHOD'} = $tmpreq;
-         return (0,'','');
-     }
-     # verify user allowed admin on application level
-     # get dsm build
-     my $dsmbuild = `/bin/get_key_value /etc.defaults/VERSION buildnumber`;
-     chomp($dsmbuild);
-     if ($dsmbuild >= 7307) {
-          $rawData = `/usr/syno/bin/synowebapi --exec api=SYNO.Core.Desktop.Initdata method=get version=1 runner=$user`;
-          $initdata = JSON::XS->new->decode($rawData);
-          $appPrivilege = (defined $initdata->{'data'}->{'AppPrivilege'}->{$appname}) ? 1 : 0;
-          $isAdmin = (defined $initdata->{'data'}->{'Session'}->{'is_admin'} && $initdata->{'data'}->{'Session'}->{'is_admin'} == 1) ? 1 : 0;
-     } else {
-          $rawData = `/usr/syno/synoman/webman/initdata.cgi`;
-          $rawData = substr($rawData,index($rawData,"{")-1);
-          $initdata = JSON::XS->new->decode($rawData);
-          $appPrivilege = (defined $initdata->{'AppPrivilege'}->{$appname}) ? 1 : 0;
-          $isAdmin = (defined $initdata->{'Session'}->{'is_admin'} && $initdata->{'Session'}->{'is_admin'} == 1) ? 1 : 0;
-     }
-     # if application not found or user not admin, return empty string
-     return (0,'','') unless ($appPrivilege || $isAdmin);
-     return ($isAdmin,$user,$token);
+    my $appName = shift;
+    my $appPrivilege = 0;
+    my $isAdmin = 0;
+    my $user = '';
+    my $token = '';
+    my $rawData = '';
+    use JSON::XS;
+    use Data::Dumper;
+    # save http_get environment and restore later to get syno-cgi working for token and user
+    my $tmpenv = $ENV{'QUERY_STRING'};
+    my $tmpreq = $ENV{'REQUEST_METHOD'};
+    $ENV{'QUERY_STRING'}="";
+    $ENV{'REQUEST_METHOD'} = 'GET';
+    # get the synotoken to verify login
+    if (open (IN,"/usr/syno/synoman/webman/login.cgi|")) {
+        while(<IN>) {
+            if (/SynoToken/) { ($token)=/SynoToken" *: *"([^"]+)"/; }
+        }
+        close(IN);
+    }
+    else {
+        $token = 'no-permission login.cgi';
+    }
+    if ( $token ne '' && $token ne 'no-permission login.cgi' ) { # no token no query respectively in cmd-line mode
+        my $tmpenv = $ENV{'QUERY_STRING'};
+        my $tmpreq = $ENV{'REQUEST_METHOD'};
+        $ENV{'QUERY_STRING'}="SynoToken=$token";
+        $ENV{'X-SYNO-TOKEN'} = $token;
+        if (open (IN,"/usr/syno/synoman/webman/modules/authenticate.cgi|")) {
+            $user=<IN>;
+            chop($user);
+            close(IN);
+        }
+        $ENV{QUERY_STRING} = $tmpenv;
+        $ENV{'REQUEST_METHOD'} = $tmpreq;
+    }
+    else {
+        $ENV{QUERY_STRING} = $tmpenv;
+        $ENV{'REQUEST_METHOD'} = $tmpreq;
+        return (0,'null',$token);
+    }
+    # verify user allowed admin on application level
+    # get dsm build
+    my $dsmbuild = `/bin/get_key_value /etc.defaults/VERSION buildnumber`;
+    chomp($dsmbuild);
+    if ($dsmbuild >= 7307) {
+         $rawData = `/usr/syno/bin/synowebapi --exec api=SYNO.Core.Desktop.Initdata method=get version=1 runner=$user`;
+         $initdata = JSON::XS->new->decode($rawData);
+         $appPrivilege = (defined $initdata->{'data'}->{'AppPrivilege'}->{$appname}) ? 1 : 0;
+         $isAdmin = (defined $initdata->{'data'}->{'Session'}->{'is_admin'} && $initdata->{'data'}->{'Session'}->{'is_admin'} == 1) ? 1 : 0;
+    } else {
+         $rawData = `/usr/syno/synoman/webman/initdata.cgi`;
+         $rawData = substr($rawData,index($rawData,"{")-1);
+         $initdata = JSON::XS->new->decode($rawData);
+         $appPrivilege = (defined $initdata->{'AppPrivilege'}->{$appname}) ? 1 : 0;
+         $isAdmin = (defined $initdata->{'Session'}->{'is_admin'} && $initdata->{'Session'}->{'is_admin'} == 1) ? 1 : 0;
+    }
+    # if application not found or user not admin, return empty string
+    return (0,'','') unless ($appPrivilege || $isAdmin);
+    return ($isAdmin,$user,$token);
 }
 # return true for included libraries
 1;

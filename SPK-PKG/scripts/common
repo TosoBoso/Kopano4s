@@ -4,8 +4,8 @@
 # Image tags: Default is from 02.05./17.05.2019 and Migration from 15.12./15.12.2017
 MIGRATION_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
 DEFAULT_TAG="Core-8.7.1.0_Webapp-3.5.6_Z-Push-2.5.1_WMeet-0.29.5"
-SUPPORTED_TAG="Core-8.7.5_Webapp-3.5.10_Z-Push-2.5.1_WMeet-0.29.5"
-COMMUNITY_TAG="Core-8.7.82_Webapp-3.5.10_Z-Push-2.5.1_WMeet-0.29.5"
+SUPPORTED_TAG="Core-8.7.5_Webapp-3.5.12_Z-Push-2.5.1_WMeet-0.29.5"
+COMMUNITY_TAG="Core-8.7.84_Webapp-3.5.12_Z-Push-2.5.1_WMeet-0.29.5"
 MIGRATION_SIZE=142
 DEFAULT_SIZE=173
 SUPPORTED_SIZE=172
@@ -88,11 +88,12 @@ then
 	PKGWIZ_MAX_MSG_SIZE=15
 
 	PKGWIZ_LANG_EN="false"
-	PKGWIZ_LANG_DE="false"
-	PKGWIZ_LANG_FR="true"
+	PKGWIZ_LANG_DE="true"
+	PKGWIZ_LANG_FR="false"
 	PKGWIZ_LANG_ES="false"
 	PKGWIZ_LANG_IT="false"
 	PKGWIZ_LANG_NL="false"
+	PKGWIZ_TIMEZONE="CET"
 
 	PKGWIZ_RMASTER="false"
 	PKGWIZ_TUNING_BUFFER_0="true"
@@ -219,12 +220,18 @@ ENABLE_UI()
 	# sodtlink from ralpath of UI (e.g. /volume1/@appstore/Package/ui) to 3rdparty area
 	local REAL_UI
 	REAL_UI=$(realpath /var/packages/"$PKG_NAME"/target/ui)
-	$SUDO ln -sf "$REAL_UI" "$UI_PATH/$PKG_NAME"
+	# ui softlink for /usr/syno/synoman/webman/3rdparty
+	if [ -e "$UI_PATH" ]
+	then
+		$SUDO ln -sf "$REAL_UI" /usr/syno/synoman/webman/3rdparty/"$PKG_NAME"
+	fi
+	# remove nested softlink /volumeX/@appstore/Kopano4s/ui/ui
+	if [ -h "$REAL_UI"/ui ] ; then $SUDO rm "$REAL_UI"/ui ; fi
 }
 DISABLE_UI()
 {
 	# if softlink exists from 3rdparty-UI to package-target ui then remove it
-	if [ -h "$UI_PATH/$PKG_NAME" ] ; then $SUDO rm "$UI_PATH/$PKG_NAME" ; fi
+	if [ -h "$UI_PATH/$PKG_NAME" ] ; then $SUDO rm "$UI_PATH"/"$PKG_NAME" ; fi
 }
 # *** sub-routines GET_ (WIZZARD_CFG / TUNING_PARAMS / K_DOWNLOAD_BY_TAG) ***
 # get from INFO file if we have a stable or beta version
@@ -483,6 +490,7 @@ GET_WIZZARD_CFG()
 	else
 		K_REPLICATION="OFF"
 	fi
+	TIMEZONE=$PKGWIZ_TIMEZONE
 	KEEP_BACKUPS=5
 	NOTIFY="ON"
 	# ** set the notify recipient best what can be found
@@ -496,7 +504,7 @@ GET_WIZZARD_CFG()
 # used in upgrade mode to read the package.cfg file
 GET_PKG_CFG()
 {
-	source "$ETC_PATH/package.cfg"
+	. "$ETC_PATH"/package.cfg
 }
 # for community and supported dynamically evaluate release tag base on url
 GET_K_DOWNLOAD_RELEASE_TAG()
@@ -508,6 +516,10 @@ GET_K_DOWNLOAD_RELEASE_TAG()
 	local DOWNL_FILE
 	# get basename from download URL for tag (e.g. Debian_9) which is recognized in between double-brackets
 	DOWNL=$(curl --silent "$URL" | grep -o "$TAG" | head -1 | cut -f2 -d \")
+	if [ -z "$DOWNL" ]
+	then
+		echo ""
+	fi
 	DOWNL_FILE=$(basename "$DOWNL")
 	if [ -n "$DOWNL_FILE" ]
 	then
@@ -875,17 +887,23 @@ INIT_USR_GRP()
 		synouser --add kopano "$RAND_PWD" "Daemon user for Kopano Groupware Suite" 1 "" 0
 		LOG_MESSAGE "Added Kopano user to system in login disabled mode, random pwd (synouser cmd)"
 	fi
-	if ! grep -q kopano: /etc/group
-	then
-		synogroup --add kopano kopano root
-		synogroup --descset kopano "Group Kopano for shared access to mounts log and rc files"
-		LOG_MESSAGE "Added Kopano group to system for members root and kopano. Add other admins as needed.."
-	fi
 	if ! grep -q k4samavis: /etc/passwd
 	then
 		# ** add kopano group and user to join root for access patterns to rc and log files
 		synouser --add k4samavis "$RAND_PWD" "Daemon user for Kopano anti-virus" 1 "" 0
 		LOG_MESSAGE "Added k4samavis user to system in login disabled mode, random pwd (synouser cmd)"
+	fi
+	if ! grep -q kopano: /etc/group
+	then
+		synogroup --add kopano kopano k4samavis admin root
+		synogroup --descset kopano "For shared access to kopano mounts log and rc files"
+		LOG_MESSAGE "Added Kopano group to system for members root and kopano. Add other admins as needed.."
+	fi
+	if ! grep -q docker: /etc/group
+	then
+		synogroup --add docker admin
+		synogroup --descset docker "For admins to run docker commands without sudo"
+		LOG_MESSAGE "Added docker group to system for admin members to run docker commands without sudo. Add other docker admins as needed.."
 	fi
 }
 INIT_UPDATE()
@@ -969,6 +987,8 @@ INIT_UPDATE()
 		if [ ! -e "$ETC_PATH"/kopano/gateway.cfg ] ; then cp "$ETC_PATH"/kopano/ical.cfg.init "$ETC_PATH"/kopano/ical.cfg ; fi
 		if grep -q imaps_port "$ETC_PATH"/kopano/ical.cfg ; then cp "$ETC_PATH"/kopano/ical.cfg.init "$ETC_PATH"/kopano/ical.cfg ; fi
 	fi
+	# init TIMEZONE by CET when it did not exist aka is empty (-z)
+	if [ -z "$TIMEZONE" ] ; then TIMEZONE="CET" ; fi
 	# init K_SEARCH by enabled when it did not exist aka is empty (-z)
 	if [ -z "$K_SEARCH" ] ; then K_SEARCH="ON" ; fi
 	# amavis now holds spamassasin and clamav in same directory and soft links are used in container
@@ -1105,7 +1125,7 @@ INIT_SYNOACL()
 	chown -R root.administrators "$TARGET_PATH"/merge
 	find "$TARGET_PATH"/merge -type f -exec chmod 640 "{}" ";"
 	find "$TARGET_PATH"/merge -type d -exec chmod 750 "{}" ";"
-	# restricting access to UI makes icons vanish and index.cgi is secure by auth-login check so no chmod
+	# no restricting access to UI as icons would vanish plus index.cgi must be owned by root otherwise auth-login check fail
 }
 # ** init phase docker post build
 INIT_DOCKER()
@@ -1148,7 +1168,7 @@ SET_CFG_OPTIONS()
 	sed -i -e "s~kopano_db_name~$DB_NAME~" "$TARGET_PATH"/merge/server.cfg.init
 	sed -i -e "s~kopano_db_user~$DB_USER~" "$TARGET_PATH"/merge/server.cfg.init
 	sed -i -e "s~kopano_db_pwd~$DB_PASS~" "$TARGET_PATH"/merge/server.cfg.init
-	# special case migration version 8.4.5 with old zcp server.cfg settings
+	# special case migration version 8.4.5 with old zcp server.cfg and admin.cfg settings
 	if [ "$K_EDITION" = "Migration" ]
 	then
 		sed -i -e "s~^server_listen = \*:236~#server_listen = \*:236\nserver_tcp_enabled = yes\nserver_tcp_port = 236~" "$TARGET_PATH"/merge/server.cfg.init
@@ -1406,8 +1426,12 @@ SET_K_LOCALE()
 		if [ ! -e "$ETC_PATH"/kopano/default ] ; then $SUDO cp "$ETC_PATH"/kopano/default.init "$ETC_PATH"/kopano/default ; fi
 		$SUDO sed -i -e "s~KOPANO_LOCALE.*~KOPANO_LOCALE=\"$LOCALE\"~" "$ETC_PATH"/kopano/default
 		$SUDO sed -i -e "s~KOPANO_USERSCRIPT_LOCALE.*~KOPANO_USERSCRIPT_LOCALE=\"$LOCALE\"~" "$ETC_PATH"/kopano/default
-		$SUDO sed -i -e "s~#default_store_locale~default_store_locale~" "$ETC_PATH"/kopano/admin.cfg.init
 		$SUDO sed -i -e "s~default_store_locale.*~default_store_locale =\"$LOCALE\"~" "$ETC_PATH"/kopano/admin.cfg.init
+		if [ "$K_EDITION" != "Migration" ]
+		then
+			# migration edition does not yet know this setting and kopano-admin will fail so only un-comment for others
+			$SUDO sed -i -e "s~#default_store_locale~default_store_locale~" "$ETC_PATH"/kopano/admin.cfg.init
+		fi
 		$SUDO cp "$ETC_PATH"/kopano/admin.cfg.init "$ETC_PATH"/kopano/admin.cfg
 	fi
 }
@@ -1519,6 +1543,7 @@ SET_PKG_CFG()
 		echo MAX_MSG_SIZE="\"$MAX_MSG_SIZE\""
 		echo BLOCK_ATTACHMENTS="\"$BLOCK_ATTACHMENTS\""
 		echo LOCALE="\"$LOCALE\""
+		echo TIMEZONE="\"$TIMEZONE\""
 		echo KEEP_BACKUPS=$KEEP_BACKUPS
 		echo NOTIFY="\"$NOTIFY\""
 		echo NOTIFYTARGET="\"$NOTIFYTARGET\""
@@ -1550,7 +1575,6 @@ SET_DOCKER_ENV()
 	$SUDO ln -sf "$K_SHARE/run" /run/kopano
 	$SUDO ln -sf "$K_SHARE/search" "$DOCKER_PATH/kopano4s/search"
 	$SUDO ln -sf "$K_SHARE/spool" "$DOCKER_PATH/kopano4s/spool"
-	$SUDO ln -sf /etc/TZ "$DOCKER_PATH/kopano4s/timezone"
 	$SUDO ln -sf "$K_SHARE/z-push" "$DOCKER_PATH/kopano4s/z-push"
 	# remove recursive softlinks kopano, z-push, backup, attachments in etc, log, k-share
 	if [ -e /etc/kopano/kopano ] && [ -h /etc/kopano/kopano ] ; then $SUDO rm /etc/kopano/kopano ; fi
@@ -1580,10 +1604,9 @@ SET_DOCKER_ENV()
 	local K_RUN="$DOCKER_PATH/kopano4s/run"
 	local K_SRC="$DOCKER_PATH/kopano4s/search"
 	local K_SPL="$DOCKER_PATH/kopano4s/spool"
-	local K_TZ="$DOCKER_PATH/kopano4s/timezone"
 	local K_ZPU="$DOCKER_PATH/kopano4s/z-push"
 
-	DOCKER_MOUNTS="-v $M_SOCK:/run/mysqld:ro -v $K_RUN:/run/kopano -v $K_LT:/etc/localtime:ro -v $K_TZ:/etc/timezone:ro -v $K_ETC:/etc/kopano -v $Z_ETC:/etc/z-push \
+	DOCKER_MOUNTS="-v $M_SOCK:/run/mysqld:ro -v $K_RUN:/run/kopano -v $K_LT:/etc/localtime:ro -v $K_ETC:/etc/kopano -v $Z_ETC:/etc/z-push \
 	-v $K_AMV:/var/lib/amavis -v $K_ARC:/var/lib/kopano/archive -v $K_ATC:/var/lib/kopano/attachments -v $K_BUP:/var/lib/kopano/backup \
 	-v $K_LOG:/var/log/kopano -v $K_GRY:/var/lib/postgrey -v $K_SRC:/var/lib/kopano/search -v $K_SPL:/var/spool/postfix -v $K_ZPU:/var/lib/z-push"
 	# set tls name preferred so core componets like server expose with right name via 237
@@ -1619,7 +1642,7 @@ SET_DOCKER_ENV()
 		DOCKER_PORTS="$DOCKER_PORTS -p 3478:3478"
 	fi
 	# we use --init for tine plus pass and overwrite the image LAG with our locale via -e
-	DOCKER_PARAMS="-d --init --name kopano4s --hostname $K_HOST --restart=on-failure:3 -e PARENT=$DOCKER_HOST -e LANG=$LOCALE -e LANGUAGE=$LOCALE -e LC_ALL=$LOCALE"
+	DOCKER_PARAMS="-d --init --name kopano4s --hostname $K_HOST --restart=on-failure:3 -e PARENT=$DOCKER_HOST -e LANG=$LOCALE -e LANGUAGE=$LOCALE -e LC_ALL=$LOCALE -e TIMEZONE=$TIMEZONE"
 	# special experimental feature network paramater host to be added to parameters
 	if [ "$DOCKER_NW" = "host" ] && docker run --help | grep -q network ; then DOCKER_PARAMS="$DOCKER_PARAMS --network host" ; fi
 	DOCKER_IMAGE="tosoboso/kopano4s:$VER_TAG"
@@ -1741,7 +1764,7 @@ BUILD_DOCKER()
 			echo "Could not evaluate Kopano webapp release tag from download; exiting.."
 			exit 1
 		fi
-		TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+		TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
 		if [ -z "$TAG3" ]
 		then
 			echo "Could not evaluate Kopano z-push release tag from download; exiting.."
@@ -1771,7 +1794,7 @@ BUILD_DOCKER()
 			echo "Could not evaluate Kopano webapp release tag from download; exiting.."
 			exit 1
 		fi
-		TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "http://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+		TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
 		if [ -z "$TAG3" ]
 		then
 			echo "Could not evaluate Kopano z-push release tag from download; exiting.."

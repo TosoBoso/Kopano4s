@@ -53,11 +53,12 @@ case "$1" in
 		then
 			# can swith to any combination
 			K_EDITION="$2"
-			# change server.cfg settings and copy over Gateway and Ical new cfg
+			# change server.cfg and admin.cfg settings and copy over Gateway and Ical new cfg
 			sed -i -e "s~^#server_listen~server_listen~" /etc/kopano/server.cfg
 			sed -i -e "s~^#server_listen_tls~server_listen_tls~" /etc/kopano/server.cfg
 			sed -i -e "s~^server_tcp_enabled.*~~" /etc/kopano/server.cfg
 			sed -i -e "s~^server_tcp_port.*~~" /etc/kopano/server.cfg
+			if [ -e /etc/kopano/admin.cfg ] ; then sed -i -e "s~^#default_store_locale~default_store_locale~" /etc/kopano/admin.cfg ; fi
 			cp /var/packages/Kopano4s/target/merge/gateway.cfg.init /etc/kopano
 			cp /var/packages/Kopano4s/target/merge/gateway.cfg.init /etc/kopano/gateway.cfg
 			cp /var/packages/Kopano4s/target/merge/ical.cfg.init /etc/kopano

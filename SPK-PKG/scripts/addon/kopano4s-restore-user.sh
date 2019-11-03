@@ -89,9 +89,13 @@ CREATE_K_USER()
 	else
 		ADMFLAG=0			
 	fi
-	# add user then set localize folder with LOCAL as --lang doen not seam to work
-	#echo "kopano-cli --create --user ${USR} --fullname ${NAME} --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'"
-	kopano-cli --create --create-store --user "$USR" --fullname="${NAME}" --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'
+	#echo "kopano-cli --create --create-store --user ${USR} --fullname ${NAME} --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'"
+	if [ "$K_EDITION" = "Migration" ]
+	then
+		kopano-cli --create --user "$USR" --fullname="${NAME}" --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'
+	else
+		kopano-cli --create --create-store --user "$USR" --fullname="${NAME}" --email ${MAIL} --admin-level ${ADMFLAG} --password 'M1gr@t1on'	
+	fi
 	kopano-localize-folders -u "${USR}" --lang "${LOCALE}"
 	if [ -n "$USRPH" ]
 	then
