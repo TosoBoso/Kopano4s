@@ -5,11 +5,11 @@
 MIGRATION_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
 DEFAULT_TAG="Core-8.7.1.0_Webapp-3.5.6_Z-Push-2.5.1_WMeet-0.29.5"
 SUPPORTED_TAG="Core-8.7.5_Webapp-3.5.12_Z-Push-2.5.1_WMeet-0.29.5"
-COMMUNITY_TAG="Core-8.7.84_Webapp-3.5.12_Z-Push-2.5.1_WMeet-0.29.5"
-MIGRATION_SIZE=142
-DEFAULT_SIZE=173
-SUPPORTED_SIZE=172
-COMMUNITY_SIZE=172
+COMMUNITY_TAG="Core-8.7.85_Webapp-3.5.12_Z-Push-2.5.1_WMeet-0.29.5"
+MIGRATION_SIZE=136
+DEFAULT_SIZE=165
+SUPPORTED_SIZE=165
+COMMUNITY_SIZE=165
 RELEASE="Stable"
 PHP_VER="7.0"
 PKG_NAME=Kopano4s
@@ -23,7 +23,7 @@ then
 	MYSQL="/usr/local/mariadb10/bin/mysql"
 	MYETC="/var/packages/MariaDB10/etc"
 else 
-	MYSQL="/bin/mysql"
+	MYSQL="/usr/bin/mysql"
 	MYETC="/var/packages/MariaDB/etc"
 fi
 # ** download areas
@@ -492,6 +492,7 @@ GET_WIZZARD_CFG()
 	fi
 	TIMEZONE=$PKGWIZ_TIMEZONE
 	KEEP_BACKUPS=5
+	UNBLOCK_AFTERD=4
 	NOTIFY="ON"
 	# ** set the notify recipient best what can be found
 	NOTIFYTARGET="$SYNOPKG_USERNAME"
@@ -586,7 +587,13 @@ GET_DOCKER_TAG()
 		echo "Section 1 vs. 2 / current vs. previous is empty"		
 		return 1
 	fi
-	local EDTAG="${2}-[[:graph:]]*"
+	# beta will be segragated container, stabl legacy maintain filter for webapp as single container
+	if [ $RELEASE = "Beta" ]
+	then
+		local EDTAG="${2}-[[:graph:]]*"
+	else
+		local EDTAG="${2}-[[:graph:]]*_Webapp-[[:graph:]]*"
+	fi
 	# ** check if the url is valid
 	# we grep for the tag in <> and then remove the signs; 1st > then <
 	# if we get previous version tag aka sec is 2 we need to do another tail from retun list
@@ -991,6 +998,8 @@ INIT_UPDATE()
 	if [ -z "$TIMEZONE" ] ; then TIMEZONE="CET" ; fi
 	# init K_SEARCH by enabled when it did not exist aka is empty (-z)
 	if [ -z "$K_SEARCH" ] ; then K_SEARCH="ON" ; fi
+	if [ -z "$UNBLOCK_AFTERD" ] ; then UNBLOCK_AFTERD=4 ; fi
+
 	# amavis now holds spamassasin and clamav in same directory and soft links are used in container
 	if [ -e "$K_SHARE/spamassasin" ] ; then rm "$K_SHARE/spamassasin" ; fi
 	if [ -e "$K_SHARE/clamav" ] ; then rm "$K_SHARE/clamav" ; fi
@@ -1545,6 +1554,7 @@ SET_PKG_CFG()
 		echo LOCALE="\"$LOCALE\""
 		echo TIMEZONE="\"$TIMEZONE\""
 		echo KEEP_BACKUPS=$KEEP_BACKUPS
+		echo UNBLOCK_AFTERD=$UNBLOCK_AFTERD
 		echo NOTIFY="\"$NOTIFY\""
 		echo NOTIFYTARGET="\"$NOTIFYTARGET\""
 		echo SYNO_MEMG=$SYNO_MEMG
@@ -1641,8 +1651,15 @@ SET_DOCKER_ENV()
 	then
 		DOCKER_PORTS="$DOCKER_PORTS -p 3478:3478"
 	fi
-	# we use --init for tine plus pass and overwrite the image LAG with our locale via -e
-	DOCKER_PARAMS="-d --init --name kopano4s --hostname $K_HOST --restart=on-failure:3 -e PARENT=$DOCKER_HOST -e LANG=$LOCALE -e LANGUAGE=$LOCALE -e LC_ALL=$LOCALE -e TIMEZONE=$TIMEZONE"
+	# we use --init for tiny fi we are on DSM 6 plus then pass and overwrite the image LANG, TZ with our locale via -e
+	local MAJOR_VERSION=$(grep majorversion /etc.defaults/VERSION | grep -o [0-9])
+	if [ $MAJOR_VERSION -gt 5 ]
+	then
+		DOCKER_PARAMS="-d --init"
+	else
+		DOCKER_PARAMS="-d"
+	fi
+	DOCKER_PARAMS="$DOCKER_PARAMS --name kopano4s --hostname $K_HOST --restart=on-failure:3 -e PARENT=$DOCKER_HOST -e LANG=$LOCALE -e LANGUAGE=$LOCALE -e LC_ALL=$LOCALE -e TIMEZONE=$TIMEZONE"
 	# special experimental feature network paramater host to be added to parameters
 	if [ "$DOCKER_NW" = "host" ] && docker run --help | grep -q network ; then DOCKER_PARAMS="$DOCKER_PARAMS --network host" ; fi
 	DOCKER_IMAGE="tosoboso/kopano4s:$VER_TAG"
@@ -1710,6 +1727,7 @@ SET_SOFTLINKS()
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh /usr/local/bin/kopano4s-optionals
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-replication.sh /usr/local/bin/kopano4s-replication
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-restore-user.sh /usr/local/bin/kopano4s-restore-user
+	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-upgrade.sh /usr/local/bin/kopano4s-upgrade
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/kopano-cmdline
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/kopano4s
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/k4s
@@ -1866,7 +1884,7 @@ DROP_USER_DATABASE_SHARE()
 			exit 1
 		fi
 	fi
-	if [ "$PKGWIZ_KEEP_DB" == "false" ]
+	if [ "$PKGWIZ_KEEP_DB" = "false" ]
 	then
 		$MYSQL -uroot -p"${DB_MPASS}" -e "$SQL_DROP_DB" >/tmp/out.sql 2>&1
 		ERR=$?
@@ -1883,11 +1901,11 @@ DROP_USER_DATABASE_SHARE()
 		chown kopano.kopano "$K_SHARE"/attachments
 		chmod 770 "$K_SHARE"/attachments
 	fi
-	if [ "$PKGWIZ_KEEP_SHARE" == "false" ]
+	if [ "$PKGWIZ_KEEP_SHARE" = "false" ]
 	then
 		synoshare --del TRUE kopano
 	fi
-	if [ "$PKGWIZ_KEEP_USER" == "false" ]
+	if [ "$PKGWIZ_KEEP_USER" = "false" ]
 	then
 		synouser --del kopano
 		synogroup --del kopano

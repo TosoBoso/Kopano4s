@@ -81,6 +81,7 @@ ENV BUILD=${Build} \
 	LANG="en_GB.UTF-8" \
 	LANGUAGE="en_GB.UTF-8" \
 	LC_ALL="en_GB.UTF-8" \
+	TIMEZONE="CET" \
 	TERM=ansi \
 	DEBIAN_FRONTEND=noninteractive
 WORKDIR /root
@@ -96,7 +97,7 @@ RUN echo "** setup debian system basics...." && \
 	sed -i -e "s~# en_GB.UTF-8~en_GB.UTF-8~" /etc/locale.gen && sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && \
 	sed -i -e "s~# de_DE.UTF-8~de_DE.UTF-8~" /etc/locale.gen && \
 	if [ ! -e /usr/share/locale/locale.alias ] ; then ln -s /etc/locale.alias /usr/share/locale/locale.alias ; fi && \
-	ln -sf /usr/share/zoneinfo/CET /etc/localtime && dpkg-reconfigure locales && dpkg-reconfigure tzdata && \
+	ln -sf /usr/share/zoneinfo/"$TIMEZONE"  /etc/localtime && dpkg-reconfigure locales && dpkg-reconfigure tzdata && \
 	if echo $EDITION | grep -q "Supported" ; then touch /etc/K_SUPPORTED ; else touch /etc/K_COMMUNITY ; fi && \
 # if web-repo arg is provided do wget instead of copying from interactive container which is saving ~100MB image size
 	if [ -n "$WEBREPO" ] ; then wget "$WEBREPO"/k4s-${EDITION}-wmeet-repo.tgz ; fi && \ 

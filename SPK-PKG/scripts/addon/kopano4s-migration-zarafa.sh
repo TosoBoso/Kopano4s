@@ -1,9 +1,7 @@
 #!/bin/sh
 LOGIN=$(whoami)
-# get common and config
-. /var/packages/Kopano4s/scripts/common
-. "$ETC_PATH"/package.cfg
-
+# get config
+. /var/packages/Kopano4s/etc/package.cfg
 if [ $# -gt 0 ] && [ "$1" = "help" ]
 then
 	echo "Usage: kopano4s-migration-zarafa plus start | help."
@@ -31,6 +29,23 @@ then
 	echo "you have to run as root! alternatively as admin run with sudo prefix! exiting.."
 	exit 1
 fi
+if [ "$K_EDITION" = "Migration" ]
+then 
+	echo "The migration scripts are designed for Default/Supported/Community edition."
+	echo "For Migration edition run kopano4s-backup / resotre and then kopano4s-upgrade."
+	exit 1
+fi
+if [ -e /usr/local/mariadb10/bin/mysql ]
+then
+	MYSQL="/usr/local/mariadb10/bin/mysql"
+	MYETC="/var/packages/MariaDB10/etc"
+else 
+	MYSQL="/usr/bin/mysql"
+	MYETC="/var/packages/MariaDB/etc"
+fi
+ROLLB=0
+K_EDITION_STATE="$K_EDITION"
+ATTACHMENT_STATE="$ATTACHMENT_ON_FS"
 MSG="Starting migration steps: 1) kopano baseline backup 2) zarafa db-backup. 3) restore to kopano-db. 4) user export from kopano migration version 5) restore users to kopano baseline" 
 echo "$MSG"
 echo "$MSG" > "$K_BACKUP_PATH"/migrate-steps.log
@@ -76,26 +91,24 @@ else
 fi
 # stopping kopano and preparing for migration edition incl. ATTACHMENT_ON_FS="OFF"
 if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
-ATTACHMENT_STATE="$ATTACHMENT_ON_FS"
-K_EDITION_STATE="$K_EDITION"
-sed -i -e "s~K_EDITION=.*~K_EDITION=\"Migration\""~ $ETC_PATH/package.cfg
+sed -i -e "s~K_EDITION=.*~K_EDITION=\"Migration\""~ /var/packages/Kopano4s/etc/package.cfg
 # migration edition cannot handle default_store_locale
 if [ -e /etc/kopano/admin.cfg ] ; then sed -i -e "s~^default_store_locale~#default_store_locale~" /etc/kopano/admin.cfg ; fi
 if [ "$ATTACHMENT_ON_FS" = "ON" ]
 then
-	sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"OFF\""~ "$ETC_PATH"/package.cfg
-	sed -i -e "s~attachment_storage.*~attachment_storage	= database~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"OFF\""~ /var/packages/Kopano4s/etc/package.cfg
+	sed -i -e "s~attachment_storage.*~attachment_storage	= database~" /etc/kopano/server.cfg
 fi
 # set back server.cfg mode at migration version; it will not sstart with new settings
-if [ -e $ETC_PATH/kopano/server.cfg ] && grep -q server_listen "$ETC_PATH"/kopano/server.cfg
+if [ -e /etc/kopano/server.cfg ] && grep -q server_listen /etc/kopano/server.cfg
 then
 	# in server.cfg swith from new server entry to migration versionstyle
-	if ! grep -q server_tcp_enabled "$ETC_PATH"/kopano/server.cfg
+	if ! grep -q server_tcp_enabled /etc/kopano/server.cfg
 	then
-		sed -i -e "s~server_listen = \*:236~server_listen = \*:236\nserver_tcp_enabled = yes\nserver_tcp_port = 236~" "$ETC_PATH"/kopano/server.cfg
+		sed -i -e "s~server_listen = \*:236~server_listen = \*:236\nserver_tcp_enabled = yes\nserver_tcp_port = 236~" /etc/kopano/server.cfg
 	fi
-	sed -i -e "s~^server_listen~#server_listen~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~^server_listen_tls~#server_listen_tls~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~^server_listen~#server_listen~" /etc/kopano/server.cfg
+	sed -i -e "s~^server_listen_tls~#server_listen_tls~" /etc/kopano/server.cfg
 fi
 # get timestamp of zarafa dump and then start restore
 # shellcheck disable=SC2012
@@ -119,10 +132,8 @@ kopano4s-init refresh
 echo "$(date "+%Y.%m.%d-%H.%M.%S") sleep 5 min to have migration version running smoothly with zarafa database import.."
 sleep 300
 # no point to continue if kopano migration version stopped for any reason
-if /var/packages/Kopano4s/scripts/start-stop-status status
+if ! /var/packages/Kopano4s/scripts/start-stop-status status
 then
-	ROLLB=0
-else
 	MSG="ERROR running imported data (see migrate-server.log); rolling back.."
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
@@ -147,20 +158,20 @@ fi
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
-sed -i -e "s~K_EDITION=.*~K_EDITION=\"${K_EDITION_STATE}\""~ $ETC_PATH/package.cfg
+sed -i -e "s~K_EDITION=.*~K_EDITION=\"${K_EDITION_STATE}\""~ /var/packages/Kopano4s/etc/package.cfg
 if [ -e /etc/kopano/admin.cfg ] ; then sed -i -e "s~^#default_store_locale~default_store_locale~" /etc/kopano/admin.cfg ; fi
 if [ "$ATTACHMENT_STATE" = "ON" ]
 then
-	sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"ON\""~ "$ETC_PATH"/package.cfg
-	sed -i -e "s~attachment_storage.*~attachment_storage	= files~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"ON\""~ /var/packages/Kopano4s/etc/package.cfg
+	sed -i -e "s~attachment_storage.*~attachment_storage	= files~" /etc/kopano/server.cfg
 fi
 # set back server.cfg mode post migration version
-if [ -e $ETC_PATH/kopano/server.cfg ] && grep -q server_listen "$ETC_PATH"/kopano/server.cfg
+if [ -e /etc/kopano/server.cfg ] && grep -q server_listen /etc/kopano/server.cfg
 then
-	sed -i -e "s~^#server_listen~server_listen~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~^#server_listen_tls~server_listen_tls~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~^server_tcp_enabled.*~~" "$ETC_PATH"/kopano/server.cfg
-	sed -i -e "s~^server_tcp_port.*~~" "$ETC_PATH"/kopano/server.cfg
+	sed -i -e "s~^#server_listen~server_listen~" /etc/kopano/server.cfg
+	sed -i -e "s~^#server_listen_tls~server_listen_tls~" /etc/kopano/server.cfg
+	sed -i -e "s~^server_tcp_enabled.*~~" /etc/kopano/server.cfg
+	sed -i -e "s~^server_tcp_port.*~~" /etc/kopano/server.cfg
 fi
 kopano4s-backup restore $TS
 kopano4s-init refresh

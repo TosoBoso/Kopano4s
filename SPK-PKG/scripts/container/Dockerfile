@@ -193,7 +193,7 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	sed -i -e "s~# en_GB.UTF-8~en_GB.UTF-8~" /etc/locale.gen && sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && \
 	sed -i -e "s~# de_DE.UTF-8~de_DE.UTF-8~" /etc/locale.gen && \
 	if [ ! -e /usr/share/locale/locale.alias ] ; then ln -s /etc/locale.alias /usr/share/locale/locale.alias ; fi && \
-	ln -sf /usr/share/zoneinfo/CET /etc/localtime && dpkg-reconfigure locales && dpkg-reconfigure tzdata && \
+	ln -sf /usr/share/zoneinfo/"$TIMEZONE" /etc/localtime && dpkg-reconfigure locales && dpkg-reconfigure tzdata && \
 	if echo $EDITION | grep -q "Supported" ; then touch /etc/K_SUPPORTED ; else touch /etc/K_COMMUNITY ; fi && \
 	groupmod -g 1023 www-data && usermod -u 1023 -g 1023 www-data && mkdir -p /var/lib/postgrey/ && \ 
 	apt-get install -y --allow-unauthenticated --no-install-recommends --assume-yes \

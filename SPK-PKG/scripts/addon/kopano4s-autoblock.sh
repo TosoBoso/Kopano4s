@@ -3,7 +3,10 @@
 # inspired by ruedi61: https://www.synology-forum.de/showthread.html?80679-Automatischer-Import-einer-Blockliste
 # DSM 6.2 AutoBlockIP Table via .sqlite3 /etc/synoautoblock.db & .schema AutoBlockIP:
 # CREATE TABLE AutoBlockIP(IP varchar(50) PRIMARY KEY,RecordTime date NOT NULL,ExpireTime date NOT NULL,Deny boolean NOT NULL,IPStd varchr(50) NOT NULL,Type INTEGER,Meta varchar(256));
-DELETE_IP_AFTER="3"
+# get common and config
+. /var/packages/Kopano4s/scripts/common
+. "$ETC_PATH"/package.cfg
+if [ -z "$UNBLOCK_AFTERD" ] ; then UNBLOCK_AFTERD=4 ; fi
 LOGIN=$(whoami)
 if [ "$LOGIN" != "root" ]
 then 
@@ -15,17 +18,18 @@ then
 	echo "usage: kopano-autoblock [IP | help | list]"
 	exit 0
 fi
-if [ $# -gt 0 ] && [ "$1" == "help" ]
+if [ $# -gt 0 ] && [ "$1" = "help" ]
 then
 	echo "kopano-autoblock (c) TosoBoso: wraper to synoautoblock and notification for fail2ban."
 	echo "usage: kopano-autoblock [IP | help | list]"
-	echo "provide IP and it will be blocked plus notified; use list to show all blocked IPs same as per Synology GUI."
+	echo "provide IP and it will be blocked plus notified; use list to show all blocked IPs similar to Synology GUI."
 	exit 0
 fi
-if [ $# -gt 0 ] && [ "$1" == "list" ]
+if [ $# -gt 0 ] && [ "$1" = "list" ]
 then
-	echo "List from synoautoblock for blocks by kopano4s (unblocked in $DELETE_IP_AFTER days):"
-	sqlite3 -csv /etc/synoautoblock.db "select ip from AutoBlockIP where Meta = 'Kopano4s';"
+	echo "List from synoautoblock by kopano4s (unblocked in $UNBLOCK_AFTERD days):"
+	echo " -IP-Address-,, ------Blocked------, -----Unblocked-----"
+	sqlite3 -csv /etc/synoautoblock.db "select ip, datetime(RecordTime, 'unixepoch'), datetime(ExpireTime, 'unixepoch') from AutoBlockIP where Meta = 'Kopano4s';"
 	exit 0
 fi
 # default block incl validation of IP as paramater 1
@@ -33,7 +37,7 @@ fi
 . /var/packages/Kopano4s/etc/package.cfg
 BLOCKED_IP="$1"
 UNIXTIME=$(date +%s)
-UNIXTIME_DELETE_IP=$(date -d "+$DELETE_IP_AFTER days" +%s)
+UNIXTIME_DELETE_IP=$(date -d "+$UNBLOCK_AFTERD days" +%s)
 # Check if IP valid
 VALID_IPv4=$(echo "$BLOCKED_IP" | grep -Eo "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$" | wc -l)
 if [[ $VALID_IPv4 -eq 1 ]]

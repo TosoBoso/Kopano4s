@@ -20,8 +20,8 @@ then
 	echo "when using socket -s provide an admin user and pwd via -U -P; see --help"
 fi
 STARTTIME=$(date +%s)
-# send enter and skip -t as it messes up when called from perl ui
-echo -e "\n" | docker exec -i kopano4s  kopano-backup "$@"
+# send enter and skip -t as it messes up when called from perl ui plus collect stderror on stdout
+echo -e "\n" | docker exec -i kopano4s  kopano-backup "$@" 2>&1
 if (! echo "$@" | grep -q "\-h" )
 then
 	ENDTIME=$(date +%s)

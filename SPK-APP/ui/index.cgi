@@ -169,6 +169,7 @@ if ($page eq 'intro')
     my $kvertag = getCfgValue($pkgcfg, "VER_TAG");
     my $hubvertag = '';
     my $kupdate = '';
+    my $kStatus = '';
     my $status = 'Kopano health status OK';
     #$status = 'Warning user $uiUser must be part of docker group to make the GUI cmds work' if ! $isDocker;
     $status = "Debug: $debug" if $isDebug;
@@ -189,6 +190,18 @@ if ($page eq 'intro')
         $kupdate .= '<input type="hidden" name="params" value="refresh"/> <input type="hidden" name="rcmd" value="kopano4s-init"/> ';
         $kupdate .= '<input type="submit" name="action" value="Run"/>&nbsp;image refresh to <B>' . $hubvertag . '</B></form>';
     }
+    $cmdline = '/var/packages/Kopano4s/scripts/wrapper/kopano-status.sh |';
+    if (open(DAT, $cmdline))
+    {
+        @rawDataCmd = <DAT>;
+        close(DAT);
+        foreach my $reply (@rawDataCmd) {
+            chomp($reply);
+            $kStatus .= $reply;
+        }
+    }
+    $status = 'Error returned by kopano-status. Check if container is running.' if ($kStatus =~ /Error/);
+    $status = 'Warning returned by kopano-status. Check which services are Not running.' if ($kStatus =~ /Not Running/);
 
     # todo: health status e.g. all services running, nothing in hold / defer queue
     $tmplhtml{'kvertag'} = $kvertag;
@@ -1360,7 +1373,7 @@ if ($page eq 'cfg')
     my $defcfg = '/etc/kopano/default'; # kopano default cfg file location
     my $mycfg = '/var/packages/MariaDB10/etc/my.cnf'; # MariaDB10 cfg file location
     my @pkgtags = ('kshare','kbackup','kfsattach','kgateway','kical','ksearch','kmonitor','dbname','dbuser','http','https','ical','icals',
-                   'imap','imaps','pop3','pop3s','ksyncssl','kforcessl','kwrtc','wrtc','ksnr','slocale','stimezone','keep','knotify','ntarget','stuning');
+                   'imap','imaps','pop3','pop3s','ksyncssl','kforcessl','kwrtc','wrtc','ksnr','slocale','stimezone','unblock','keep','knotify','ntarget','stuning');
     my @mytags = ('innobuff','mpacket'); # mysql cfg tags
     my %cfgparam; # key value tag to cfg paramater
     $cfgparam{'kshare'} = 'K_SHARE'; # path to kopano share
@@ -1388,7 +1401,8 @@ if ($page eq 'cfg')
     $cfgparam{'ksnr'} = 'K_SNR'; # kopano serial number
     $cfgparam{'slocale'} = 'LOCALE'; # kopano-locale language
     $cfgparam{'stimezone'} = 'TIMEZONE'; # kopano-timezone for container
-    $cfgparam{'keep'} = 'KEEP_BACKUPS'; # how many backups to kee
+    $cfgparam{'unblock'} = 'UNBLOCK_AFTERD'; # unblock / delete ip after
+    $cfgparam{'keep'} = 'KEEP_BACKUPS'; # how many backups to keep
     $cfgparam{'knotify'} = 'NOTIFY';  # notification e.g. backup status on or off
     $cfgparam{'ntarget'} = 'NOTIFYTARGET'; # notification target
     $cfgparam{'stuning'} = 'TUNING_BUFFER'; # % tuning buffer to total memory
@@ -1449,7 +1463,7 @@ if ($page eq 'cfg')
         }
         my @strtags = ('kshare','kbackup','kfsattach','kgateway','kical','ksearch','kmonitor',
                        'dbname','dbuser','kwrtc','ksyncssl','kforcessl','ksnr','slocale','stimezone','knotify','ntarget');
-        my @numtags = ('http','https','ical','icals','imap','imaps','pop3','pop3s','wrtc','keep','stuning');
+        my @numtags = ('http','https','ical','icals','imap','imaps','pop3','pop3s','wrtc','unblock','keep','stuning');
         $newtaghtml{'kfsattach'} = $newtaghtml{'kfsattach'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
         $newtaghtml{'kgateway'} = $newtaghtml{'kgateway'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
         $newtaghtml{'kical'} = $newtaghtml{'kical'} eq 'on' ? 'ON' : 'OFF'; # convert small into caps
@@ -1746,7 +1760,39 @@ if ($page eq 'devices')
 }
 if ($page eq 'tools') 
 {
-    
+    if ( $action eq 'List-IPs' ) {
+        $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-autoblock.sh list |";
+        if (open(DAT, $cmdline)) {
+            @rawDataCmd = <DAT>;
+            close(DAT);
+            foreach my $reply (@rawDataCmd) {
+                chomp($reply);
+                $tmplhtml{'toolstxt'} .= "$reply\n ";
+            }
+        }
+    }
+    if ( $action eq 'Activate' ) {
+        $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh autoblock on |";
+        if (open(DAT, $cmdline)) {
+            @rawDataCmd = <DAT>;
+            close(DAT);
+            foreach my $reply (@rawDataCmd) {
+                chomp($reply);
+                $tmplhtml{'toolstxt'} .= "$reply\n ";
+            }
+        }
+    }
+    if ( $action eq 'Disable' ) {
+        $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh autoblock off |";
+        if (open(DAT, $cmdline)) {
+            @rawDataCmd = <DAT>;
+            close(DAT);
+            foreach my $reply (@rawDataCmd) {
+                chomp($reply);
+                $tmplhtml{'toolstxt'} .= "$reply\n ";
+            }
+        }
+    }
 }
 if ($page eq 'log') 
 {
@@ -1830,7 +1876,7 @@ if ($page eq 'cmd')
     my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
     my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
     my @commands = ('kopano-admin', 'kopano-cli', 'kopano-storeadm', 'kopano-status', 'kopano-restart', 'kopano4s-init', 'kopano4s-optionals', 'kopano-postfix', 'kopano-fetchmail', 'kopano-backup', 'kopano4s-restore-user', 
-                    'kopano4s-backup', 'kopano4s-downgrade', 'kopano4s-attachment-tofs', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
+                    'kopano4s-backup', 'kopano4s-downgrade', 'kopano4s-upgrade', 'kopano4s-attachment-tofs', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
     # process command first
     if ($action eq "Run") {
         $rcmd = param('rcmd');
@@ -1865,7 +1911,7 @@ if ($page eq 'cmd')
             }
             $cmdtxt .= "Started as long running background job; check notification and logs for backup completion..  "
         }
-		elsif ( ($rcmd eq "kopano4s-restore-user" || $rcmd eq "kopano4s-downgrade" || $rcmd eq "kopano4s-attachment-tofs" ) && ($params eq "start" || $params eq "all") ) {
+		elsif ( ($rcmd eq "kopano4s-restore-user" || $rcmd eq "kopano4s-downgrade"  || $rcmd eq "kopano4s-upgrade" || $rcmd eq "kopano4s-attachment-tofs" ) && ($params eq "start" || $params eq "all") ) {
             if ( $rcmd eq "kopano4s-restore-user" ) {
                system("/var/packages/Kopano4s/scripts/addon/kopano4s-restore-user.sh $params &>/dev/null 2>&1 &");
                $cmdline = "$buppath/restore-user.log";
@@ -1874,6 +1920,11 @@ if ($page eq 'cmd')
             elsif ( $rcmd eq "kopano4s-downgrade" ) {
                system("/var/packages/Kopano4s/scripts/addon/kopano4s-downgrade.sh $params &>/dev/null 2>&1 &");
                $cmdline = "$buppath/downgrade-steps.log";
+               $cmdtxt = "Initial output of $buppath/downgrade-steps.log please check log later\n ";
+            }
+            elsif ( $rcmd eq "kopano4s-upgrade" ) {
+               system("/var/packages/Kopano4s/scripts/addon/kopano4s-upgrade.sh $params &>/dev/null 2>&1 &");
+               $cmdline = "$buppath/upgrade-steps.log";
                $cmdtxt = "Initial output of $buppath/downgrade-steps.log please check log later\n ";
             }
             else {

@@ -12,12 +12,18 @@
 	<div class="tab"><ol>
 		<li><a href="#" class="tablinks" onclick="openTab(event, 'IP-Autoblock')" id="defaultOpen">IP-Autoblock</a></li>
 		<li><a href="#" class="tablinks" onclick="openTab(event, 'SPF')">SPF</a></li>
-
 	</ol></div>
 	<!-- Tab content -->
+	<hr>
 	<div id="IP-Autoblock" class="tabcontent">
-		<h3>IP-Autoblock is work in progress and will be available in later release</h3>
-		<p><b><u>Tips:</u></b>&nbsp;</p>
+		<form action="index.cgi" method="get">
+		<input type="hidden" name="page" value="tools"/>
+		<input type="submit" name="action" value="List-IPs"/>&nbsp;
+		<input type="submit" name="action" value="Activate"/>&nbsp;
+		<input type="submit" name="action" value="Disable"/>&nbsp;
+		</form>
+		<textarea name="reply" rows="10" cols="111"> <!--:toolstxt:--></textarea>
+		<p><b><u>Tips:</u></b>&nbsp;Autoblock works in concert with <a href="https://www.cphub.net/?p=f2b4s" target="_blank">Fail2Ban4S</a> SPK. Activate copies over the k4s f2b config files. Disable removes them. List-IPs shows bans.</p>
 	</div>
 	<div id="SPF" class="tabcontent">
 		<h3>SPF Wizard powerd by openspf.org - copy and paste the below result as your DNS entry -</h3>

@@ -14,5 +14,5 @@ then
 else
 	SUDO=""
 fi
-# send enter and skip -t as it messes up when called from perl ui
-echo -e "\n" | $SUDO docker exec -i kopano4s kopano-srvadm "$@"
+# send enter and skip -t as it messes up when called from perl ui plus collect stderror on stdout
+echo -e "\n" | $SUDO docker exec -i kopano4s kopano-srvadm "$@" 2>&1

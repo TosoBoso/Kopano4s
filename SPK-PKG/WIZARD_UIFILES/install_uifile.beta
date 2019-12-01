@@ -50,7 +50,7 @@
 		[{
 			"key": "PKGWIZ_ATTACHMENT_ON_FS",
 			"desc": "Store mail attachments in file system share instead of database (better MySQL performance).",
-			"defaultValue": true
+			"defaultValue": false
 		 },{
 			"key": "PKGWIZ_BUILD",
 			"desc": "Build Docker locally instead of loading compiled container from TosoBoso's Docker repository.",

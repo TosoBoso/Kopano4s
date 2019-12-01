@@ -14,5 +14,5 @@ then
 else
 	SUDO=""
 fi
-# send enter and skip -t as it messes up when called from perl ui
-echo -e "\n" | $SUDO docker exec -i kopano4s init.sh status
+# send enter and skip -t as it messes up when called from perl ui plus collect stderror on stdout
+echo -e "\n" | $SUDO docker exec -i kopano4s init.sh status 2>&1

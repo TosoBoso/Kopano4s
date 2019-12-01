@@ -22,7 +22,7 @@ MSG="please provide 2nd parameter for on or off"
 case "$1" in
 	help)
 	echo "kopano4s-optionals (c) TosoBoso: script to en- or disable optional services in init-script for kopano4s"
-	MSG="provide kopano-service: gateway | ical | search | monitor | amavis |  bounce-spam | spamd | postgrey | fetchmail | courier-imap | webmeetings | coturn to set it to on or off."
+	MSG="provide kopano-service: gateway | ical | search | monitor | autoblock | amavis |  bounce-spam | spamd | postgrey | fetchmail | courier-imap | webmeetings | coturn to set it to on or off."
 	;;
 	gateway)
 	if grep -q "^#GATEWAY_ENABLED" $ETC_PATH/kopano/default
@@ -107,6 +107,28 @@ case "$1" in
 			$SUDO sed -i -e 's~K_MONITOR.*~K_MONITOR="OFF"~' $ETC_PATH/package.cfg
 			MSG="Monitor disabled; please restart package to make effective"
 		fi
+	fi
+	;;
+	autoblock)
+	if [ -e /etc/fail2ban ]
+	then
+		if [ $# -gt 1 ] && [ $2 = "on" ]
+		then
+			$SUDO cp "$TARGET_PATH"/merge/fail2ban/action.d/kopano4s-* /etc/fail2ban/action.d
+			$SUDO cp "$TARGET_PATH"/merge/fail2ban/filter.d/kopano4s-* /etc/fail2ban/action.d
+			$SUDO cp "$TARGET_PATH"/merge/fail2ban/jail.d/kopano4s-* /etc/fail2ban/action.d
+			MSG="Autoblock enabled; please restart fail2ban package to make effective"
+		else
+			if [ $# -gt 1 ] && [ $2 = "off" ]
+			then
+				$SUDO rm /etc/fail2ban/action.d/kopano4s-*
+				$SUDO rm /etc/fail2ban/filter.d/kopano4s-*
+				$SUDO rm /etc/fail2ban/jail.d/kopano4s-*
+				MSG="Autoblock disabled; please restart fail2ban package to make effective"
+			fi
+		fi
+	else
+		echo "For use of autoblock you have to install Fail2Ban4S package from cphub.net first.."
 	fi
 	;;
 	amavis)
@@ -243,7 +265,7 @@ case "$1" in
 	fi
 	;;
 	*)
-	echo "provide kopano-service: gateway | ical | search | monitor | amavis | bounce-spam | spamd | postgrey | fetchmail | courier-imap | webmeetings | coturn to set it to on or off."
+	echo "provide kopano-service: gateway | ical | search | monitor | autoblock | amavis | bounce-spam | spamd | postgrey | fetchmail | courier-imap | webmeetings | coturn to set it to on or off."
 	;;
 esac
 echo "$MSG"

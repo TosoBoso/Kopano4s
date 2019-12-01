@@ -49,8 +49,8 @@ else
 	# legacy zarafa package assuming use of MariaDB-5 unless not present and replica in MariaDB-10
 	if [ -e /var/packages/MariaDB/target/usr/bin/mysql ]
 	then
-		MYSQL="/bin/mysql"
-		MYSQLDUMP="/bin/mysqldump"
+		MYSQL="/usr/bin/mysql"
+		MYSQLDUMP="/usr/bin/mysqldump"
 		MYETC="/var/packages/MariaDB/etc"
 	else
 		if [ -e /usr/local/mariadb10/bin/mysql ]

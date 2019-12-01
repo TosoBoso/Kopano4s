@@ -2,16 +2,6 @@
 LOGIN=$(whoami)
 # get config
 . /var/packages/Kopano4s/etc/package.cfg
-if [ -e /usr/local/mariadb10/bin/mysql ]
-then
-	MYSQL="/usr/local/mariadb10/bin/mysql"
-	MYETC="/var/packages/MariaDB10/etc"
-else 
-	MYSQL="/bin/mysql"
-	MYETC="/var/packages/MariaDB/etc"
-fi
-ROLLB=0
-K_EDITION_STATE="$K_EDITION"
 if [ $# -gt 0 ] && [ "$1" = "help" ]
 then
 	echo "Usage: kopano4s-attachment-tofs plus start | help."
@@ -31,6 +21,21 @@ then
 	echo "To avoid accidential usage you have to provide start as parameter"
 	exit 1
 fi
+if [ "$ATTACHMENT_ON_FS" = "ON" ] && grep ^attachment_storage /etc/kopano/server.cfg | grep -q files
+then
+	echo "Attachments are already configured to run from file system.."
+	exit 1
+fi
+if [ -e /usr/local/mariadb10/bin/mysql ]
+then
+	MYSQL="/usr/local/mariadb10/bin/mysql"
+	MYETC="/var/packages/MariaDB10/etc"
+else 
+	MYSQL="/usr/bin/mysql"
+	MYETC="/var/packages/MariaDB/etc"
+fi
+ROLLB=0
+K_EDITION_STATE="$K_EDITION"
 if ! find $K_BACKUP_PATH -name user -type f | head -1 | grep -q user
 then 
 	MSG="you have to run at least one initial kopano-backup as baseline first to reduce the run-time of this script"
@@ -100,10 +105,7 @@ kopano4s-init reset
 echo "$(date "+%Y.%m.%d-%H.%M.%S") sleep 1 min to run smoothly and tables re-created.."
 sleep 60
 # no point to continue if kopano migration version stopped for any reason
-if /var/packages/Kopano4s/scripts/start-stop-status status
-then
-	ROLLB=0
-else
+if ! /var/packages/Kopano4s/scripts/start-stop-status status
 	ROLLB=1
 	sed -i -e "s~ATTACHMENT_ON_FS=.*~ATTACHMENT_ON_FS=\"OFF\""~ /var/packages/Kopano4s/etc/package.cfg
 	sed -i -e "s~attachment_storage.*~attachment_storage	= database~" /etc/kopano/server.cfg

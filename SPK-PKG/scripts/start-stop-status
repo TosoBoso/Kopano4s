@@ -43,6 +43,23 @@ case "$1" in
 			$SUDO rm "$ETC_PATH/kopano/mount.issue"
 			$SUDO docker rm kopano4s
 		fi
+		# re-create run and log if softlink deleted by Synology at upgrade and remove nested one
+		if [ ! -h /var/log/kopano ]
+		then
+			$SUDO ln -sf /volume1/kopano/log /var/log/kopano
+		fi
+		if [ -h /var/log/kopano/log ]
+		then
+			$SUDO rm /var/log/kopano/log
+		fi
+		if [ ! -h /var/run/kopano ]
+		then
+			$SUDO ln -sf /volume1/kopano/run /var/run/kopano
+		fi
+		if [ -h /var/run/kopano/run ]
+		then
+			$SUDO rm /var/run/kopano/run
+		fi
 		if $SUDO docker ps | grep -q kopano4s
 		then
 			echo "Kopano4s already running"
@@ -58,15 +75,28 @@ case "$1" in
 					LOG_MESSAGE "Warning $MSG"
 				fi
 				SET_DOCKER_ENV
-				if ! ( $SUDO docker run $DOCKER_PARAMS $DOCKER_MOUNTS $DOCKER_PORTS $DOCKER_IMAGE $DOCKER_CMD )
+				if ! ( $SUDO docker run $DOCKER_PARAMS $DOCKER_MOUNTS $DOCKER_PORTS $DOCKER_IMAGE $DOCKER_CMD ) >/tmp/docker-run.err 2>&1
 				then
-					echo "failed to rebuild Kopano"
+					DCR_ERR=$(cat /tmp/docker-run.err | tr '\n' '. ')
+					MSG="k4s container run failed: $DCR_ERR"
+					if [ -n "$SUDO" ]
+					then
+						echo "$MSG .."
+					else
+						LOG_MESSAGE "Warning $MSG"
+					fi
+					if [ "$NOTIFY" = "ON" ]
+					then
+						/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" Kopano4s "$MSG"
+					fi
+					rm /tmp/docker-run.err
 					exit 1
 				fi
+				rm /tmp/docker-run.err
 				# init phase docker post build
 				INIT_DOCKER
-			# normal restart
 			else
+				# normal restart
 				if ! ($SUDO docker start kopano4s)
 				then
 					echo "failed to start Kopano"

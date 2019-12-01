@@ -15,12 +15,12 @@ else
 	SUDO=""
 fi
 . /var/packages/Kopano4s/etc/package.cfg
-if [ "$K_EDITION" == "Migration" ]
+if [ "$K_EDITION" = "Migration" ]
 then
 	echo "kopano-dbadm does not exist in migration edition 8.4.5 (only later 8.6+)"
 	exit 1
 fi
 echo "Common repair post Zarafa upgrade is: option k-1216 (names table unexpected rows / duplicates)"
 echo "Other options: np-defrag, np-remove-highid, np-remove-unused, np-remove-xh, np-repair-dups, np-stat, index-tags, rm-helper-index"
-# send enter and skip -t as it messes up when called from perl ui
-echo -e "\n" | $SUDO docker exec -i kopano4s kopano-dbadm "$@"
+# send enter and skip -t as it messes up when called from perl ui plus collect stderror on stdout
+echo -e "\n" | $SUDO docker exec -i kopano4s kopano-dbadm "$@" 2>&1

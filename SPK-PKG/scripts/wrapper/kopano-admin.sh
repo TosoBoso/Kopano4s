@@ -17,7 +17,7 @@ fi
 # send enter and skip -t as it messes up when called from perl ui plus collect stderror on stdout
 echo -e "\n" | $SUDO docker exec -i kopano4s kopano-admin "$@" 2>&1
 # for create user ensure the store is created as latest versions do not create it leading to orphaned issue
-if [ $# -gt 1 ] && [ "$1" == "-c" ]
+if [ $# -gt 1 ] && [ "$1" = "-c" ]
 then
 	KUSER=$2
 	if echo -e "\n" | $SUDO docker exec -i kopano4s kopano-admin --list-orphans | grep -q $KUSER
