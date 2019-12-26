@@ -1426,7 +1426,7 @@ if ($page eq 'cfg')
                      'Africa', 'America', 'Antarctica', 'Arctic', 'Asia', 'Atlantic', 'Australia', 'Brazil', 'Canada', 'Chile', 
                      'Cuba', 'Egypt', 'Eire', 'Europe', 'Hongkong', 'Iceland', 'Indian', 'Iran', 'Israel', 'Jamaica', 'Japan',
                      'Kwajalein', 'Libya', 'Mexico', 'Navajo', 'Pacific', 'Poland', 'Portugal', 'Singapore', 'Turkey', 'Zulu');
-    my @tunings = ('0%', '20%', '40%', '60%');
+    my @tunings = ('0%', '10%', '20%', '40%', '60%');
     my $cfgtxt='';
     my $scfg='';
     my $cfgcmb='';
@@ -1525,6 +1525,18 @@ if ($page eq 'cfg')
                 }
             }
         }
+        foreach my $tag (@mytags) { # string tags to mysql cfg
+            if ( $newtaghtml{$tag} ne $tmplhtml{$tag} ) {
+                $ret = setCfgValue($mycfg, $cfgparam{$tag}, $newtaghtml{$tag});
+                $tmplhtml{$tag}= $newtaghtml{$tag};
+                if ( $tag eq 'innobuff' ) {
+                    chop($newtaghtml{$tag}); # remove the M
+                    # also update pkg-cfg for INNODB_BUFFER
+                    $ret = setCfgValue($pkgcfg, "INNODB_BUFFER", $newtaghtml{$tag}, 'shell');
+                }
+                $tmplhtml{'status'} .= "$tag updated. ";
+            }
+        }
         foreach my $tag (@numtags) { # number tags to package cfg
             # set to 0 if value is empty
             $tmplhtml{$tag} = 0 if ! $tmplhtml{$tag};
@@ -1532,6 +1544,28 @@ if ($page eq 'cfg')
             if ( $newtaghtml{$tag} ne $tmplhtml{$tag} ) {
                 $ret = setCfgValue($pkgcfg, $cfgparam{$tag}, $newtaghtml{$tag}, 'shell');
                 $tmplhtml{$tag}= $newtaghtml{$tag};
+				if ( $tag eq 'stuning' ) {
+					# update tunings with % parameter
+                    $cmdline = "/usr/local/bin/kopano4s-tuning $newtaghtml{$tag}|";
+                    if (open(DAT, $cmdline))
+                    {
+                        @rawDataCmd = <DAT>;
+                        close(DAT);
+                        foreach my $reply (@rawDataCmd) {
+                            chomp($reply);
+                            $tmplhtml{'status'} .= $reply . ". ";
+                         }
+                         # read new inno-db-buffer and % in case of tuning adjustment
+                         $tmplhtml{'innobuff'} = getCfgValue($mycfg, $cfgparam{'innobuff'});
+                         $tmplhtml{$tag} = getCfgValue($pkgcfg, $cfgparam{$tag});
+                    }
+                    else
+                    {
+                        close(DAT);
+                        $tmplhtml{'status'} .= "Error in tuning. ";
+                    }
+
+                }
             }
         }
         if ( $doReset ) {
@@ -1892,8 +1926,8 @@ if ($page eq 'cmd')
     my $cmdcmb='';
     my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
     my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
-    my @commands = ('kopano-admin', 'kopano-cli', 'kopano-storeadm', 'kopano-status', 'kopano-restart', 'kopano4s-init', 'kopano4s-optionals', 'kopano-postfix', 'kopano-fetchmail', 'kopano-backup', 'kopano4s-restore-user', 
-                    'kopano4s-backup', 'kopano4s-downgrade', 'kopano4s-upgrade', 'kopano4s-attachment-tofs', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
+    my @commands = ('kopano-admin', 'kopano-cli', 'kopano-storeadm', 'kopano-status', 'kopano-restart', 'kopano4s-init', 'kopano4s-optionals', 'kopano-postfix', 'kopano-fetchmail', 'kopano-backup', 'kopano4s-restore-user', 'kopano4s-backup', 
+                    'kopano4s-downgrade', 'kopano4s-upgrade', 'kopano4s-tuning', 'kopano4s-attachment-tofs', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
     # process command first
     if ($action eq "Run") {
         $rcmd = param('rcmd');

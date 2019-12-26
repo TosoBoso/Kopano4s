@@ -37,7 +37,7 @@
 		[{
 			"key": "PKGWIZ_K_COM",
 			"desc": "Kopano Community edition: beta version on nightly builds; free for brave users.",
-			"defaultValue": false
+			"defaultValue": true
 		 },{
 			"key": "PKGWIZ_K_MIG",
 			"desc": "Kopano Migration edition (8.4.5-Web-3.4) to import Zarafa database and upgrade later.",
@@ -274,12 +274,16 @@
 		}]
 		},{
 		"type": "singleselect",
-		"desc": "A dedicated Kopano server should allocate up to 60% of RAM to caches: Kopano cache_cell_size: ~20%, cache_object_size: 100k per user (0.5-2MB), cache_indexedobject_size: 512k per user (2-8MB), MySQL-innodb_buffer_pool_size: ~40%, innodb_log_file_size: 25% of innodb_buffer_pool. <br>Decide your tuning settings considering other NAS processes. -Restart enables MariaDB changes.",
+		"desc": "A dedicated Kopano server should allocate up to 60% of RAM to caches: Kopano cache_cell_size: ~20%, cache_object_size: 200k per user (0.5-8MB), cache_indexedobject_size: 512k per user (2-16MB), MySQL-innodb_buffer_pool_size: ~40%, innodb_log_file_size: 25% of innodb_buffer_pool. <br>Note buffers are capped above 6GB Memory so real % used by it can be less then selected % pattern. Decide your % tuning settings considering other NAS processes and go for 20%+ if possible.",
 		"subitems": 
 		[{
 			"key": "PKGWIZ_TUNING_BUFFER_0",
 			"desc": "No tuning: keep original MySQL-buffer-pool and Kopano-cache at 16M (it's your choice)",
 			"defaultValue": true
+		 },{
+			"key": "PKGWIZ_TUNING_BUFFER_10",
+			"desc": "Tuning 10% of total memory to caches: (minimum for 1GB increase buffers by ~3x)",
+			"defaultValue": false
 		 },{
 			"key": "PKGWIZ_TUNING_BUFFER_20",
 			"desc": "Tuning 20% of total memory to caches: (baseline for 1GB increase buffers by ~6x)",

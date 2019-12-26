@@ -67,6 +67,7 @@ then
 
 	PKGWIZ_RMASTER="false"
 	PKGWIZ_TUNING_BUFFER_0="true"
+	PKGWIZ_TUNING_BUFFER_10="false"
 	PKGWIZ_TUNING_BUFFER_20="false"
 	PKGWIZ_TUNING_BUFFER_40="false"
 	PKGWIZ_TUNING_BUFFER_60="false"
@@ -690,115 +691,173 @@ GET_VER_TAG()
 	fi
 }
 # ** calculated the tuning for caches in kopano server and MySql
-GET_TUNIG_PARAMS()
+GET_MEM_INFO()
 {
-	# ** only greps memory 7 digits aka 1gb and more (even 1gb might be missed due to reserved mem)
-	local MEM_TOTAL
-	MEM_TOTAL=$(grep -i memtotal /proc/meminfo | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9][0-9]")
-	# ** now grep 6 digits total memory aka kb instead of gb
-	if [ "$MEM_TOTAL" = "" ]
+	# get info from /proc/meminfo incl. features to prevent race condition
+	MEM_TOTAL=$(grep -i memtotal /proc/meminfo | grep -o "[0-9]*")
+	SYNO_MEMG=$(($MEM_TOTAL / 1000000))
+	if [ $SYNO_MEMG -lt 1 ] && [ "$MEM_TOTAL" -gt 700000 ] ; then SYNO_MEMG=1 ; fi
+	MEM_FREE=$(grep -i memfree /proc/meminfo | grep -o "[0-9]*")
+	MEM_CACHED=$(grep -i cached /proc/meminfo | grep -v SwapCached | grep -o "[0-9]*")
+	# if captured other cached values like SwapCached cut them off by 1st space to prevent race condition
+	if $(echo $MEM_CACHED | grep -q " ")
 	then
-		MEM_TOTAL=$(grep -i memtotal /proc/meminfo | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9]")
+		MEM_CACHED=$(echo $MEM_CACHED  | cut -d ' ' -f1)
 	fi
-	if [ "$MEM_TOTAL" != "" ] && [ "$MEM_TOTAL" -gt 700000 ]
+	if [ "$MEM_FREE" != "" ] && [ "$MEM_CACHED" != "" ]
 	then
-		SYNO_MEMG=$(($MEM_TOTAL / 1000000))
-		if [ "$SYNO_MEMG" = "0" ]
-		then
-			# ** round up again to 1 a 0.8-0.9 mem factor
-			SYNO_MEMG=1
-		fi
-		# ** first grab 7 digits as gb then grep 6 digits aka kb
-		local MEM_FREE
-		MEM_FREE=$(grep -i memfree /proc/meminfo | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9][0-9]")
-		local MEM_CACHED
-		MEM_CACHED=$(grep -i cached /proc/meminfo | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9][0-9]")
-		if [ "$MEM_FREE" = "" ]
-		then
-			MEM_FREE=$(grep -i memfree /proc/meminfo | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9]")
-		fi
-		if [ "$MEM_CACHED" = "" ]
-		then
-			MEM_CACHED=$(grep -i cached /proc/meminfo | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9]")
-		fi
-		# sometimes race condition occurs at the calc below
-		GUI_MSG_SAVE
-		GUI_MESSAGE "Race condition during memory calculations - try installing without tuning"
-		if [ "$MEM_FREE" != "" ] && [ "$MEM_CACHED" != "" ]
-		then
-			# race condition expression error for: MEM_USABLE=$(($MEM_FREE + $MEM_CACHED))
-			MEM_USABLE=$(echo "$MEM_FREE + $MEM_CACHED" | tail -1)
-		fi
-	else
-		# ** forget about tuning when synology has less 1gb mem
-		SYNO_MEMG=0
+		MEM_USABLE=$(($MEM_FREE + $MEM_CACHED))
 	fi
-	if [ "$PKGWIZ_TUNING_BUFFER_0" = "true" ]
+}
+GET_MAX_TUNING_BUFFER()
+{
+	# get max memory tuning buffer call after GET_MEM_INFO
+	MAX_TUNING_BUFFER=0
+	BUFFERS=$((98304 * $SYNO_MEMG))
+	if [ "$MEM_USABLE" -gt "$BUFFERS" ]
 	then
-		TUNING_BUFFER=0
+		MAX_TUNING_BUFFER=10
 	fi
-	if [ "$PKGWIZ_TUNING_BUFFER_20" = "true" ]
+	BUFFERS=$((196608 * $SYNO_MEMG))
+	if [ "$MEM_USABLE" -gt "$BUFFERS" ]
 	then
-		TUNING_BUFFER=20
+		MAX_TUNING_BUFFER=20
 	fi
-	if [ "$PKGWIZ_TUNING_BUFFER_40" = "true" ]
+	BUFFERS=$((398336 * $SYNO_MEMG))
+	if [ "$MEM_USABLE" -gt "$BUFFERS" ]
 	then
-		TUNING_BUFFER=40
+		MAX_TUNING_BUFFER=40
 	fi
-	if [ "$PKGWIZ_TUNING_BUFFER_60" = "true" ]
+	BUFFERS=$((602112 * $SYNO_MEMG))
+	if [ "$MEM_USABLE" -gt "$BUFFERS" ]
 	then
-		TUNING_BUFFER=60
+		MAX_TUNING_BUFFER=60
 	fi
-	if [ $TUNING_BUFFER -gt 0 ]
-	then
-		if [ "$SYNO_MEMG" = "0" ]
-		then
-			TUNING_BUFFER=0
-			GUI_MESSAGE "Tuning disabled as it requires 1GB+ install and respective free memory. "
-		fi
-	fi
+}
+GET_INNODB_BUFFER()
+{
+	# get inno-db buffers call after GET_MEM_INFO and TUNING_BUFFER set
 	INNODB_BUFFER=16
-	if [ "$TUNING_BUFFER" = "60" ]
+	if [ "$TUNING_BUFFER" = "10" ]
 	then
-		# ** 588mb (602112kb) is size of buffers
-		BUFFERS=$((602112 * $SYNO_MEMG))
-		if [ "$MEM_USABLE" -gt "$BUFFERS" ]
-		then
-			INNODB_BUFFER=$((288 * $SYNO_MEMG))
-		else
-			# ** downgrade tuning buffer
-			TUNING_BUFFER=40
-		fi
-	fi
-	if [ "$TUNING_BUFFER" = "40" ]
-	then
-		# ** 389mb (398336kb) is size of buffers
-		BUFFERS=$((398336 * $SYNO_MEMG))
-		if [ $MEM_USABLE -gt $BUFFERS ]
-		then
-			INNODB_BUFFER=$((192 * $SYNO_MEMG))
-		else
-			# ** downgrade tuning buffer
-			TUNING_BUFFER=20
-		fi
+		INNODB_BUFFER=$((44 * $SYNO_MEMG))
 	fi
 	if [ "$TUNING_BUFFER" = "20" ]
 	then
-		# ** 195mb (196608kb) is size of buffers
-		BUFFERS=$((196608 * $SYNO_MEMG))
-		if [ "$MEM_USABLE" -gt "$BUFFERS" ]
-		then
-			INNODB_BUFFER=$((96 * $SYNO_MEMG))
-		else
-			# ** downgrade tuning buffer
-			TUNING_BUFFER=10
-			INNO_BUFFER=$((64 * $SYNO_MEMG))
-		fi
+		INNODB_BUFFER=$((88 * $SYNO_MEMG))
 	fi
-	# above 4GB no need to increase INNODB_BUFFER aka cap at 1152
-	if [ $INNO_BUFFER -gt 1152 ]
+	if [ "$TUNING_BUFFER" = "40" ]
 	then
-		INNO_BUFFER=1152
+		INNODB_BUFFER=$((176 * $SYNO_MEMG))
+	fi
+	if [ "$TUNING_BUFFER" = "60" ]
+	then
+			INNODB_BUFFER=$((264 * $SYNO_MEMG))
+	fi
+	# above 4GB no need to increase INNODB_BUFFER aka cap at 1024 aka 1GB
+	if [ $INNODB_BUFFER -gt 1024 ]
+	then
+		INNODB_BUFFER=1024
+	fi
+	INNODB_LOGFS=$((INNODB_BUFFER / 4))
+	if [ -n "$MEM_TOTAL" ] && [ $MEM_TOTAL -gt $INNODB_BUFFER ]
+	then
+		# example for 8GB: buffers: 1.600 (MB) * 1000 (KB) * 100 to % / 8.093.424 (kb) aka ~20% not 40%
+		INNODB_PERCENT=$((($INNODB_BUFFER + $INNODB_LOGFS) * 100000 / $MEM_TOTAL))
+	fi
+}
+GET_KOPANO_BUFFER()
+{
+	if [ $SYNO_MEMG -gt 1 ]
+	then
+		K_CACHE_CELL_SIZE=96
+		K_CACHE_OBJECT_SIZE=4
+		K_CACHE_INDEXOBJECT_SIZE=8
+	else
+		K_CACHE_CELL_SIZE=64
+		K_CACHE_OBJECT_SIZE=2
+		K_CACHE_INDEXOBJECT_SIZE=4
+	fi
+	if [ "$TUNING_BUFFER" = "10" ]
+	then
+		K_CACHE_CELL_SIZE=$((48 * $SYNO_MEMG))
+		# cache for 8 users: x 200k (1.6M) / 512k (4M)
+		K_CACHE_OBJECT_SIZE=2
+		K_CACHE_INDEXOBJECT_SIZE=4
+	fi
+	if [ "$TUNING_BUFFER" = "20" ]
+	then
+		K_CACHE_CELL_SIZE=$((96 * $SYNO_MEMG))
+		# cache for 8 users: x 200k (1.6M) / 512k (4M)
+		K_CACHE_OBJECT_SIZE=2
+		K_CACHE_INDEXOBJECT_SIZE=4
+	fi
+	if [ "$TUNING_BUFFER" = "40" ]
+	then
+		K_CACHE_CELL_SIZE=$((192 * $SYNO_MEMG))
+		# cache for 16 users: x 200k (3.2M) / 512k (8M)
+		K_CACHE_OBJECT_SIZE=4
+		K_CACHE_INDEXOBJECT_SIZE=8
+	fi
+	if [ "$TUNING_BUFFER" = "60" ]
+	then
+		K_CACHE_CELL_SIZE=$((288 * $SYNO_MEMG))
+		K_CACHE_OBJECT_SIZE=$((18 * $SYNO_MEMG))
+		# cache for 32 users: x 200k (6.4M) / 512k (16M)
+		K_CACHE_OBJECT_SIZE=8
+		K_CACHE_INDEXOBJECT_SIZE=16
+	fi
+	# above 8GB no need to increase Kopano-Buffers aka cap at 1280 aka 1.25GB
+	if [ $K_CACHE_CELL_SIZE -gt 2304 ]
+	then
+		K_CACHE_CELL_SIZE=$((288 * 8))
+		K_CACHE_OBJECT_SIZE=8
+		K_CACHE_INDEXOBJECT_SIZE=16
+	fi
+	if [ -n "$MEM_TOTAL" ] && [ $MEM_TOTAL -gt $K_CACHE_CELL_SIZE ]
+	then
+		# example for 8GB: buffers: 2.736 (MB) * 1000 (KB) * 100 to % / 8.093.424 (kb) aka ~33% not 25%
+		KOPANO_PERCENT=$((($K_CACHE_CELL_SIZE + $K_CACHE_OBJECT_SIZE + $K_CACHE_INDEXOBJECT_SIZE) * 100000 / $MEM_TOTAL))
+	fi
+}
+GET_TUNIG_PARAMS()
+{
+	# sometimes other race conditions occurs at the calc below
+	GUI_MSG_SAVE
+	GUI_MESSAGE "Race condition during memory calculations - try installing without tuning"
+	GET_MEM_INFO
+	if [ $SYNO_MEMG -eq 0 ]
+	then
+		TUNING_BUFFER=0
+		INNODB_BUFFER=16
+		GUI_MESSAGE "Tuning disabled as it requires 1GB+ install and respective free memory. "
+	else
+		if [ "$PKGWIZ_TUNING_BUFFER_0" = "true" ]
+		then
+			TUNING_BUFFER=0
+		fi
+		if [ "$PKGWIZ_TUNING_BUFFER_10" = "true" ]
+		then
+			TUNING_BUFFER=10
+		fi
+		if [ "$PKGWIZ_TUNING_BUFFER_20" = "true" ]
+		then
+			TUNING_BUFFER=20
+		fi
+		if [ "$PKGWIZ_TUNING_BUFFER_40" = "true" ]
+		then
+			TUNING_BUFFER=40
+		fi
+		if [ "$PKGWIZ_TUNING_BUFFER_60" = "true" ]
+		then
+			TUNING_BUFFER=60
+		fi
+		GET_MAX_TUNING_BUFFER
+		if [ $MAX_TUNING_BUFFER -lt $TUNING_BUFFER ]
+		then
+			TUNING_BUFFER=$MAX_TUNING_BUFFER
+		fi
+		GET_INNODB_BUFFER
 	fi
 	GUI_MSG_RESTORE
 }
@@ -1050,7 +1109,10 @@ INIT_UPDATE()
 	if [ -z "$K_SEARCH" ] ; then K_SEARCH="ON" ; fi
 	if [ -z "$UNBLOCK_AFTERD" ] ; then UNBLOCK_AFTERD=4 ; fi
 	if [ -z "$MOUNT_TIMEOUT" ] ; then MOUNT_TIMEOUT=2 ; fi
-
+	# update php7.0-fpm socket in nginx.conf and kopano-web.conf (7.x is now on socket 7.0)
+	sed -i -e "s~/var/run/php7.0-fpm.sock~/var/run/php/php7.0-fpm.sock~"  $ETC_PATH/kopano/web/nginx.conf
+	sed -i -e "s~php7.2-fpm.sock~php7.0-fpm.sock~g"  $ETC_PATH/kopano/web/kopano-web.conf
+	sed -i -e "s~php7.3-fpm.sock~php7.0-fpm.sock~g"  $ETC_PATH/kopano/web/kopano-web.conf
 	# amavis now holds spamassasin and clamav in same directory and soft links are used in container
 	if [ -e "$K_SHARE/spamassasin" ] ; then rm "$K_SHARE/spamassasin" ; fi
 	if [ -e "$K_SHARE/clamav" ] ; then rm "$K_SHARE/clamav" ; fi
@@ -1225,6 +1287,38 @@ INIT_DOCKER()
 }
 # *** sub-routines SET_ (CFG_OPTIONS / GUI_NO_DEBUG / OPTIONALS / PKG_CFG / DOCKERFILE / DOCKER_ENV / SOFTLINKS) ***
 # ** set options as per install wizzard GUI, Syno UID, DB usr, pwd
+SET_KOPANO_BUFFER()
+{
+	local CFG="/etc/kopano/server.cfg"
+	if [ -n "$1" ]
+	then
+		CFG="$1"
+	fi
+	sed -i -e "s~cache_cell_size.*~cache_cell_size				= ${K_CACHE_CELL_SIZE}M~" "$CFG"
+	sed -i -e "s~cache_object_size.*~cache_object_size				= ${K_CACHE_OBJECT_SIZE}M~" "$CFG"
+	sed -i -e "s~cache_indexedobject_size.*~cache_indexedobject_size			= ${K_CACHE_INDEXOBJECT_SIZE}M~" "$CFG"
+}
+SET_MYSQL_BUFFER()
+{
+	if grep -q innodb_buffer_pool_size "$MYETC"/my.cnf
+	then
+		sed -i -e "s~innodb_buffer_pool_size.*~innodb_buffer_pool_size = ${INNODB_BUFFER}M~" "$MYETC"/my.cnf	
+	else
+		echo -e "#kopano4s overwrite default innodb_buffer_pool_size as 16M" >> "$MYETC"/my.cnf
+		echo -e "innodb_buffer_pool_size = ${INNODB_BUFFER}M" >> "$MYETC"/my.cnf
+	fi
+	if grep -q innodb_log_file_size "$MYETC"/my.cnf
+	then
+		sed -i -e "s~innodb_log_file_size.*~innodb_log_file_size = ${INNODB_LOGFS}M~" "$MYETC"/my.cnf	
+	else
+		echo -e "innodb_log_file_size = ${INNODB_LOGFS}M" >> "$MYETC"/my.cnf	
+	fi
+}
+SET_PKG_CFG_BUFFER()
+{
+	sed -i -e "s~TUNING_BUFFER.*~TUNING_BUFFER=$TUNING_BUFFER~" /var/packages/Kopano4s/etc/package.cfg
+	sed -i -e "s~INNODB_BUFFER.*~INNODB_BUFFER=$INNODB_BUFFER~" /var/packages/Kopano4s/etc/package.cfg
+}
 SET_CFG_OPTIONS()
 {
 	sed -i -e "s~kopano_db_name~$DB_NAME~" "$TARGET_PATH"/merge/server.cfg.init
@@ -1334,46 +1428,9 @@ SET_CFG_OPTIONS()
 		/bin/sed -i -e "s~9443~$HTTPS_PORT~" "$TARGET_PATH/ui/config"
 	fi
 	# ** tuning of kopano server chaches according to memory size
-	if [ "$TUNING_BUFFER" = "60" ]
-	then
-		ORG_CACHE="cache_cell_size				= 64M"
-		NEW_CACHE="cache_cell_size				= 288M"
-		sed -i -e "s~$ORG_CACHE~$NEW_CACHE~" "$TARGET_PATH/merge/server.cfg.init"
-		ORG_CACHE="cache_object_size			= 4M"
-		NEW_CACHE="cache_object_size			= 18M"
-		sed -i -e "s~$ORG_CACHE~$NEW_CACHE~" "$TARGET_PATH/merge/server.cfg.init"
-		ORG_CACHE="cache_indexedobject_size	= 8M"
-		NEW_CACHE="cache_indexedobject_size	= 36M"
-		sed -i -e "s~$ORG_CACHE~$NEW_CACHE~" "$TARGET_PATH/merge/server.cfg.init"
-		LOG_MESSAGE "Tuning kopno cache-call from 16M to 192M. Also increased other z-caches"
-	fi
-	if [ "$TUNING_BUFFER" = "40" ]
-	then
-		ORG_CACHE="cache_cell_size				= 64M"
-		NEW_CACHE="cache_cell_size				= 192M"
-		sed -i -e "s~$ORG_CACHE~$NEW_CACHE~" "$TARGET_PATH/merge/server.cfg.init"
-		ORG_CACHE="cache_object_size			= 4M"
-		NEW_CACHE="cache_object_size			= 12M"
-		sed -i -e "s~$ORG_CACHE~$NEW_CACHE~" "$TARGET_PATH/merge/server.cfg.init"
-		ORG_CACHE="cache_indexedobject_size	= 8M"
-		NEW_CACHE="cache_indexedobject_size	= 24M"
-		sed -i -e "s~$ORG_CACHE~$NEW_CACHE~" "$TARGET_PATH/merge/server.cfg.init"
-		LOG_MESSAGE "Tuning kopano chache-call from 16M to 128M. Also increased other z-caches"
-	fi
-	if [ "$TUNING_BUFFER" = "20" ]
-	then
-		# ** this equals the original kopano defaults; no tuning is 1/2 z-default
-		ORG_CACHE="cache_cell_size				= 64M"
-		NEW_CACHE="cache_cell_size				= 96M"
-		sed -i -e "s~$ORG_CACHE~$NEW_CACHE~" "$TARGET_PATH/merge/server.cfg.init"
-		ORG_CACHE="cache_object_size			= 4M"
-		NEW_CACHE="cache_object_size			= 6M"
-		sed -i -e "s~$ORG_CACHE~$NEW_CACHE~" "$TARGET_PATH/merge/server.cfg.init"
-		ORG_CACHE="cache_indexedobject_size	= 8M"
-		NEW_CACHE="cache_indexedobject_size	= 12M"
-		sed -i -e "s~$ORG_CACHE~$NEW_CACHE~" "$TARGET_PATH/merge/server.cfg.init"
-		LOG_MESSAGE "Tuning kopano chache-call from 16M to 64M."
-	fi
+	GET_KOPANO_BUFFER
+	SET_KOPANO_BUFFER "$TARGET_PATH/merge/server.cfg.init"
+	LOG_MESSAGE "Tuning Kopano cache-call from 16M to ${K_CACHE_CELL_SIZE}MB. Also increased other k-caches"
 	# ** copy over merge sections to kopano-etc
 	cp -f "$TARGET_PATH"/merge/*.init "$ETC_PATH"/kopano
 	cp "$TARGET_PATH"/merge/z-push/* "$ETC_PATH"/z-push
@@ -1383,8 +1440,6 @@ SET_CFG_OPTIONS()
 	cp -f "$TARGET_PATH"/merge/postbuild.sh "$ETC_PATH"/kopano/custom
 	# web-config: nginx.conf and kopano-web.conf
 	cp -f "$TARGET_PATH"/merge/web/* "$ETC_PATH"/kopano/web
-	# ** todo in /etc/php5/fpm/php.ini: allow_url_fopen = Off, short_open_tag = On, upload_max_filesize=30M, post_max_size=31M 
-	# ** todo in /etc/nginx/nginx.conf: client_max_body_size 12m; .htaccess topics for z-push state
 }
 # ** set isDebug to fals in gui index.cgi
 SET_GUI_NO_DEBUG()
@@ -1530,15 +1585,14 @@ SET_SQL_CONF()
 		# replication prepared but not enabled
 		K_REPLICATION="OFF"
 	fi
-	if [ "$TUNING_BUFFER" -gt 0 ] && ! (grep -q kopano4s "$MYETC"/my.cnf)
+	if ! (grep -q "max_allowed_packet" "$MYETC"/my.cnf) ; then MYCF_CHG=1; echo -e "max_allowed_packet = 16M" >> "$MYETC"/my.cnf ; fi
+	if [ "$TUNING_BUFFER" -gt 0 ] 
 	then
 		MYCF_CHG=1
-		echo -e "#kopano4s overwrite default innodb_buffer as 16M" >> "$MYETC"/my.cnf
-		echo -e "innodb_buffer_pool_size = ${INNODB_BUFFER}M" >> "$MYETC"/my.cnf
-		# innodb_log_file_size should be 25% of buffer_pool_size but default has no setting
+		if [ -z "$INNODB_LOGFS" ] ; then INNODB_LOGFS=$((INNODB_BUFFER / 4)) ; fi
+		SET_MYSQL_BUFFER
 		LOG_MESSAGE "Tuning mysql innodb-chache from 16M to ${INNODB_BUFFER}M. Restarting MariaDB to make it effecive"
 	fi
-	if ! (grep -q "max_allowed_packet" "$MYETC"/my.cnf) ; then MYCF_CHG=1; echo -e "max_allowed_packet = 10M" >> "$MYETC"/my.cnf ; fi
 	# restarting mariadb
 	if [ $MYCF_CHG -gt 0 ]
 	then
@@ -1781,6 +1835,7 @@ SET_SOFTLINKS()
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh /usr/local/bin/kopano4s-optionals
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-replication.sh /usr/local/bin/kopano4s-replication
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-restore-user.sh /usr/local/bin/kopano4s-restore-user
+	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-tuning.sh /usr/local/bin/kopano4s-tuning
 	ln -sf /var/packages/Kopano4s/scripts/addon/kopano4s-upgrade.sh /usr/local/bin/kopano4s-upgrade
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/kopano-cmdline
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-cmdline.sh /usr/local/bin/kopano4s
@@ -2005,8 +2060,8 @@ DROP_MYSQL_TUNING()
 {
 	if [ "$TUNING_BUFFER" -gt 0 ]
 	then
-		REMOVE="innodb_buffer_pool_size = ${INNODB_BUFFER}M"
-		sed -i -e "s~$REMOVE~~" "$MYETC"/my.cnf
+		sed -i -e "s~innodb_buffer_pool_size.*~~" "$MYETC"/my.cnf
+		sed -i -e "s~innodb_log_file_size.*~~" "$MYETC"/my.cnf
 		sed -i -e "s~#kopano4s overwrite default innodb_buffer as 16M~~" "$MYETC"/my.cnf
 	fi
 }

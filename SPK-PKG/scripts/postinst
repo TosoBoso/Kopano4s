@@ -16,6 +16,7 @@ then
 	then
 		TUNING_BUFFER=0
 		INNODB_BUFFER=16
+		SYNO_MEMG=0
 	else
 		GET_TUNIG_PARAMS
 	fi

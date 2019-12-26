@@ -126,6 +126,9 @@ case "$1" in
 		$SUDO $SUDO docker start kopano4s
 		$SUDO docker exec -it kopano4s /usr/local/bin/init.sh maintain-on
 		$SUDO docker exec -it kopano4s /usr/local/bin/init.sh stop
+		sleep 5
+		$SUDO docker stop kopano4s
+		$SUDO $SUDO docker start kopano4s
 		$SUDO docker exec -it kopano4s bash
 		;;
 	stop)
