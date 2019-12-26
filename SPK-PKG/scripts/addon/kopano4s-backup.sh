@@ -74,9 +74,7 @@ else
 		then
 			. /var/packages/Kopano4s/etc/package.cfg
 		else
-			NOTIFYTARGET="$SYNOPKG_USERNAME"
-			if [ "_$NOTIFYTARGET" = "_" ] ; then NOTIFYTARGET="$SYNO_WEBAPI_USERNAME" ; fi
-			if [ "_$NOTIFYTARGET" = "_" ] ; then NOTIFYTARGET="$USERNAME" ; fi
+			NOTIFYTARGET="$USERNAME"
 			if [ "_$NOTIFYTARGET" = "_" ] ; then NOTIFYTARGET="$USER" ; fi
 			if [ "_$NOTIFYTARGET" = "_" ] ||  [ "$NOTIFYTARGET" = "root" ] ; then NOTIFYTARGET="@administrators" ; fi
 			KEEP_BACKUPS=4
@@ -136,7 +134,7 @@ then
 		fi
 		MSG="no valid restore argument was provided. Latest timestamp would be <$TS>"
 		echo "$MSG"
-		echo -e "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$DUMP_LOG"
+		echo -e "$(date "+%Y.%m.%d-%H:%M%S") $MSG" >> "$DUMP_LOG"
 		exit 1
 	fi
 	TSTAMP=$2
@@ -149,7 +147,12 @@ then
 		fi
 		echo -e "max_allowed_packet = 16M" >> "$MYETC"/my.cnf
 		echo "mysql max_allowed_packet had to be increased to prevent failed restore of big blobs; retry post restarting mysql.."
-		/var/packages/MariaDB10/scripts/start-stop-status restart
+		if [ "$MYETC" = "/var/packages/MariaDB10/etc" ]
+		then
+			$SUDO /var/packages/MariaDB10/scripts/start-stop-status restart
+		else
+			$SUDO /var/packages/MariaDB/scripts/start-stop-status restart		
+		fi
 		exit 1
 	fi
 	# do not restore in active slave mode as it breaks replication and stop if mysql read-only
@@ -164,7 +167,7 @@ then
 		exit 1
 	fi
 	STARTTIME=$(date +%s)
-	TS=$(date "+%Y.%m.%d-%H.%M.%S")
+	TS=$(date "+%Y.%m.%d-%H:%M%S")
 	MSG="stoping kopano for restore of $DB_NAME from dump of ${TSTAMP}..."
 	echo -e "$TS $MSG" >> "$DUMP_LOG"
 	echo "$MSG"
@@ -188,7 +191,7 @@ then
 			K_START=1
 		fi
 	fi
-	TS=$(date "+%Y.%m.%d-%H.%M.%S")
+	TS=$(date "+%Y.%m.%d-%H:%M%S")
 	MSG="un-zipping dump sql file $DPREFIX-${TSTAMP}.sql.gz.."
 	echo -e "$TS $MSG" >> "$DUMP_LOG"
 	echo "$TS $MSG"
@@ -196,7 +199,7 @@ then
 	if [ $? -ne 0 ]
 	then
 		RET=$(cat "$ZIP_ERR" | tr -d '\n')
-		TS=$(date "+%Y.%m.%d-%H.%M.%S")
+		TS=$(date "+%Y.%m.%d-%H:%M%S")
 		MSG="stopping due to zip error: $RET.."
 		echo -e "$TS $MSG" >> "$DUMP_LOG"
 		echo "$TS $MSG"
@@ -206,7 +209,8 @@ then
 		fi
 		exit 1
 	fi
-	TS=$(date "+%Y.%m.%d-%H.%M.%S")
+	chmod 440 "$DUMP_PATH"/*.sql
+	TS=$(date "+%Y.%m.%d-%H:%M%S")
 	MSG="starting sql import.."
 	echo -e "$TS $MSG" >> "$DUMP_LOG"
 	echo "$TS $MSG"
@@ -214,7 +218,7 @@ then
 	RET=$(cat "$SQL_ERR")
 	if [ "$RET" != "" ]
 	then
-		TS=$(date "+%Y.%m.%d-%H.%M.%S")
+		TS=$(date "+%Y.%m.%d-%H:%M%S")
 		MSG="MySQL returned error: $RET"
 		echo -e "$TS $MSG" >> "$DUMP_LOG"
 		echo "$TS $MSG"
@@ -223,7 +227,7 @@ then
 	if [ "$ATTACHMENT_ON_FS" = "ON" ] && [ -e "$DUMP_PATH"/attachments-${TSTAMP}.tgz ] 
 	then
 		MSG="restoring attachments linked to $DB_NAME..."
-		TS=$(date "+%Y.%m.%d-%H.%M.%S")
+		TS=$(date "+%Y.%m.%d-%H:%M%S")
 		echo -e "$TS $MSG" >> "$DUMP_LOG"
 		echo -e "$MSG"
 		CUR_PATH=$(pwd)
@@ -240,7 +244,7 @@ then
 	ENDTIME=$(date +%s)
 	DIFFTIME=$(( $ENDTIME - $STARTTIME ))
 	TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
-	TS=$(date "+%Y.%m.%d-%H.%M.%S")
+	TS=$(date "+%Y.%m.%d-%H:%M%S")
 	MSG="restore for $DB_NAME completed in $TASKTIME"
 	echo -e "$TS $MSG" >> "$DUMP_LOG"
 	echo "$MSG"
@@ -281,12 +285,12 @@ then
 			/var/packages/Kopano4s/scripts/start-stop-status start	
 		fi
 	fi
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") doing cleanup zipping back imported dump.sql file.."
+	echo "$(date "+%Y.%m.%d-%H:%M%S") doing cleanup zipping back imported dump.sql file.."
 	gzip -9 "$DUMP_PATH"/"$DPREFIX"-${TSTAMP}.sql  >"$ZIP_ERR" 2>&1
 	if [ $? -ne 0 ]
 	then
 		RET=$(cat "$ZIP_ERR" | tr -d '\n')
-		TS=$(date "+%Y.%m.%d-%H.%M.%S")
+		TS=$(date "+%Y.%m.%d-%H:%M%S")
 		MSG="stopping due to zip error: $RET.."
 		echo -e "$TS $MSG" >> "$DUMP_LOG"
 		echo "$TS $MSG"
@@ -296,7 +300,7 @@ then
 		fi
 		exit 1
 	fi
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") done.."
+	echo "$(date "+%Y.%m.%d-%H:%M%S") done.."
 	# avoid false alrms on sql-err from previous run
 	if [ -e "$SQL_ERR" ] ; then rm "$SQL_ERR" ; fi
 	if [ -e "$ZIP_ERR" ] ; then rm "$ZIP_ERR" ; fi
@@ -315,7 +319,7 @@ then
 		echo "warning: binary logging has to be enabled (my.cf with <log-bin> section)"
 	fi
 fi
-TS=$(date "+%Y.%m.%d-%H.%M.%S")
+TS=$(date "+%Y.%m.%d-%H:%M%S")
 echo -e "$TS $MSG" >> "$DUMP_LOG"
 if [ "$1" = "" ]
 then
@@ -366,7 +370,7 @@ $MYSQLDUMP $DUMP_ARGS $DB_NAME -u$DB_USER -p$DB_PASS | gzip -c -9 > "$DUMP_FILE_
 RET=$(cat "$SQL_ERR")
 if [ "$RET" != "" ]
 then
-	TS=$(date "+%Y.%m.%d-%H.%M.%S")
+	TS=$(date "+%Y.%m.%d-%H:%M%S")
 	MSG="SqlDump error: $RET.."
 	echo -e "$TS $MSG" >> "$DUMP_LOG"
 	echo "$TS $MSG"
@@ -383,7 +387,7 @@ then
 	# remove looped softlink
 	if [ -h "$ATTM_PATH/attachments" ] ; then rm "$ATTM_PATH/attachments" ; fi
 	MSG="dump done, saving attachments linked to $DB_NAME..."
-	TS=$(date "+%Y.%m.%d-%H.%M.%S")
+	TS=$(date "+%Y.%m.%d-%H:%M%S")
 	echo -e "$TS $MSG" >> "$DUMP_LOG"
 	echo -e "$MSG"
 	CUR_PATH=$(pwd)
@@ -394,7 +398,7 @@ fi
 ENDTIME=$(date +%s)
 DIFFTIME=$(( $ENDTIME - $STARTTIME ))
 TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
-TS=$(date "+%Y.%m.%d-%H.%M.%S")
+TS=$(date "+%Y.%m.%d-%H:%M%S")
 MSG="dump for $DB_NAME completed in $TASKTIME"
 echo -e "$TS $MSG" >> "$DUMP_LOG"
 echo "$MSG"

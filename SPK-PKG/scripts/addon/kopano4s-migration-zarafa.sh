@@ -90,7 +90,7 @@ else
 	fi
 fi
 # stopping kopano and preparing for migration edition incl. ATTACHMENT_ON_FS="OFF"
-if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
+if /var/packages/Kopano4s/scripts/start-stop-status status >/dev/null ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
 sed -i -e "s~K_EDITION=.*~K_EDITION=\"Migration\""~ /var/packages/Kopano4s/etc/package.cfg
 # migration edition cannot handle default_store_locale
 if [ -e /etc/kopano/admin.cfg ] ; then sed -i -e "s~^default_store_locale~#default_store_locale~" /etc/kopano/admin.cfg ; fi
@@ -121,18 +121,18 @@ kopano4s-backup restore $TS legacy
 # reset attachements
 rm -R "$K_SHARE"/attachments
 mkdir -p "$K_SHARE"/attachments
-chown root.kopano "$K_SHARE"/attachments
+chown kopano.kopano "$K_SHARE"/attachments
 chmod 770 "$K_SHARE"/attachments
 MSG="step 4: starting kopano migration (8.4.5) to run user export..."
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 echo "$(date "+%Y.%m.%d-%H.%M.%S") Truncated log b4 starting migration version.." > /var/log/kopano/server.log
 kopano4s-init refresh
-# wait 3m to have to have zarafa databse upgraded in migration version then start kopano-backup aka mapi export per uer
-echo "$(date "+%Y.%m.%d-%H.%M.%S") sleep 5 min to have migration version running smoothly with zarafa database import.."
-sleep 300
+# wait 4m to have to have zarafa databse upgraded in migration version then start kopano-backup aka mapi export per uer
+echo "$(date "+%Y.%m.%d-%H.%M.%S") sleep 4 min to have migration version running smoothly with zarafa database import.."
+sleep 240
 # no point to continue if kopano migration version stopped for any reason
-if ! /var/packages/Kopano4s/scripts/start-stop-status status
+if ! /var/packages/Kopano4s/scripts/start-stop-status status >/dev/null
 then
 	MSG="ERROR running imported data (see migrate-server.log); rolling back.."
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
@@ -141,7 +141,9 @@ then
 fi
 if [ $ROLLB -eq 0 ]
 then
-	echo "$(date "+%Y.%m.%d-%H.%M.%S") running kopano-backup with 4 streams (see backup-user.log).."
+	MSG="running kopano-backup with 4 streams (see backup-user.log).."
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
+	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 	kopano-backup -w 4 -l INFO > "$K_BACKUP_PATH"/backup-user.log 2>&1
 fi
 cp /var/log/kopano/server.log "$K_BACKUP_PATH"/migrate-server.log
@@ -157,7 +159,7 @@ else
 fi
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
-if /var/packages/Kopano4s/scripts/start-stop-status status ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
+if /var/packages/Kopano4s/scripts/start-stop-status status >/dev/null ; then /var/packages/Kopano4s/scripts/start-stop-status stop ; fi
 sed -i -e "s~K_EDITION=.*~K_EDITION=\"${K_EDITION_STATE}\""~ /var/packages/Kopano4s/etc/package.cfg
 if [ -e /etc/kopano/admin.cfg ] ; then sed -i -e "s~^#default_store_locale~default_store_locale~" /etc/kopano/admin.cfg ; fi
 if [ "$ATTACHMENT_STATE" = "ON" ]
@@ -182,13 +184,13 @@ then
 	ENDTIME=$(date +%s)
 	DIFFTIME=$(( $ENDTIME - $STARTTIME ))
 	TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
-	MSG="Migration zarafa to kopano4s completed in $TASKTIME.."
+	MSG="Migration Zarafa to Kopano4s completed in $TASKTIME.."
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/migrate-steps.log
 	cp /var/log/kopano/server.log "$K_BACKUP_PATH"/import-server.log
 	head -4 "$K_BACKUP_PATH"/import-server.log
 else
-	MSG="Migration zarafa to kopano4s rolled back.."
+	MSG="Migration Zarafa to Kopano4s rolled back.."
 fi
 if [ "$NOTIFY" = "ON" ]
 then

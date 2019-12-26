@@ -7,13 +7,15 @@ then
 	echo "you have to run as root! alternatively as admin run with sudo prefix! exiting.."
 	exit 1
 fi
-# get common and config
+# ** get library and common procedures, settings, tags and download urls
+. /var/packages/Kopano4s/scripts/library
 . /var/packages/Kopano4s/scripts/common
-. "$ETC_PATH"/package.cfg
+. /var/packages/Kopano4s/etc/package.cfg
 
 CONT="OFF"
 ETC="OFF"
 ACL="OFF"
+GZL="OFF"
 SSL="OFF"
 MOB="OFF"
 UPG="OFF"
@@ -73,7 +75,7 @@ case "$1" in
 		# shellcheck disable=SC2235
 		if [ $# -gt 1 ] && ( [ "$2" = "Community" ] || [ "$2" = "Supported" ] )
 		then
-			if [ $# -lt 3 ] && [ "$K_EDITION" = "Supported" ]
+			if [ $# -lt 3 ] && [ "$2" = "Supported" ]
 			then
 				echo "Please provide SNR as 3rd parameter for Supported edition"
 				exit 1
@@ -113,6 +115,10 @@ case "$1" in
 		echo "initializing acls of all kopano folders incl. etc, log"
 		ACL="ON"
 		;;
+	gzlogs)
+		echo "initializing / deleting rotated gz logs of all kopano folders"
+		GZL="ON"
+		;;
 	ssl)
 		echo "initializing ssl by copy over latest certificates from synology"
 		SSL="ON"
@@ -141,12 +147,12 @@ case "$1" in
 		echo "For both, maintenance and no-ports it is essential to run reset building std. container for resuming default operations."
 		echo "Edition lets you switch from Migration to Community or Supported. The latter requires a valid Serial-Nr. Switch from Supported"
 		echo "to Community is a downgrade so instead use kopano-backup then remove Supported dropping database leaving share and run restore."
-		echo "Option etc copies cfg from backup area; acl resets the access control lists in volumes (etc, attachments, z-push-state..)"
+		echo "Option etc copies cfg from backup area; acl resets the access control lists in etc, attachments, z-push.. and gzlogs removes old logs."
 		echo "Option upgrade will run Debian apt-get upgrade in container (usually container refresh will do the trick)."
 		exit 0
 		;;
 	*)
-		echo "Usage: kopano-init plus reset (bridge|host) | refresh | defresh | edition | maintenance | no-ports | etc | acl | ssl | mobiles | upgrade | all | help"
+		echo "Usage: kopano-init plus reset (bridge|host) | refresh | defresh | edition | maintenance | no-ports | etc | acl | gzlogs | ssl | mobiles | upgrade | all | help"
 		exit 1
 		;;
 esac
@@ -204,6 +210,12 @@ then
 		echo -e "\n" | docker exec -i kopano4s init.sh acl
 		echo -e "\n" | docker exec -i kopano4s init.sh restart
 	fi
+fi
+if [ "$GZL" = "ON" ]
+then
+	echo "removing old gz logs from logrotate.."
+	for gzf in /var/log/kopano/*.gz ; do rm $gzf ; done
+	for gzf in /var/log/kopano/*.1 ; do rm $gzf ; done
 fi
 if [ "$UPG" = "ON" ]
 then

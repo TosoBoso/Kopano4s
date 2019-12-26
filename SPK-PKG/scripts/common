@@ -1,35 +1,5 @@
 #!/bin/sh
 # ** (c) 2017-19 TosoBoso - common lib for Kopano-4-Synology in Docker container
-# ** set environment
-# Image tags: Default is from 02.05./17.05.2019 and Migration from 15.12./15.12.2017
-MIGRATION_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
-DEFAULT_TAG="Core-8.7.1.0_Webapp-3.5.6_Z-Push-2.5.1_WMeet-0.29.5"
-SUPPORTED_TAG="Core-8.7.5_Webapp-3.5.12_Z-Push-2.5.1_WMeet-0.29.5"
-COMMUNITY_TAG="Core-8.7.85_Webapp-3.5.12_Z-Push-2.5.1_WMeet-0.29.5"
-MIGRATION_SIZE=136
-DEFAULT_SIZE=165
-SUPPORTED_SIZE=165
-COMMUNITY_SIZE=165
-RELEASE="Stable"
-PHP_VER="7.0"
-PKG_NAME=Kopano4s
-ETC_PATH="/usr/syno/etc/packages/$PKG_NAME"
-TARGET_PATH="/var/packages/$PKG_NAME/target"
-UI_PATH="/usr/syno/synoman/webman/3rdparty"
-LOG="$TARGET_PATH/log/package.log"
-# MariaDB10 is default even if also MariaDB5 is installed, but 5 is fallback fo DSM 5.2
-if [ -e /usr/local/mariadb10/bin/mysql ]
-then
-	MYSQL="/usr/local/mariadb10/bin/mysql"
-	MYETC="/var/packages/MariaDB10/etc"
-else 
-	MYSQL="/usr/bin/mysql"
-	MYETC="/var/packages/MariaDB/etc"
-fi
-# ** download areas
-K_URL_COM="download.kopano.io/community"
-K_URL_SUP="download.kopano.io/supported"
-K_DHUB="hub.docker.com/r/tosoboso/kopano4s/tags/"
 # ** to make it work in test modus set pkg-name, log, wiz-switches testing for empty with ! -n
 if [ -z "$SYNOPKG_PKGNAME" ]
 then
@@ -112,6 +82,16 @@ LOG_MESSAGE()
 GUI_MESSAGE()
 {
 	echo "$1" >> "$SYNOPKG_TEMP_LOGFILE"
+}
+# Save and Restore GUI-Msg for potential race condition e.g. in GET_TUNIG_PARAMS
+GUI_MSG_SAVE()
+{
+	GUI_MSG=$(cat "$SYNOPKG_TEMP_LOGFILE")
+	echo "" > "$SYNOPKG_TEMP_LOGFILE"
+}
+GUI_MSG_RESTORE()
+{
+	echo -e "$GUI_MSG" > "$SYNOPKG_TEMP_LOGFILE"
 }
 NOTIFY_MESSAGE()
 {
@@ -233,6 +213,58 @@ DISABLE_UI()
 	# if softlink exists from 3rdparty-UI to package-target ui then remove it
 	if [ -h "$UI_PATH/$PKG_NAME" ] ; then $SUDO rm "$UI_PATH"/"$PKG_NAME" ; fi
 }
+# check in case k-volume is mounted encrypted add timeout option
+CHECK_MOUNTS()
+{
+	if [ ! -e "$K_SHARE/attachments" ]
+	then
+		MSG="Empty Kopano share, waiting ${MOUNT_TIMEOUT}s e.g. to allow mounting of encrypted share.."
+		if [ -n "$SUDO" ]
+		then
+			echo "$MSG"
+		else
+			LOG_MESSAGE "$MSG"
+		fi
+		local MOUNT_TIMER=0
+		local INIT_RUNNING=1
+		while [ $INIT_RUNNING -eq 1 ]
+		do
+			sleep 1
+			MOUNT_TIMER=$(($MOUNT_TIMER + 1))
+			if [ $MOUNT_TIMER -gt $MOUNT_TIMEOUT ]
+			then
+				INIT_RUNNING=0
+			fi
+			if [ -e "$K_SHARE/attachments" ]
+			then
+				INIT_RUNNING=0
+			fi
+		done
+		if [ ! -e "$K_SHARE/attachments" ]
+		then
+			MSG="Error Kopano share still empty post mount timeout $MOUNT_TIMEOUT sec"
+			if [ -n "$SUDO" ]
+			then
+				echo "$MSG"
+			else
+				LOG_MESSAGE "$MSG"
+			fi
+			if [ "$NOTIFY" = "ON" ]
+			then
+				/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" Kopano4s-Start-Error "$MSG"
+			fi
+			exit 1
+		else
+			MSG="Sucessfully mounted Kopano share after $MOUNT_TIMER sec"
+			if [ -n "$SUDO" ]
+			then
+				echo "$MSG"
+			else
+				LOG_MESSAGE "$MSG"
+			fi
+		fi
+	fi
+}
 # *** sub-routines GET_ (WIZZARD_CFG / TUNING_PARAMS / K_DOWNLOAD_BY_TAG) ***
 # get from INFO file if we have a stable or beta version
 GET_BETA_STABLE()
@@ -249,24 +281,24 @@ GET_BETA_STABLE()
 		K_RELEASE="$RELEASE"
 	fi
 }
-# get the selected edition via gui-wizzard; non selected is in the else tree
+# get the selected edition via gui-wizzard; thx to switch all values are set
 GET_WIZZARD_EDITION()
 {
 	if [ "$PKGWIZ_K_DEF" = "true" ]
 	then
 		K_EDITION="Default"
-	else
-		if [ "$PKGWIZ_K_SUP" = "true" ]
-		then
-			K_EDITION="Supported"
-		else
-			if [ "$PKGWIZ_K_MIG" = "true" ]
-			then
-				K_EDITION="Migration"
-			else
-				K_EDITION="Community"
-			fi
-		fi
+	fi
+	if [ "$PKGWIZ_K_SUP" = "true" ]
+	then
+		K_EDITION="Supported"
+	fi
+	if [ "$PKGWIZ_K_COM" = "true" ]
+	then
+		K_EDITION="Community"
+	fi
+	if [ "$PKGWIZ_K_MIG" = "true" ]
+	then
+		K_EDITION="Migration"
 	fi
 }
 GET_WIZZARD_SIZE()
@@ -492,6 +524,7 @@ GET_WIZZARD_CFG()
 	fi
 	TIMEZONE=$PKGWIZ_TIMEZONE
 	KEEP_BACKUPS=5
+	MOUNT_TIMEOUT=60
 	UNBLOCK_AFTERD=4
 	NOTIFY="ON"
 	# ** set the notify recipient best what can be found
@@ -619,11 +652,6 @@ GET_VER_TAG()
 	then
 		SEC="$1"
 	fi
-	# if no package cfg exist get edition from PKGWIZ during install
-	if [ -z "$K_EDITION" ]
-	then
-		GET_WIZZARD_EDITION
-	fi
 	# no need to do GET_DOCKER_TAG for Migration edition
 	if [ "$K_EDITION" = "Migration" ]
 	then
@@ -693,9 +721,13 @@ GET_TUNIG_PARAMS()
 		then
 			MEM_CACHED=$(grep -i cached /proc/meminfo | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9]")
 		fi
+		# sometimes race condition occurs at the calc below
+		GUI_MSG_SAVE
+		GUI_MESSAGE "Race condition during memory calculations - try installing without tuning"
 		if [ "$MEM_FREE" != "" ] && [ "$MEM_CACHED" != "" ]
 		then
-			MEM_USABLE=$(($MEM_FREE + $MEM_CACHED))
+			# race condition expression error for: MEM_USABLE=$(($MEM_FREE + $MEM_CACHED))
+			MEM_USABLE=$(echo "$MEM_FREE + $MEM_CACHED" | tail -1)
 		fi
 	else
 		# ** forget about tuning when synology has less 1gb mem
@@ -763,6 +795,12 @@ GET_TUNIG_PARAMS()
 			INNO_BUFFER=$((64 * $SYNO_MEMG))
 		fi
 	fi
+	# above 4GB no need to increase INNODB_BUFFER aka cap at 1152
+	if [ $INNO_BUFFER -gt 1152 ]
+	then
+		INNO_BUFFER=1152
+	fi
+	GUI_MSG_RESTORE
 }
 # *** sub-routines Pre-checks in preinst ***
 # ** check for conflicting packages and exist in preinst if pkg not stopped
@@ -810,8 +848,6 @@ PKG_PRE_CHECK()
 # ** verify downloads available for building container otherwise exit
 DOWNL_PRE_CHECK()
 {
-	# get_ver_tag will also get the wizzard gfg, it can be called with parameter e.g. previous in other script
-	GET_VER_TAG ""
 	if [ "$K_EDITION" = "Supported" ] || [ "$K_EDITION" = "Default" ] 
 	then
 		if [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ]
@@ -938,6 +974,7 @@ INIT_UPDATE()
 	then
 		sed -i -e "s~localhost~localhost:9080~" "$ETC_PATH"/kopano/webapp/plg.conf-mdm.php
 	fi
+	# ensure k4samavis exists, then uid is passed to file and user was not esetup with capital K
 	if ! grep -q k4samavis: /etc/passwd
 	then
 		# ** add kopano group and user to join root for access patterns to rc and log files
@@ -945,6 +982,19 @@ INIT_UPDATE()
 		RAND_PWD=$(uuidgen | cut -c-40)
 		synouser --add k4samavis "$RAND_PWD" "Daemon user for Kopano anti-virus" 1 "" 0
 		LOG_MESSAGE "Added k4samavis user to system in login disabled mode, random pwd (synouser cmd)"
+		AUSRID=$(id -u k4samavis)
+		echo -e "$AUSRID" > "$ETC_PATH/kopano/auid"
+	fi
+	if [ ! -e "$ETC_PATH/kopano/auid" ]
+	then
+		AUSRID=$(id -u k4samavis)
+		echo -e "$AUSRID" > "$ETC_PATH/kopano/auid"
+	fi
+	AUSRID=$(cat "$ETC_PATH/kopano/auid")
+	if [ -z "$AUSRID" ]
+	then
+		sed -i -e 's~K4samavis~k4samavis~' /etc/passwd
+		sed -i -e 's~K4samavis~k4samavis~' /etc/group
 		AUSRID=$(id -u k4samavis)
 		echo -e "$AUSRID" > "$ETC_PATH/kopano/auid"
 	fi
@@ -999,6 +1049,7 @@ INIT_UPDATE()
 	# init K_SEARCH by enabled when it did not exist aka is empty (-z)
 	if [ -z "$K_SEARCH" ] ; then K_SEARCH="ON" ; fi
 	if [ -z "$UNBLOCK_AFTERD" ] ; then UNBLOCK_AFTERD=4 ; fi
+	if [ -z "$MOUNT_TIMEOUT" ] ; then MOUNT_TIMEOUT=2 ; fi
 
 	# amavis now holds spamassasin and clamav in same directory and soft links are used in container
 	if [ -e "$K_SHARE/spamassasin" ] ; then rm "$K_SHARE/spamassasin" ; fi
@@ -1044,6 +1095,8 @@ INIT_SHARE_ETC()
 		mkdir -p "$K_SHARE"/spool
 		mkdir -p "$K_SHARE"/z-push
 		chown -R root.kopano "$K_SHARE"
+		chown kopano.kopano "$K_SHARE"/attachments
+		chown kopano.kopano "$K_SHARE"/log
 		chmod 751 "$K_SHARE"
 		chmod 750 "$K_SHARE"/amavis
 		chmod 750 "$K_SHARE"/archive
@@ -1140,17 +1193,17 @@ INIT_SYNOACL()
 INIT_DOCKER()
 {
 	# give init chance to complete
-	INIT_TIMER=0
-	INIT_RUNNING=1
-	while [ "$INIT_RUNNING" -eq 1 ]
+	local INIT_TIMER=0
+	local INIT_RUNNING=1
+	while [ $INIT_RUNNING -eq 1 ]
 	do
 		sleep 1
 		INIT_TIMER=$(($INIT_TIMER + 1))
-		if [ "$INIT_TIMER" -gt 30 ]
+		if [ $INIT_TIMER -gt 30 ]
 		then
 			INIT_RUNNING=0
 		fi
-		if [ "$INIT_TIMER" -gt 3 ] && [ ! -e /etc/kopano4s/init.run ]
+		if [ $INIT_TIMER -gt 3 ] && [ ! -e /etc/kopano4s/init.run ]
 		then
 			INIT_RUNNING=0
 		fi
@@ -1553,6 +1606,7 @@ SET_PKG_CFG()
 		echo BLOCK_ATTACHMENTS="\"$BLOCK_ATTACHMENTS\""
 		echo LOCALE="\"$LOCALE\""
 		echo TIMEZONE="\"$TIMEZONE\""
+		echo MOUNT_TIMEOUT=$MOUNT_TIMEOUT
 		echo KEEP_BACKUPS=$KEEP_BACKUPS
 		echo UNBLOCK_AFTERD=$UNBLOCK_AFTERD
 		echo NOTIFY="\"$NOTIFY\""

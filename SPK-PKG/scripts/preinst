@@ -1,7 +1,8 @@
 #!/bin/sh
 # ** (c) 2018 vbettag - install for Kopano4Syno in Docker container
-# ** get common procedures, settings, tags and download urls
+# ** get library and common procedures, settings, tags and download urls
 MYDIR=$(dirname "$0")
+. "$MYDIR"/library
 . "$MYDIR"/common
 if [ "$RELEASE" = "Beta" ] && [ -e /tmp/k4sinst.log ] && [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ] ; then rm /tmp/k4sinst.log ; fi
 if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') preinst start" >> /tmp/k4sinst.log ; fi
@@ -10,7 +11,8 @@ if [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ]
 then
 	# ** verify conflicting container and downloads available for building container otherwise exit
 	PKG_PRE_CHECK
-	# download pre check includes get_ver_tag
+	GET_WIZZARD_EDITION
+	GET_VER_TAG
 	DOWNL_PRE_CHECK
 else
 	GET_PKG_CFG
@@ -34,7 +36,7 @@ then
 		export SYNOPKG_PKG_PROGRESS_PATH
 		echo "Pulling image $VER_TAG with size $K4S_SIZE .."
 	fi
-	NOTIFY_MESSAGE "Pulling k4s Docker image (${K4S_SIZE}M ~2-7m; time-out: 10m). Please ignore potential install errors: this is a Synology package installer time-out.."
+	NOTIFY_MESSAGE "Pulling k4s $K_EDITION Docker image (${K4S_SIZE}M ~2-7m; time-out: 10m). Please ignore potential install errors: this is a Synology package installer time-out.."
 	if ! /var/packages/Docker/target/tool/helper "$K4S_IMAGE" "$VER_TAG" "$DOCKER_PATH/k4s-$VER_TAG.tar.xz" "$K4S_SIZE"
 	then
 		LOG_MESSAGE "Failed pulling $K4S_IMAGE $VER_TAG"

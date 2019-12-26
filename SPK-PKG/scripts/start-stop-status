@@ -1,8 +1,8 @@
 #!/bin/sh
 # ** (c) 2018 vbettag - install for Kopano4s in Docker container
-
-# get common and config
+# ** get library and common procedures, settings, tags and download urls
 MYDIR=$(dirname "$0")
+. "$MYDIR"/library
 . "$MYDIR"/common
 GET_PKG_CFG
 
@@ -19,6 +19,8 @@ fi
 case "$1" in
 	start)
 		ENABLE_UI
+		# check in case k-volume is mounted encrypted add timeout option
+		CHECK_MOUNTS
 		# update certificates from synology into container if out of sync same for locale
 		SYNC_K_CERTIFICATE
 		SYNC_K_LOCALE
@@ -67,7 +69,7 @@ case "$1" in
 			# exception to recreate the container?
 			if ! ($SUDO docker ps -a | grep -q kopano4s)
 			then
-				MSG="Rebuilding Kopano docker container (~15-30s)"
+				MSG="Rebuilding Kopano container from $VER_TAG (~15-30s)"
 				if [ -n "$SUDO" ]
 				then
 					echo "$MSG .."
@@ -120,10 +122,17 @@ case "$1" in
 		echo "Kopano services started"
 		exit 0
 		;;
+	maintain)
+		$SUDO $SUDO docker start kopano4s
+		$SUDO docker exec -it kopano4s /usr/local/bin/init.sh maintain-on
+		$SUDO docker exec -it kopano4s /usr/local/bin/init.sh stop
+		$SUDO docker exec -it kopano4s bash
+		;;
 	stop)
 		# disable admin and web icons
 		DISABLE_UI
-		# stop services and sleep 10s for graceful shutdown (container waits 15s)
+		# stop services and sleep 10s for graceful shutdown (container waits 15s) switch off maintain just in case
+		$SUDO docker exec -it kopano4s /usr/local/bin/init.sh maintain-off
 		echo -e "\n" | $SUDO docker exec -i kopano4s init.sh stop
 		sleep 10
 		$SUDO docker stop kopano4s

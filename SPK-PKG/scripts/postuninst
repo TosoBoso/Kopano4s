@@ -1,7 +1,8 @@
 #!/bin/sh
 # ** (c) 2018 vbettag - install for Kopano4s in Docker container
-# ** get common procedures, settings, tags and download urls
+# ** get library and common procedures, settings, tags and download urls
 MYDIR=$(dirname "$0")
+. "$MYDIR"/library
 . "$MYDIR"/common
 if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') postuninst start" >> /tmp/k4sinst.log ; fi
 GET_PKG_CFG

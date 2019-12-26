@@ -97,6 +97,9 @@ then
 	sed -i -e "s~^server_tcp_enabled.*~~" /etc/kopano/server.cfg
 	sed -i -e "s~^server_tcp_port.*~~" /etc/kopano/server.cfg
 fi
+# replace gateway and ical cfg as migration had imaps_port now changed to to imaps_listen
+cp /etc/kopano/gateway.cfg.init /etc/kopano/gateway.cfg
+cp /etc/kopano/ical.cfg.init /etc/kopano/ical.cfg
 # switch attachment-on-fs to on if requested during upgrade
 if [ "$ATTACHMENT_STATE" = "ON" ]
 then
@@ -148,13 +151,13 @@ then
 	ENDTIME=$(date +%s)
 	DIFFTIME=$(( $ENDTIME - $STARTTIME ))
 	TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
-	MSG="Downgrading kopano4s to default edition completed in $TASKTIME."
+	MSG="Upgrading kopano4s to default edition completed in $TASKTIME."
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
 	echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/upgrade-steps.log
 	cp /var/log/kopano/server.log "$K_BACKUP_PATH"/upgrade-server.log
 	head -4 "$K_BACKUP_PATH"/upgrade-server.log
 else
-	MSG="Downgrading kopano4s rolled back.."
+	MSG="Upgrading kopano4s rolled back.."
 fi
 if [ "$NOTIFY" = "ON" ]
 then

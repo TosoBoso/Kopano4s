@@ -3,9 +3,8 @@
 # inspired by ruedi61: https://www.synology-forum.de/showthread.html?80679-Automatischer-Import-einer-Blockliste
 # DSM 6.2 AutoBlockIP Table via .sqlite3 /etc/synoautoblock.db & .schema AutoBlockIP:
 # CREATE TABLE AutoBlockIP(IP varchar(50) PRIMARY KEY,RecordTime date NOT NULL,ExpireTime date NOT NULL,Deny boolean NOT NULL,IPStd varchr(50) NOT NULL,Type INTEGER,Meta varchar(256));
-# get common and config
-. /var/packages/Kopano4s/scripts/common
-. "$ETC_PATH"/package.cfg
+# get package config for notification and IP block time
+. /var/packages/Kopano4s/etc/package.cfg
 if [ -z "$UNBLOCK_AFTERD" ] ; then UNBLOCK_AFTERD=4 ; fi
 LOGIN=$(whoami)
 if [ "$LOGIN" != "root" ]
@@ -28,13 +27,10 @@ fi
 if [ $# -gt 0 ] && [ "$1" = "list" ]
 then
 	echo "List from synoautoblock by kopano4s (unblocked in $UNBLOCK_AFTERD days):"
-	echo " -IP-Address-,, ------Blocked------, -----Unblocked-----"
+	echo " -IP-Address-, ------Blocked------, -----Unblocked-----"
 	sqlite3 -csv /etc/synoautoblock.db "select ip, datetime(RecordTime, 'unixepoch'), datetime(ExpireTime, 'unixepoch') from AutoBlockIP where Meta = 'Kopano4s';"
 	exit 0
 fi
-# default block incl validation of IP as paramater 1
-# get package config for notification
-. /var/packages/Kopano4s/etc/package.cfg
 BLOCKED_IP="$1"
 UNIXTIME=$(date +%s)
 UNIXTIME_DELETE_IP=$(date -d "+$UNBLOCK_AFTERD days" +%s)

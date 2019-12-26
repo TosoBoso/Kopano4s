@@ -17,7 +17,7 @@
 		&nbsp;<input type="checkbox" name="kical" value="on"/<!--:chkical:-->>ICAL
 		&nbsp;<input type="checkbox" name="ksearch" value="on"/<!--:chksearch:-->>Search
 		&nbsp;<input type="checkbox" name="kmonitor" value="on"/<!--:chkmonitor:-->>Monitor
-		&nbsp;<input type="submit" name="action" value="Save"/><br>
+		&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Save"/><br>
 		&nbsp;Db-Name:&nbsp;<input type="text" name="dbname" size="8" value="<!--:dbname:-->"/>&nbsp;
 		&nbsp;Db-User:&nbsp;<input type="text" name="dbuser" size="8" value="<!--:dbuser:-->"/>
 		&nbsp;Http(s):&nbsp;<input type="text" name="http" size="1" value="<!--:http:-->"/>
@@ -37,7 +37,7 @@
 		&nbsp;<input type="text" name="wrtc" size="1" value="<!--:wrtc:-->"/><br><br>
 		&nbsp;Locale:&nbsp;<select name="slocale"><!--:localecmb:--></select>
 		&nbsp;TZ:&nbsp;<select name="stimezone"><!--:timezonecmb:--></select>
-		&nbsp;Unblock:<input type="text" name="keep" size="1" value="<!--:unblock:-->"/>d
+		&nbsp;Unblock:<input type="text" name="unblock" size="1" value="<!--:unblock:-->"/>d
 		&nbsp;Keep-Backups:<input type="text" name="keep" size="1" value="<!--:keep:-->"/>
 		&nbsp;MyMaxPacket:<input type="text" name="mpacket" size="1" value="<!--:mpacket:-->"/>
 		&nbsp;DbBuffer:<input type="text" name="innobuff" size="2" value="<!--:innobuff:-->"/>
@@ -46,10 +46,10 @@
 	<form action="index.cgi" method="get">
 		<input type="hidden" name="page" value="cfg"/> <input type="hidden" name="section" value="cfg"/>
 		&nbsp;Configs:&nbsp;<select name="scfg"><!--:cfgcmb:--></select>
-		&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Show"/>
+		&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Show"/>
 		&nbsp;<input type="submit" name="action" value="Reset"/>
 		&nbsp;<input type="submit" name="action" value="Update"/>
-		&nbsp;CFG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="cfgentry" size="56" value="<!--:cfgentry:-->"/>
+		&nbsp;CFG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="cfgentry" size="54" value="<!--:cfgentry:-->"/>
 	</form>
 	<form action="index.cgi" method="get">
 		<input type="hidden" name="page" value="cfg"/> <input type="hidden" name="section" value="plg"/>
@@ -57,13 +57,13 @@
 		&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Show"/>
 		&nbsp;<input type="submit" name="action" value="Reset"/>
 		&nbsp;<input type="submit" name="action" value="Replace"/>
-		&nbsp;PLG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="plgentry" size="56" value="<!--:plgentry:-->"/>
+		&nbsp;PLG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="plgentry" size="54" value="<!--:plgentry:-->"/>
 	</form>
-	<textarea name="cfgtxt" rows="14" cols="111"> <!--:cfgtxt:--></textarea>
-	<p><b><u>Tips:</u></b>&nbsp;To update entries select respective cfg / plg and use key = value for cfgs (e.g. KOPANO_LOCALE="C") or full new line to be replaced for plgs. 
+	<div class="mono"><textarea name="cfgtxt" rows="14" cols="132"> <!--:cfgtxt:--></textarea></div>
+	<p><b><u>Tips:</u></b>&nbsp;To update entries select respective cfg/plg using key=value on cfgs (e.g. KOPANO_LOCALE="C") or full line to be replaced on plgs. 
 	<!-- style for bottom position -->
 	<div style='position:absolute;bottom:0;padding:0px 0px;'>
-		<textarea name="status" rows="1" cols="111"> <!--:status:--> </textarea>
+		<textarea name="status" rows="1" cols="135"> <!--:status:--> </textarea>
 	</div>
 	<!-- end of style and section main body right hand side to navigation -->
 	</div>

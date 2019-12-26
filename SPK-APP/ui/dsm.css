@@ -1,9 +1,10 @@
 /* css style sheet for Synology Diskstation Manager 3rd party WebUI incl. menus, tabs */
+/* caution do not use unordered (ul) and ordered (ol) link lists as they are djusted for vertical */
 /* default style elements for body incl. fonts, paragraph, images, text, table, headers, hide  */
 body {
 	background-color: #FFFFFF;
 	font-family: verdana, tahoma, arial, helvetica, sans-serif;
-	font-size: 16px;
+	font-size: 12px;
 	font-style: normal;
 	font-variant: normal;
 	font-weight: normal;
@@ -15,42 +16,28 @@ p {
 	font-size: 14px;
 	line-height: normal;
 }
-img {
-	vertical-align: middle;
-}
-ul {
-	list-style-type: none;
-	margin: 0;
-	padding: 0;
-	width: 160
-	background-color: #FFFFFF;
-	position: fixed;
-	height: 100%;
-	border-right-style: solid;
-	border-color: #D3D3D3;
-	overflow: auto;
-}
 table {
 	background-color: #FFFFFF;
 	font-family: verdana, tahoma, arial, helvetica, sans-serif;
-	font-size: 16px;
+	font-size: 12px;
 	margin-top: 1px;
-	margin-left:5px
-	margin-right: 5px;
+	margin-left:1px
+	margin-right: 1px;
 	margin-bottom: 1px;
 	border-collapse: collapse;
 	border: 1px solid black;
 	border-color: #D3D3D3;
 }
 th, td {
-	padding: 2px 2px;
+	padding: 1px 1px;
 	text-align: left;
 	border: 2px solid black;
 }
 textarea {
-	padding: 4px 4px;
-	font-family: verdana, tahoma, arial, helvetica, sans-serif;
-	font-size: 14px;
+	padding: 2px 2px;
+	/* font-family: verdana, tahoma, arial, helvetica, sans-serif; */
+	font-family: Lucida Console, Monaco, monospace;
+	font-size: 12px;
 	font-style: normal;
 	font-variant: normal;
 	font-weight: normal;
@@ -62,6 +49,9 @@ input[type=submit] {
 	width: 5em;  height: 2em;
 	margin-top: 4px;
 	margin-bottom: 6px;
+}
+img {
+	vertical-align: middle;
 }
 div.h3 {
 	background-color: transparent;
@@ -81,8 +71,8 @@ div.h3 {
 	border-top-style: none;
 	border-top-width: 0px;
 	cursor: default;
-	font-size: 11px;
-	height: 12px;
+	font-size: 13px;
+	height: 11px;
 	margin-bottom: 0px;
 	margin-left: 0px;
 	margin-right: 30px;
@@ -108,8 +98,8 @@ h3 {
 	border-top-style: none;
 	border-top-width: 0px;
 	color: #505a64;
-	font-size: 16px;
-	height: 18px;
+	font-size: 13px;
+	height: 13px;
 	line-height: normal;
 	padding-bottom: 1px;
 	padding-left: 4px;
@@ -120,57 +110,135 @@ h3 {
 .hide { 
 	display: none; 
 }
-/* menu style with .a and li */
-li a {
+/* menu style vertical nav via a, li, ul */
+.nav {
+  background-color: inherit;
+}
+.nav ul {
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	width: 160
+	background-color: #FFFFFF;
+	position: fixed;
+	height: 100%;
+	border-right-style: solid;
+	border-color: #D3D3D3;
+	overflow: auto;
+}
+.nav li a {
 	display: block;
 	color: #000;
 	padding: 3px 3px 3px 3px;
 	font-weight: bold;
-	font-size: 20px;
-	line-height: 20px;
+	font-size: 14px;
+	line-height: 14px;
 	text-decoration: none;
 }
-li a.active {
+.nav li a.active {
 	background-color: #1E90FF;
-	color: white;
 }
-li a:hover:not(.active):not(.spacer) {
+.nav li a:hover:not(.active):not(.spacer) {
 	background-color: #555;
-	color: white;
 }
-
-li a.spacer {
+.nav li a.spacer {
 	padding: 2px 2px;
 }
-li a.line {
+.nav li a.line {
 	padding: 0px 1px;
 	border-top-style: none;
 	border-bottom-style: solid;
 	border-color: #D3D3D3;
 }
-/* tab style with .tab  */
+/* tab style with .tab  ol li a */
 .tab {
-  overflow: hidden;
-  border: 1px solid #ccc;
-  background-color: #f1f1f1;
+	background-color: inherit;
 }
-/* buttons used to open the tab content */
-.tab button {
-  background-color: inherit;
-  float: left;
-  border: none;
-  outline: none;
-  cursor: pointer;
-  padding: 14px 16px;
-  transition: 0.3s;
+/* padding: top right bottom left */
+.tab ol {
+	list-style-type: none;
+	margin: 0 0 0 0;
+	padding: 0 0 0 0;
+}
+.tab li
+{
+	display: inline;
+	list-style-type: none;
+}
+/* margin  top-right&left-bottom*/
+.tab li a {
+	color: #000;
+	background-color: #f1f1f1;
+	padding: 2px 12px 6px;
+	font-weight: bold;
+	font-size: 12px;
+	line-height: normal;
+	text-decoration: none;
+}
+/* background color of buttons active or changed on hover */
+.tab li a.active {
+	background-color: #ccc;
+}
+.tab li a:hover {
+	background-color: #ddd;
+}
+/* grid style form */
+.form
+{
+    margin-top: 8px;
+}
+.form table
+{
+	border: none;
+	border-collapse: collapse;
+}
+.form table tr
+{
+	vertical-align: middle;
+	border: none;
+	border-collapse: collapse;
+}
+.form table td
+{
+	padding: 2px 1px 4px 1px;
+	border: none;
+	border-collapse: collapse;
+}
+.frmT
+{
+    width: 165px;
+    padding: 2px 2px;
+    height: 20px;
+    float: left;
+    outline: 0;
+    font-weight: normal;
 }
 
-/* background color of buttons changed on hover */
-.tab button:hover {
-  background-color: #ddd;
+.frmTA
+{
+    width: 165px;
+    padding: 2px 2px;
+    height: 20px;
+    float: left;
+    outline: 0;
+    font-weight: normal;
 }
 
-/* active / current tablink class */
-.tab button.active {
-  background-color: #ccc;
+.frmS
+{
+    width: 165px;
+    padding: 2px 2px;
+    height: 20px;
+    float: left;
+    outline: 0;
+    font-weight: normal;
+}
+/* special items like dnsentry */
+#dnsentry
+{
+    font-weight: bold;
+    border: 1px solid #4c4c4c;
+    background: #efefef;
+    box-shadow: 0px 3px 8px rgba(0,0,0,0.3);
+    padding: 2px 4px;
 }

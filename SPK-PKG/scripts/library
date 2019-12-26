@@ -1,0 +1,26 @@
+# ** (c) 2017-19 TosoBoso - common libs library for Kopano-4-Synology in Docker container
+# Image tags: Default is from 02.05./17.05.2019
+DEFAULT_TAG="D-Core-8.7.1.0_Webapp-3.5.6_Z-Push-2.5.1_WMeet-0.29.5"
+SUPPORTED_TAG="C-Core-9.0.2_Webapp-4.0.2562_Z-Push-2.5.1"
+DEFAULT_SIZE=165
+SUPPORTED_SIZE=165
+RELEASE="Stable"
+PHP_VER="7.0"
+PKG_NAME=Kopano4s
+ETC_PATH="/usr/syno/etc/packages/$PKG_NAME"
+TARGET_PATH="/var/packages/$PKG_NAME/target"
+UI_PATH="/usr/syno/synoman/webman/3rdparty"
+LOG="$TARGET_PATH/log/package.log"
+# MariaDB10 is default even if also MariaDB5 is installed, but 5 is fallback fo DSM 5.2
+if [ -e /usr/local/mariadb10/bin/mysql ]
+then
+	MYSQL="/usr/local/mariadb10/bin/mysql"
+	MYETC="/var/packages/MariaDB10/etc"
+else 
+	MYSQL="/usr/bin/mysql"
+	MYETC="/var/packages/MariaDB/etc"
+fi
+# ** download areas
+K_URL_COM="download.kopano.io/community"
+K_URL_SUP="download.kopano.io/supported"
+K_DHUB="hub.docker.com/r/tosoboso/kopano4s/tags/"

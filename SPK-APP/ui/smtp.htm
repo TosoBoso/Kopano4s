@@ -17,20 +17,20 @@
 		&nbsp;Password:&nbsp;<input type="password" onfocusout="pwdObfuscate()" id="pwd" name="relaypwd" size="15" value="<!--:relaypwd:-->"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>
 		&nbsp;Max-Msg-Size:&nbsp;&nbsp;<input type="text" name="maxsize" size="3" value="<!--:maxsize:-->"/>&nbsp;MB
 		&nbsp;Blocked Attachments:&nbsp;<input type="text" name="blocktype" size="37" value="<!--:blocktype:-->"/>&nbsp;(in header checks)
-		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" onclick="pwdObfuscate()" name="action" value="Save"/>
+		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" onclick="pwdObfuscate()" name="action" value="Save"/>
 	</form>
 	<form action="index.cgi" method="get">
 		<input type="hidden" name="page" value="smtp"/>
-		&nbsp;SMTPD-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="entry" size="105" value="<!--:entry:-->"/>
+		&nbsp;SMTPD-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="entry" size="115" value="<!--:entry:-->"/>
 		&nbsp;&nbsp;<input type="submit" name="action" value="Update" style="margin-top: -5px;margin-bottom:-1px;"/>
 	</form>
-	<textarea name="cfgtxt" rows="18" cols="111"> <!--:cfgtxt:--></textarea>
+	<textarea name="cfgtxt" rows="18" cols="132"> <!--:cfgtxt:--></textarea>
 	<p><b><u>Tips:</u></b>&nbsp;To update smtp-entries in main.cf use key = value (e.g. delay_warning_time = 4h). Users with external IMAP/Pop3-mailboxes 
 	only can ignore most of the Postfix SMTPD settings. Enable TLS/SSL for opportunistic encryption when receiving mails by SMTPD.<br>
 	The sendng relay allways uses client side SSL on respective port (<b>587</b>,465,25); verify the SMTP send port with your mail provider.</p>
 	<!-- style for bottom position -->
 	<div style='position:absolute;bottom:0;padding:0px 0px;'>
-		<textarea name="status" rows="1" cols="111"> <!--:status:--> </textarea>
+		<textarea name="status" rows="1" cols="135"> <!--:status:--> </textarea>
 	</div>
 	<!-- end of style and section main body right hand side to navigation -->
 	</div>

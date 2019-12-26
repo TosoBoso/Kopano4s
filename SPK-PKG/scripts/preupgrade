@@ -1,6 +1,7 @@
 #!/bin/sh
-# ** get common procedures, settings, tags and download urls
+# ** get library and common procedures, settings, tags and download urls
 MYDIR=$(dirname "$0")
+. "$MYDIR"/library
 . "$MYDIR"/common
 if [ "$RELEASE" = "Beta" ] && [ -e /tmp/k4sinst.log ] && [ "$SYNOPKG_PKG_STATUS" = "UPGRADE" ] ; then rm /tmp/k4sinst.log ; fi
 if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') preupgrade start" >> /tmp/k4sinst.log ; fi

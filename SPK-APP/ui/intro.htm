@@ -10,7 +10,7 @@
 	<!--:menu:-->
 	<!--:kupdate:-->
 	<div style='text-align:center'><b>Kopano4S <!--:kvertag:--> installed!</b></div>
-	<p><b>Kopano online resources:</b>&nbsp;<a href="https://wiki.z-hub.io/display/K4S"  target="_blank">WiKi-K4S</a>
+	<p><b>Online resources:</b>&nbsp;<a href="https://wiki.z-hub.io/display/K4S"  target="_blank">WiKi-K4S</a>
 	&nbsp;<a href="https://wiki.z-hub.io/display/K4S/Frequently+asked+questions"  target="_blank">FAQ-K4S</a>
 	&nbsp;<a href="https://kb.kopano.io/"  target="_blank">KB-Kopano</a>
 	&nbsp;<a href="https://wiki.z-hub.io/display/ZP"  target="_blank">WiKi-Z-Push</a>
@@ -18,27 +18,27 @@
 	&nbsp;<a href="https://documentation.kopano.io/kopanocore_administrator_manual/"  target="_blank">Admin-Manual</a>
 	&nbsp;<a href="https://download.kopano.io/community/deskapp:/"  target="_blank">Deskapp</a>
 	&nbsp;<a href="https://download.kopano.io/community/olextension:/"  target="_blank">OL-Xtension</a>
-	&nbsp;<a href="http://zcp.at/supported/windows/latest/"  target="_blank">Z-OL-Client</a> <br><br>
-	For introduction select how you plan to operate Kopano4S: <input type="radio" name="mode" id = "smtp" value="smtp" onclick="showSmtp()" checked/>&nbsp;SMTPD with your own Domain&nbsp;
+	&nbsp;<a href="http://zcp.at/supported/windows/latest/"  target="_blank">Z-OL-Client</a><br>
+	&nbsp;&nbsp;Intro: select how you plan to operate Kopano4S: <input type="radio" name="mode" id = "smtp" value="smtp" onclick="showSmtp()" checked/>&nbsp;SMTPD with your own Domain&nbsp;
 	<input type="radio" name="mode" id = "imap" value="smtp" onclick="showImap()" />&nbsp;Fetchmail to External Mailbox via IMAP/POP3
 	&nbsp;</p>
 	<section id="frmSmtp">
 	<h3><b><center> Kopano with Postfix SMTP Demon and own domain </center></b></h3>
-	<p>In this setup you are hosting your own domain (e.g. mymail@mydomain.com) on Synology. Postfix <b>SmtpD</b> has to be configured to send and 
+	<p>In this setup you are hosting your own domain (e.g. mail@mydomain.com) on Synology. Postfix <b>SmtpD</b> has to be configured to send and 
 	receive emails via <b>port 25 exposed</b> to the Internet. Kopano sends emails to postfix and receives emails from postfix via LMTP Delivery Agent. 
-	In case you are using a dynamic IP address you need to setup a relay host to avoid your mails being rejected as SPAM for being an unknown host.</p>
+	In case you are using a dynamic IP setup a relay host to avoid your mails being rejected as SPAM for being an unknown host.</p>
 	<center><a href="http://wiki.zarafa.com/index.php/Kopano4h_Instructions_for_Synology_NAS#Setup_Types"  target="_blank"><img src="images/kopano4s_own_domain.png" width="640" height="330" alt="Kopano Diagram"></a></center>
 	</section>
 	<section id="frmImap" class="hide">
 	<h3><b><center> Kopano with Postfix and Fetchmail for IMAP / POP3 mailboxes </center></b></h3>
 	<p>In this setup you either have an email address from a provider (e.g. mymail@yahoo.com) or host your mailbox of your domain externally. 
 	Fetchmail receives your email via <b>Imap/Pop3</b> and delivers it to Kopano via Dagent cmd-line tool. 
-	Kopano sends emails to postfix which are rooted via relay host to your providers SMTP server. There is <b>no need to expose port 25</b> and Postfix needs <b>less strict settings</b> (recipient_restrictions). </p>
+	Kopano sends emails to postfix which are rooted via relay host to your providers SMTP server. There is <b>no need to expose port 25</b> and Postfix needs <b>less strict settings</b>. </p>
 	<center><a href="http://wiki.zarafa.com/index.php/Zarafa4h_Instructions_for_Synology_NAS#Setup_Types"  target="_blank"><img src="images/kopano4s_fetchmail_provider.png" width="640" height="330" alt="Kopano Diagram"></a></center>	
 	</section>
 	<!-- style for bottom position -->
 	<div style='position:absolute;bottom:0;padding:0px 0px;'>
-		<textarea name="status" rows="1" cols="111"> <!--:status:--> </textarea>
+		<textarea name="status" rows="1" cols="135"> <!--:status:--> </textarea>
 	</div>
 	<!-- end of style and section main body right hand side to navigation -->
 	</div>

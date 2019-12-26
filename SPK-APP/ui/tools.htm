@@ -22,15 +22,15 @@
 		<input type="submit" name="action" value="Activate"/>&nbsp;
 		<input type="submit" name="action" value="Disable"/>&nbsp;
 		</form>
-		<textarea name="reply" rows="10" cols="111"> <!--:toolstxt:--></textarea>
-		<p><b><u>Tips:</u></b>&nbsp;Autoblock works in concert with <a href="https://www.cphub.net/?p=f2b4s" target="_blank">Fail2Ban4S</a> SPK. Activate copies over the k4s f2b config files. Disable removes them. List-IPs shows bans.</p>
+		<div class="mono"><textarea name="reply" rows="10" cols="132"> <!--:toolstxt:--></textarea></div>
+		<p><b><u>Tips:</u></b>&nbsp;Autoblock works in concert with <a href="https://www.cphub.net/?p=f2b4s" target="_blank">Fail2Ban4S</a>. Activate copies over the k4s f2b config files. Disable removes them. List-IPs shows bans.</p>
 	</div>
 	<div id="SPF" class="tabcontent">
 		<h3>SPF Wizard powerd by openspf.org - copy and paste the below result as your DNS entry -</h3>
-		<input type="text" name="dnsentry" id="dnsentry" size="95" value=""/>
+		<input type="text" name="dnsentry" id="dnsentry" size="90" value=""/>
     	<div class="form"><table>
 			<tr>
-                <td style="width: 650px;">Your Domain:</td>
+                <td style="width: 500px;">Your Domain:</td>
                 <td><input type="text" name="domain" id="domain" class="frmT" title="The domain for which you want to add the SPF record.<br />i.e. <b>example.com</b>" onfocusout="getSPF();" /></td>
             </tr>
 			<tr>
@@ -92,7 +92,7 @@
 	</div>
 	<!-- style for bottom position -->
 	<div style='position:absolute;bottom:0;padding:0px 0px;'>
-		<textarea name="status" rows="1" cols="111"> <!--:status:--> </textarea>
+		<textarea name="status" rows="1" cols="135"> <!--:status:--> </textarea>
 	</div>
 	<!-- end of style and section main body right hand side to navigation -->
 	</div>

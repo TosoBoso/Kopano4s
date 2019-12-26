@@ -3,7 +3,9 @@
 # this interim is no slim container as we need to collect locale kopano.mo LC_MESSAGES in /usr/share/locale/lang to copy over
 # default build with copy repo from intermediate for tuning once web-repo is extracted call it with --build-arg ENV_BUILD=web-repo
 ARG ENV_BUILD=copy-repo
-FROM debian:stretch as k4s-intermediate
+ARG DEBIAN_VER=stretch
+FROM debian:${DEBIAN_VER} as k4s-intermediate
+ARG DEBIAN_VER
 ARG EDITION
 ARG PHP_VER
 ARG ENV_BUILD
@@ -15,6 +17,7 @@ ARG	K_SNR
 ARG	DOCKER_HOST
 ENV TERM=ansi
 ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_VER=${DEBIAN_VER:-stretch}
 ENV PHP_VER=${PHP_VER:-7.0}
 # set dependent on build arguments the urls + if arg switch was set and - is if null; build staggered and if all null set default community
 ENV ENV_BUILD=${ENV_BUILD}
@@ -23,6 +26,7 @@ ENV EDITION=${EDITION:-${MIGRATION_BUILD:+Migration}}
 ENV EDITION=${EDITION:-${SUPPORTED_BUILD:+Supported}}
 ENV EDITION=${EDITION:-Community}
 ENV URL_Z_PUSH=${MIGRATION_BUILD:+http://repo.z-hub.io/z-push:/old-final/Debian_9.0/all/}
+ENV URL_Z_PUSH=${URL_Z_PUSH:-${COMMUNITY_BUILD:+http://repo.z-hub.io/z-push:/final/Debian_10/all/}}
 ENV URL_Z_PUSH=${URL_Z_PUSH:-http://repo.z-hub.io/z-push:/final/Debian_9.0/all/}
 ENV	URL_CORE=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/}
 ENV URL_CORE=${URL_CORE:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/}}
@@ -30,6 +34,7 @@ ENV URL_CORE=${URL_CORE:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kop
 ENV URL_CORE=${URL_CORE:-https://download.kopano.io/community/core:/}
 ENV NAME_CORE=${DEFAULT_BUILD:+8.7.1.0_0+1-Debian_9.0-amd64.tar.gz}
 ENV NAME_CORE=${NAME_CORE:-${MIGRATION_BUILD:+8.4.5.0_0+33-Debian_9.0-amd64.tar.gz}}
+ENV NAME_CORE=${NAME_CORE:-${COMMUNITY_BUILD:+Debian_10-amd64.tar.gz}}
 ENV NAME_CORE=${NAME_CORE:-Debian_9.0-amd64.tar.gz}
 ENV URL_WEBAPP=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/archives/}
 ENV URL_WEBAPP=${URL_WEBAPP:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/archives/}}
@@ -37,15 +42,18 @@ ENV URL_WEBAPP=${URL_WEBAPP:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download
 ENV URL_WEBAPP=${URL_WEBAPP:-https://download.kopano.io/community/webapp:/}
 ENV NAME_WEBAPP=${DEFAULT_BUILD:+3.5.6.2298+94-Debian_9.0-all.tar.gz}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-${MIGRATION_BUILD:+3.4.24.1929+84-Debian_9.0-all.tar.gz}}
+ENV NAME_WEBAPP=${NAME_WEBAPP:-${COMMUNITY_BUILD:+Debian_10-all.tar.gz}}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-Debian_9.0-all.tar.gz}
 ENV URL_MDM=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/mdm:/final/tarballs/}
 ENV URL_MDM=${URL_MDM:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/mdm:/final/tarballs/}}
 ENV URL_MDM=${URL_MDM:-https://download.kopano.io/community/mdm:/}
-ENV NAME_MDM="Debian_9.0-all.tar.gz"
+ENV NAME_MDM=${COMMUNITY_BUILD:+Debian_10-all.tar.gz}
+ENV NAME_MDM=${NAME_MDM:-Debian_9.0-all.tar.gz}
 ENV URL_SMIME=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/smime:/final/tarballs/}
 ENV URL_SMIME=${URL_SMIME:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/smime:/final/tarballs/}}
 ENV URL_SMIME=${URL_SMIME:-https://download.kopano.io/community/smime:/}
-ENV NAME_SMIME="Debian_9.0-amd64.tar.gz"
+ENV NAME_SMIME=${COMMUNITY_BUILD:+Debian_10-amd64.tar.gz}
+ENV NAME_SMIME=${NAME_SMIME:-Debian_9.0-amd64.tar.gz}
 ENV	URL_UBCORE=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/}
 ENV URL_UBCORE=${URL_UBCORE:-${URL_CORE:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/}}}
 ENV URL_UBCORE=${URL_UBCORE:-https://download.kopano.io/community/core:/}
@@ -58,11 +66,13 @@ ENV NAME_UBSMIME="Ubuntu_18.04-all.tar.gz"
 ENV URL_WEBMEET=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webmeetings:/final/tarballs/}
 ENV URL_WEBMEET=${URL_WEBMEET:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webmeetings:/final/tarballs/}}
 ENV URL_WEBMEET=${URL_WEBMEET:-https://download.kopano.io/community/webmeetings:/}
-ENV NAME_WEBMEET="Debian_9.0-amd64.tar.gz"
+ENV NAME_WEBMEET=${COMMUNITY_BUILD:+Debian_10-all.tar.gz}
+ENV NAME_WEBMEET=${NAME_WEBMEET:-Debian_9.0-amd64.tar.gz}
 ENV URL_FILES=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/files:/final/tarballs/archives/}
 ENV URL_FILES=${URL_FILES:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/files:/final/tarballs/}}
 ENV URL_FILES=${URL_FILES:-https://download.kopano.io/community/files:/}
 ENV NAME_FILES=${DEFAULT_BUILD:+2.1.4.293-Debian_9.0-all.tar.gz}
+ENV NAME_FILES=${NAME_FILES:-${COMMUNITY_BUILD:+Debian_10-all.tar.gz}}
 ENV NAME_FILES=${NAME_FILES:-Debian_9.0-all.tar.gz}
 ENV URL_MATMOST=""
 ENV NAME_MATMOST=""
@@ -73,8 +83,8 @@ ENV URL_G2FA="https://www.familiethimm.de/download/2525/"
 ENV URL_PFETCHM="https://github.com/olia-dev/kopano-webapp-fetchmail/raw/master/builds/fetchmail-1.0.2.zip"
 
 # layer 1 steps 3-18 or 19: create trusted local kopano repository
-RUN echo "** use an interim container to build trusted local repo for kopano $EDITION to tranfer into main container.."
-# debug only RUN echo "** $EDITION C: $URL_CORE $NAME_CORE W: $URL_WEBAPP $NAME_WEBAPP M: $URL_MDM $NAME_MDM S: $URL_SMIME $NAME_SMIME WM: $URL_WEBMEET $NAME_WEBMEET F: $URL_FILES $NAME_FILES"
+RUN echo "** use an interim debian-${DEBIAN_VER} container with php-${PHP_VER} to build trusted local repo for kopano $EDITION to tranfer into main container.."
+# debug only RUN echo "** D: $DEBIAN_VER $EDITION C: $URL_CORE $NAME_CORE W: $URL_WEBAPP $NAME_WEBAPP M: $URL_MDM $NAME_MDM S: $URL_SMIME $NAME_SMIME WM: $URL_WEBMEET $NAME_WEBMEET F: $URL_FILES $NAME_FILES"
 RUN apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends wget apt-utils locales unzip
 # stretch-security: prepare repo standad structure with main for creating hashed packages and release files
 RUN	chmod 711 /root && mkdir -p /root/repo &&  mkdir -p /root/repo/dists && mkdir -p /root/repo/dists/kopano && \ 
@@ -107,12 +117,12 @@ RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet
 	tar -zxvf *.gz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && rm *.gz ; fi
 RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_SMIME $URL_SMIME && \
 	tar -zxvf *.gz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && rm *.gz ; fi
-RUN if [ "$ENV_BUILD" != "web-repo" ] && [ "$PHP_VER" != "7.0" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_UBCORE $URL_UBCORE && \
+RUN if [ "$ENV_BUILD" != "web-repo" ] && [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_UBCORE $URL_UBCORE && \
 	tar -zxvf *.gz -C /root/repo/dists --strip-components=1 && rm *.gz ; fi
-RUN if [ "$ENV_BUILD" != "web-repo" ] && [ "$PHP_VER" != "7.0" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/php7-mapi* && cp /root/repo/dists/php7-mapi* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi
-RUN wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_SMIME $URL_SMIME && \
+RUN if [ "$ENV_BUILD" != "web-repo" ] && [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/php7-mapi* && cp /root/repo/dists/php7-mapi* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi
+RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_SMIME $URL_SMIME && \
 	tar -zxvf *.gz -C /root/repo/dists --strip-components=1 && rm *.gz  ; fi
-RUN if [ "$ENV_BUILD" != "web-repo" ] && [ "$PHP_VER" != "7.0" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/*plugin-smime* && cp /root/repo/dists/*plugin-smime* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi
+RUN if [ "$ENV_BUILD" != "web-repo" ] && [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/*plugin-smime* && cp /root/repo/dists/*plugin-smime* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi
 RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_WEBMEET $URL_WEBMEET && \
 	tar -zxvf *.gz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && rm *.gz ; fi
 RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_FILES $URL_FILES && \
@@ -144,12 +154,13 @@ RUN tar -zcvf k4s-${EDITION}-repo.tgz repo/
 RUN	echo "** completed interim build for ${EDITION} edition **"
 
 # Two different containers as baseline for main container: 1st one uses copy from intermediate other uses web-repo which saves ~50MB
-FROM debian:stretch-slim as k4s-copy-repo
 ARG EDITION
+ARG DEBIAN_VER
+FROM debian:${DEBIAN_VER}-slim as k4s-copy-repo
 ENV EDITION=${EDITION:-Community}
 ONBUILD COPY --from=k4s-intermediate /root/k4s-${EDITION}-repo.tgz /root/k4s-${EDITION}-repo.tgz
 
-FROM debian:stretch-slim as k4s-web-repo
+FROM debian:${DEBIAN_VER}-slim as k4s-web-repo
 ARG EDITION
 ONBUILD RUN echo "No copy of repo from intermediate container but using web-repo"
 
@@ -157,6 +168,7 @@ ONBUILD RUN echo "No copy of repo from intermediate container but using web-repo
 FROM k4s-${ENV_BUILD} as k4s-main
 MAINTAINER vbettag "tosoboso@web.de"
 # set arg and env variables plus DEBIAN_FRONTEND to noninteractive
+ARG DEBIAN_VER
 ARG EDITION
 ARG	BUILD
 ARG TAG
@@ -164,6 +176,7 @@ ARG	PARENT
 ARG	WEBREPO
 ARG	PHP_VER
 ENV BUILD=${Build} \
+	DEBIAN_VER=${DEBIAN_VER:-stretch} \
 	EDITION=${EDITION:-Community} \
 	TAG="$TAG" \
 	PHP_VER=${PHP_VER:-7.0} \
@@ -181,13 +194,13 @@ COPY /container/*.png /root/
 COPY /container/*.sh /usr/local/bin/
 RUN PASSWD="openssl rand -base64 32"
 # layer 2 step 16 or 17: merging run layers to save space in nested docker file system
-RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix, fetchmail, amavisd, spamassassin, clamav, postgrey...." && \ 
+RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetchmail, amavisd, spamassassin, clamav, postgrey...." && \ 
 	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends --assume-yes \ 
-	wget locales apt-transport-https ssl-cert ca-certificates rsyslog dialog nginx-light && \
+	wget locales rsyslog dialog apt-transport-https ssl-cert ca-certificates nginx-light && \
 	# remove nginx files and prepare for php7.x-fpm instead of php-fpm which is 7.0 EOL
 	rm /etc/nginx/sites-enabled/default && rm /var/www/html/index.nginx-debian.html && \
-	wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg && \
-	if [ "$PHP_VER" != "7.0" ] ; then echo "deb https://packages.sury.org/php/ stretch main" > /etc/apt/sources.list.d/php.list ; fi && \
+	if [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg ; fi  && \
+	if [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then echo "deb https://packages.sury.org/php/ stretch main" > /etc/apt/sources.list.d/php.list ; fi && \
 	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends php${PHP_VER}-fpm && \
 	# set locales GB/US UTF-8 and DE plus CET timezone plus optional other locale at build time
 	sed -i -e "s~# en_GB.UTF-8~en_GB.UTF-8~" /etc/locale.gen && sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && \
@@ -198,12 +211,12 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	groupmod -g 1023 www-data && usermod -u 1023 -g 1023 www-data && mkdir -p /var/lib/postgrey/ && \ 
 	apt-get install -y --allow-unauthenticated --no-install-recommends --assume-yes \
 	postfix pflogsumm libsasl2-modules fetchmail amavisd-new spamassassin postgrey clamav-daemon clamav-freshclam \
-	# more perl and zip libraries for scanning
-	libnet-dns-perl libmail-spf-perl pyzor razor arj bzip2 cabextract cpio file gzip nomarch pax unzip zoo zip zoo && rm -rf /var/lib/apt/lists/* && \
+	# more perl and zip libraries for scanning - removed zoo as it does not work on buster
+	libnet-dns-perl libmail-spf-perl pyzor razor arj bzip2 cabextract cpio file gzip nomarch pax unzip zip && rm -rf /var/lib/apt/lists/* && \
 # if web-repo arg is provided do wget instead of copying from interactive container which is saving ~100MB image size
 	if [ -n "$WEBREPO" ] ; then wget "$WEBREPO"/k4s-${EDITION}-repo.tgz ; fi && \ 
 # layer 2 step 8 or 9 prepare, download and install kopano
-	echo "** setup kopano: user, download, install core, licensed, webmeetings incl. add-ons, z-push incl. autodiscover...." && \
+	echo "** setup $EDITION kopano: user, download, install core, licensed, webapp incl. add-ons, z-push incl. autodiscover...." && \
 	groupadd -g 65540 kopano && useradd -u 1030 -g 65540 -p$PASSWD -M kopano && \
 	usermod -d/usr/share/kopano kopano -s/bin/false -c'kopano demon with Synology UID' && usermod -Gkopano -a root && \
 	# change usr-grp-ids and add scanner users to respective groups to allow file handling for amavis under kopano
@@ -220,14 +233,8 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	chmod 711 /root && echo "deb [trusted=yes] file:/root/repo kopano main" > /etc/apt/sources.list.d/kopano.list && \
 	tar -zxvf /root/k4s-${EDITION}-repo.tgz -C /root && rm /root/k4s-${EDITION}-repo.tgz && \
 # copy config and init.d files as on latest versions they are missing (KC-681); dual-cfg triggers error so not for old Migration
-	if [ "$EDITION" != "Migration" ] ; then cp /root/repo/kinit.d/* /etc/init.d/ && mkdir -p /etc/kopano && cp /root/repo/kopano.cfg/* /etc/kopano ; fi && \
-# presence and webmeetings still have cfg and init shiped so delete them, for search as default version also delete it
-	#if [ "$EDITION" = "Default" ] && [ -e /etc/init.d/kopano-spooler ] ; then rm /etc/init.d/kopano-spooler ; fi && \
-	#if [ "$EDITION" = "Default" ] && [ -e /etc/kopano/spooler.cfg ] ; then rm /etc/kopano/spooler.cfg ; fi && \
-	#if [ "$EDITION" = "Default" ] && [ -e /etc/init.d/kopano-search ] ; then rm /etc/init.d/kopano-search ; fi && \
-	#if [ "$EDITION" = "Default" ] && [ -e /etc/kopano/search.cfg ] ; then rm /etc/kopano/search.cfg ; fi && \
-	#if [ "$EDITION" = "Default" ] && [ -e /etc/init.d/kopano-presence ] ; then rm /etc/init.d/kopano-presence ; fi && \
-	#if [ "$EDITION" = "Default" ] && [ -e /etc/kopano/presence.cfg ] ; then rm /etc/kopano/presence.cfg ; fi && \
+	if [ "$EDITION" != "Migration" ] ; then cp /root/repo/kinit.d/* /etc/init.d/ && chmod 755 /etc/init.d/kopano-* && mkdir -p /etc/kopano && cp /root/repo/kopano.cfg/* /etc/kopano ; fi && \
+# webmeetings still has cfg and init shiped so delete them, for search as default version also delete it
 	if [ -e /etc/init.d/kopano-webmeetings ] ; then rm /etc/init.d/kopano-webmeetings ; fi && \
 	if [ -e /etc/kopano/webmeetings.cfg ] ; then rm /etc/kopano/webmeetings.cfg ; fi && \
 	if [ -e /root/repo/locale/de ] ; then cp -R /root/repo/locale/* /usr/share/locale ; fi && \
@@ -244,7 +251,6 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	kopano-webapp-plugin-mdm \
 	kopano-webapp-plugin-pimfolder \
 	kopano-webapp-plugin-quickitems \
-	kopano-webapp-plugin-smime \
 	kopano-webapp-plugin-spell-en \
 	kopano-webapp-plugin-spell-de-de \
 	kopano-webapp-plugin-spell-es \
@@ -253,8 +259,9 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	kopano-webapp-plugin-spell-nl \
 	kopano-webapp-plugin-titlecounter \
 	kopano-webapp-plugin-webappmanual && \
-# full package installs not part of migration package
-	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-spamd kopano-presence kopano-webmeetings kopano-webapp-plugin-meetings ; fi && \
+	if [ "$EDITION" != "Community" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-smime  ; fi && \
+# full package installs not part of migration package; removed kopano-webmeetings
+	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-spamd kopano-presence kopano-webapp-plugin-meetings ; fi && \
 # 4later	mattermost-server kopano-webapp-plugin-mattermost \
 	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-files kopano-webapp-plugin-filesbackend-smb kopano-webapp-plugin-filesbackend-owncloud ; fi && \
 # copy over non core kopano plugins
@@ -265,33 +272,19 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 	#if [ "$PHP_VER" != "7.0" ] ; then dpkg-query -Wf '${Package}\n' | grep php7.0 >> dpkg-remove ; fi && \
 	apt-get remove -y --assume-yes $(grep -vE "^\s*#" dpkg-remove | tr "\n" " ") && \
 	apt-get autoremove -y  && \
-	dpkg --list | grep "^rc" | cut -d " " -f 3 | xargs --no-run-if-empty dpkg --purge  && \
-	apt-get clean && \
-	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /etc/apt/sources.list.d/kopano.list /root/dpkg-remove && chmod 755 /etc/init.d/kopano-* && \
-# add touch, chmod PIDFILE to kopano service init files and change stop on name instead of exec, special case: search, spamd with pyton
-	if [ "$EDITION" != "Community" ] ; then K_SRVS=`ls /etc/init.d/kopano-*` && for S in $K_SRVS; do sed -i -e "s~start-stop-daemon --start \$QUIETDAEMON~touch \$PIDFILE \&\& chown kopano.kopano \$PIDFILE \n\tstart-stop-daemon --start \$QUIETDAEMON~" $S && \
-	sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" $S ; done ; fi && \
-# new 'bug/feature' community edition: spooler etc hang unless -b = background is used in init.d file have to remoce -d falg for dagent in default
-	if [ "$EDITION" = "Community" ] ; then K_SRVS="kopano-server kopano-spooler kopano-dagent kopano-gateway kopano-ical kopano-monitor" && for S in $K_SRVS; do sed -i -e "s~start-stop-daemon --start~start-stop-daemon --start -b~" /etc/init.d/$S && \ 
-    sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" /etc/init.d/$S ; done ; fi && \
-# new 'bug/feature' supported & community edition: search, spamd config paramter flipped from -c to -C
+	dpkg --list | grep "^rc" | cut -d " " -f 3 | xargs --no-run-if-empty dpkg --purge && apt-get clean && \
+	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /etc/apt/sources.list.d/kopano.list /root/dpkg-remove && \
+# ensure python3 is used in init.d-services files unless for Migration version
+	if [ "$EDITION" != "Migration" ] ; then K_SRVS="kopano-search kopano-presence kopano-spamd" && for S in $K_SRVS; do sed -i -e "s~/python ~/python3 ~" /etc/init.d/$S ; done ; fi && \
+# new 'feature' community / supported edition 8.7.7+: spooler etc hang unless -b = background is used in init.d file have to remoce -d flag for dagent in default
+#if [ "$EDITION" = "Community" ] || [ "$EDITION" = "Supported" ] ;
+	if [ "$EDITION" = "Community" ] ; then K_SRVS=$(ls /etc/init.d/kopano-*) && for S in $K_SRVS; do sed -i -e "s~start-stop-daemon --start~start-stop-daemon --start -b~" $S && \ 
+    sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" $S ; done ; fi && \
+# new 'feature' supported & community edition: search, spamd config paramter flipped from -c to -C
+#if [ "$EDITION" = "Community" ] || [ "$EDITION" = "Supported" ] ;
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$SEARCH_CONFIG~-C \$SEARCH_CONFIG~" /etc/init.d/kopano-search ; fi && \
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$SPAMD_CONFIG~-C \$SPAMD_CONFIG~" /etc/init.d/kopano-spamd ; fi && \
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$PRESENCE_CONFIG~-C \$PRESENCE_CONFIG~" /etc/init.d/kopano-presence ; fi && \
-# search, spamd presence now running with /usr/bin/python3 hence replace --exec /usr/bin/python $SEARCH by --name $NAME
-# search add searchm.pid as it take quite long until search writes search.pid (same applies for spamd, presence)
-	if [ -e /etc/init.d/kopano-search ] ; then sed -i -e "s~/usr/bin/python ~~" /etc/init.d/kopano-search ; fi && \
-	if [ -e /etc/init.d/kopano-search ] ; then sed -i -e "s~search.pid~searchm.pid~" /etc/init.d/kopano-search && sed -i -e "s~--name \$NAME ~~g" /etc/init.d/kopano-search ; fi && \
-	if [ -e /etc/init.d/kopano-search ] ; then sed -i -e "s~unset LC_ALL~PID=\`ps -ef | grep \$SEARCH | head -1 | awk '{print \$2}'\` \&\& echo \$PID > \$PIDFILE\n\tunset LC_ALL~" /etc/init.d/kopano-search ; fi && \
-	if [ -e /etc/init.d/kopano-search ] ; then sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" /etc/init.d/kopano-search ; fi && \
-	if [ -e /etc/init.d/kopano-spamd ] ; then sed -i -e "s~/usr/bin/python ~~" /etc/init.d/kopano-spamd ; fi && \
-	if [ -e /etc/init.d/kopano-spamd ] ; then sed -i -e "s~spamd.pid~spamdm.pid~" /etc/init.d/kopano-spamd && sed -i -e "s~--name \$NAME ~~g" /etc/init.d/kopano-spamd ; fi && \
-	if [ -e /etc/init.d/kopano-spamd ] ; then sed -i -e "s~unset LC_ALL LANG~PID=\`ps -ef | grep \$SPAMD | head -1 | awk '{print \$2}'\` \&\& echo \$PID > \$PIDFILE\n\tunset LC_ALL LANG~" /etc/init.d/kopano-spamd ; fi && \
-	if [ -e /etc/init.d/kopano-spamd ] ; then sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" /etc/init.d/kopano-spamd ; fi && \
-	if [ -e /etc/init.d/kopano-presence ] ; then sed -i -e "s~/usr/bin/python ~~" /etc/init.d/kopano-presence ; fi && \
-	if [ -e /etc/init.d/kopano-presence ] ; then sed -i -e "s~presence.pid~presencem.pid~" /etc/init.d/kopano-presence && sed -i -e "s~--name \$NAME ~~g" /etc/init.d/kopano-presence ; fi && \
-	if [ -e /etc/init.d/kopano-presence ] ; then sed -i -e "s~unset LC_ALL~PID=\`ps -ef | grep \$PRESENCE | head -1 | awk '{print \$2}'\` \&\& echo \$PID > \$PIDFILE\n\tunset LC_ALL~" /etc/init.d/kopano-presence ; fi && \
-	if [ -e /etc/init.d/kopano-presence ] ; then sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" /etc/init.d/kopano-presence ; fi && \
 # exclude userscripts from exposed mountpoint in synology softlink it instead,
 	mv /etc/kopano/userscripts /etc/kopano/k-userscripts && \
 	cp -R /etc/kopano/k-userscripts /etc && rm -R /etc/kopano/k-userscripts && \
@@ -328,41 +321,34 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 # prevent syslog logrotate warnings
 	sed -i -e 's/\(printerror "could not determine current runlevel"\)/#\1/' /usr/sbin/invoke-rc.d && \
 	sed -i -e 's/^\(POLICYHELPER=\).*/\1/' /usr/sbin/invoke-rc.d && \
-# create logrotate in /etc/logrotate.d/ for amavis, daemon, fetchmail, messages, mail.*, php7*, spamassassin
-	echo "/var/log/kopano/amavis.log {" > /etc/logrotate.d/amavis && \
-	echo "su amavis kopano\nweekly\nmissingok\nrotate 4\ncompress\ndelaycompress\n}" >> /etc/logrotate.d/amavis && \
-	echo "/var/log/kopano/daemon.log {" > /etc/logrotate.d/daemon && \
-	echo "su root kopano\nweekly\nmissingok\nrotate 4\ncompress\ndelaycompress\n}" >> /etc/logrotate.d/daemon && \
-	echo "/var/log/kopano/fetchmail.log {" > /etc/logrotate.d/fetchmail && \
-	echo "su root kopano\nweekly\nmissingok\nrotate 4\ncompress\ndelaycompress\n}" >> /etc/logrotate.d/fetchmail && \
-	echo "/var/log/kopano/messages.log {" > /etc/logrotate.d/messages && \
-	echo "su root kopano\nweekly\nmissingok\nrotate 4\ncompress\ndelaycompress\n}" >> /etc/logrotate.d/messages && \
-	echo "/var/log/kopano/mail.* {" > /etc/logrotate.d/mail && \
-	echo "su root kopano\nweekly\nmissingok\nrotate 4\ncompress\ndelaycompress\n}" >> /etc/logrotate.d/mail && \
-	echo "/var/log/kopano/php7*.log {" > /etc/logrotate.d/php7 && \
-	echo "su root kopano\nweekly\nmissingok\nrotate 4\ncompress\ndelaycompress\n}" >> /etc/logrotate.d/php7 && \
-	echo "/var/log/kopano/spamassassin.log {" > /etc/logrotate.d/spamassassin && \
-	echo "su root kopano\nweekly\nmissingok\nrotate 4\ncompress\ndelaycompress\n}" >> /etc/logrotate.d/spamassassin && \
-# now we set the logrotate path and permission via su user group in existing files in /etc/logrotate.d/
-	sed -i -e "s~log {~log {\n\tsu kopano kopano~g"  /etc/logrotate.d/kopano && \
-	sed -i -e "s~/var/log/~/var/log/kopano/~"  /etc/logrotate.d/z-push.lr && \
-	sed -i -e "s~log {~log {\n\tsu www-data kopano~"  /etc/logrotate.d/z-push.lr && \
-	sed -i -e "s~www-data www-data~www-data kopano~g"  /etc/logrotate.d/z-push.lr && \
-	sed -i -e "s~log {~log {\n\tsu root kopano~"  /etc/logrotate.d/fetchmail && \
-	sed -i -e "s~log {~log {\n\tsu root kopano~"  /etc/logrotate.d/clamav-daemon && \
-	sed -i -e "s~log {~log {\n\tsu root kopano~"  /etc/logrotate.d/clamav-freshclam && \
-	sed -i -e "s~/var/log/nginx/~/var/log/kopano/nginx~"  /etc/logrotate.d/nginx && \
-	sed -i -e "s~log {~log {\n\tsu root kopano~"  /etc/logrotate.d/nginx && \
-	sed -i -e "s~www-data adm~root kopano~"  /etc/logrotate.d/nginx && \
-	sed -i -e "s~/var/log/syslog~/var/log/kopano/syslog~"  /etc/logrotate.d/rsyslog && \
-	sed -i -e "s~{~{\n\tsu root kopano~"  /etc/logrotate.d/rsyslog && \
+# adjust  logrotate path in php7x-fpm, rsyslog for mail.*, daemon, messages, add amavis, fetchmail, spamassassin in /etc/logrotate.d/
+	sed -i -e "s~/var/log/php${PHP_VER}-fpm.log~/var/log/kopano/php-fpm.log~" /etc/logrotate.d/php${PHP_VER}-fpm && \
+	sed -i -e "s~/var/log/syslog~/var/log/kopano/syslog~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/mail~/var/log/kopano/mail~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/daemon~/var/log/kopano/daemon~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/messages~/var/log/kopano/messages~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/kopano/mail.log~/var/log/kopano/mail.log\n/var/log/kopano/amavis.log~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/kopano/amavis.log~/var/log/kopano/amavis.log\n/var/log/kopano/fetchmail.log~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/kopano/fetchmail.log~/var/log/kopano/fetchmail.log\n/var/log/kopano/spamassassin.log~" /etc/logrotate.d/rsyslog && \
+# now we set the permission via su user group in existing files in /etc/logrotate.d/
+	sed -i -e "s~log {~log {\n\tsu kopano kopano~g" /etc/logrotate.d/kopano && \
+	sed -i -e "s~/var/log/~/var/log/kopano/~" /etc/logrotate.d/z-push.lr && \
+	sed -i -e "s~log {~log {\n\tsu www-data kopano~" /etc/logrotate.d/z-push.lr && \
+	sed -i -e "s~www-data www-data~www-data kopano~g" /etc/logrotate.d/z-push.lr && \
+	sed -i -e "s~log {~log {\n\tsu root kopano~" /etc/logrotate.d/clamav-daemon && \
+	sed -i -e "s~log {~log {\n\tsu root kopano~" /etc/logrotate.d/clamav-freshclam && \
+	sed -i -e "s~/var/log/nginx/~/var/log/kopano/nginx~" /etc/logrotate.d/nginx && \
+	sed -i -e "s~log {~log {\n\tsu root kopano~" /etc/logrotate.d/nginx && \
+	sed -i -e "s~www-data adm~root kopano~" /etc/logrotate.d/nginx && \
+
+	sed -i -e "s~{~{\n\tsu root kopano~" /etc/logrotate.d/rsyslog && \
 # expose postfix, nginx and other log files to kopano folder
 	ln -sf /var/log/kopano/mail.log /var/log/mail.log && ln -sf /var/log/kopano/mail.info /var/log/mail.info  && \
 	ln -sf /var/log/kopano/mail.warn /var/log/mail.warn && ln -sf /var/log/kopano/mail.err /var/log/mail.err && \
 	if [ -e /var/log/clamav ] ; then rm -R /var/log/clamav ; fi  && ln -sf /var/log/kopano /var/log/clamav && \
 	ln -sf /var/log/kopano/messages /var/log/messages && ln -sf /var/log/kopano/syslog /var/log/syslog && \
 	ln -sf /var/log/kopano/daemon.log /var/log/daemon.log && ln -sf /var/log/kopano /var/log/spamassassin && \
-	ln -sf /var/log/kopano/php${PHP_VER}-fpm.log /var/log/php${PHP_VER}-fpm.log && \
+	ln -sf /var/log/kopano/php-fpm.log /var/log/php${PHP_VER}-fpm.log && \
 	ln -sf /var/log/kopano/nginx-access.log /var/log/nginx/access.log && ln -sf /var/log/kopano/nginx-error.log /var/log/nginx/error.log && \
 # copy and softlink for webapp and all plugins by plugin-dir/config.php to /etc/kopano/webapp/plg.conf-pluginname.php
 	if [ -e /usr/share/kopano-webapp/config.php ] && [ ! -e /etc/kopano/webapp/webapp.conf.php ] ; then cp /usr/share/kopano-webapp/config.php /etc/kopano/webapp/webapp.conf.php ; fi && \
@@ -399,5 +385,5 @@ RUN echo "** setup debian system basics incl. nginx, php-${PHP_VER} then postfix
 WORKDIR /var/lib/kopano/backup
 ENTRYPOINT ["/usr/local/bin/init.sh"]
 CMD ["alive"]
-# ports kopano(s): 236/237, dagent-lmtp 2003, postfix 25, imap(s) 143/144/993/994, pop3(s) 110/995, ical(s) 8080/8443, webmeetings 8090, Spreed 1935, STUN 3478
-EXPOSE 236 237 2003 25 110 143 144 993 994 995 8080 8443 9080 9443 8090 1935 3478
+# ports kopano(s): 236/237, dagent-lmtp 2003, postfix 25, imap(s) 143/144/993/994, pop3(s) 110/995, ical(s) 8080/8443, presence 1234 webmeetings 8090, Spreed 1935, STUN 3478
+EXPOSE 236 237 2003 25 1234 110 143 144 993 994 995 8080 8443 9080 9443 8090 1935 3478

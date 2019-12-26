@@ -745,19 +745,19 @@ if ($page eq 'alias')
         }
     }
     # collect from files
-    $tmplhtml{'aliastxt'} .= "		Alias						|				Recipient\n ";
+    $tmplhtml{'aliastxt'} .= "		Alias				|				Recipient\n ";
     if (open(IN,"$valiases")) {
         while (<IN>) {
             chomp;
             my ($a,$r) = split /\s*	\s*/, $_;
             # replace 1 tab gainst 3-5 x 3 with | in middle
-            if ( length ($a) > 25 ) {
-                s/\t/\t\t|\t\t\t/g;
-            }
-            elsif ( length ($a) > 20 ) {
+            if ( length ($a) > 22 ) {
                 s/\t/\t\t\t|\t\t\t/g;
             }
-            elsif ( length ($a) > 15 ) {
+            elsif ( length ($a) > 18 ) {
+                s/\t/\t\t\t\t|\t\t\t/g;
+            }
+            elsif ( length ($a) > 14 ) {
                 s/\t/\t\t\t\t|\t\t\t/g;
             }
             else {
@@ -767,19 +767,19 @@ if ($page eq 'alias')
         }
         close(IN);
     }
-    $tmplhtml{'bcctxt'} .= "	Inbox-Receiver					|				BCC-Recipient\n ";
+    $tmplhtml{'bcctxt'} .= "	Inbox-Receiver				|				BCC-Recipient\n ";
     if (open(IN,"$rcpbcc")) {
         while (<IN>) {
             chomp;
             my ($a,$r) = split /\s*	\s*/, $_;
             # replace 1 tab gainst 3-5 x 3 with | in middle
-            if ( length ($a) > 25 ) {
-                s/\t/\t\t|\t\t\t/g;
-            }
-            elsif ( length ($a) > 20 ) {
+            if ( length ($a) > 22 ) {
                 s/\t/\t\t\t|\t\t\t/g;
             }
-            elsif ( length ($a) > 15 ) {
+            elsif ( length ($a) > 18 ) {
+                s/\t/\t\t\t\t|\t\t\t/g;
+            }
+            elsif ( length ($a) > 14 ) {
                 s/\t/\t\t\t\t|\t\t\t/g;
             }
             else {
@@ -789,19 +789,19 @@ if ($page eq 'alias')
         }
         close(IN);
     }
-    $tmplhtml{'bcctxt'} .= "	Outbox-Sender					|				BCC-Recipient\n ";
+    $tmplhtml{'bcctxt'} .= "	Outbox-Sender				|				BCC-Recipient\n ";
     if (open(IN,"$sdrbcc")) {
         while (<IN>) {
             chomp;
             my ($a,$r) = split /\s*	\s*/, $_;
             # replace 1 tab gainst 3-5 x 3 with | in middle
-            if ( length ($a) > 25 ) {
-                s/\t/\t\t|\t\t\t/g;
-            }
-            elsif ( length ($a) > 20 ) {
+            if ( length ($a) > 22 ) {
                 s/\t/\t\t\t|\t\t\t/g;
             }
-            elsif ( length ($a) > 15 ) {
+            elsif ( length ($a) > 18 ) {
+                s/\t/\t\t\t\t|\t\t\t/g;
+            }
+            elsif ( length ($a) > 14 ) {
                 s/\t/\t\t\t\t|\t\t\t/g;
             }
             else {
@@ -1030,6 +1030,7 @@ if ($page eq 'fetch')
 {
     my $fetchcfg = '/etc/kopano/fetchmailrc';
     my $fetchdef = '/etc/kopano/default-fetchmail';
+    my $kopanodef = '/etc/kopano/default';
     my $fetchtbl = ''; # collect the fetch-user table tr commands
     my $chkactive = getCfgValue($fetchdef, 'START_DAEMON') eq 'yes' ? 'checked' : ''; # enabled?
     my $chkkeep = getPatternValue($fetchcfg, 'keep') =~ /#/ ? '' : 'checked'; # no commented out is keep true
@@ -1044,10 +1045,12 @@ if ($page eq 'fetch')
             $chkactive = $new_chkactive;
             if ( $chkactive eq 'checked' ) {
                 setCfgValue($fetchdef, 'START_DAEMON', 'yes', 'shell');
+                setCfgValue($kopanodef, 'FETCHMAIL_ENABLED', 'yes', 'shell');
                 system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-fetchmail.sh start >/dev/null");
             }
             else {
                 setCfgValue($fetchdef, 'START_DAEMON', 'no', 'shell');
+                setCfgValue($kopanodef, 'FETCHMAIL_ENABLED', 'no', 'shell');
                 system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-fetchmail.sh stop force >/dev/null");
             }
         }
@@ -1158,9 +1161,9 @@ if ($page eq 'fetch')
         close(DAT);
         foreach my $reply (@rawDataCmd) {
             chomp($reply);
-            #split up entries
+            # split up entries and skip header with k-user eq k-user
             my ($kuser, $ruser, $rpwd, $server, $protocol, $port, $ssl, $folders) = split(";",$reply);
-            if(defined ($kuser))
+            if( defined ($kuser) && $kuser ne 'k-user' )
             {
                 $fetchtbl .= "<tr>";
                 $fetchtbl .= "<td>$kuser</td>";
@@ -1452,7 +1455,9 @@ if ($page eq 'cfg')
         $tmplhtml{'status'} .= "Error reading plugin-cfg-phps. ";
     }
 
-    # process command first
+    # process command first and avoid uninitialized values
+    $tmplhtml{'plgentry'} = '';
+    $tmplhtml{'cfgentry'} = '';
     if ( $action eq 'Save' ) { 
         my %newtaghtml; # key value array to capture all tag values for html entries
         foreach my $tag (@pkgtags) { # collect values for all html tags
@@ -1512,13 +1517,21 @@ if ($page eq 'cfg')
                 $ret = setCfgValue($pkgcfg, $cfgparam{$tag}, $newtaghtml{$tag}, 'shstring');
                 $tmplhtml{$tag}= $newtaghtml{$tag};
                 $tmplhtml{'status'} .= "$tag updated. ";
+				if ( $tag eq 'ksnr' ) {
+					# update /etc/kopano/license/base with ksnr, ensure directory exists
+                    system("mkdir -p /etc/kopano/license");
+                    open(DAT, '>', "/etc/kopano/license/base");
+                    print DAT "$newtaghtml{$tag}\n";
+                }
             }
         }
         foreach my $tag (@numtags) { # number tags to package cfg
+            # set to 0 if value is empty
+            $tmplhtml{$tag} = 0 if ! $tmplhtml{$tag};
+            $newtaghtml{$tag} = 0 if ! $newtaghtml{$tag};
             if ( $newtaghtml{$tag} ne $tmplhtml{$tag} ) {
                 $ret = setCfgValue($pkgcfg, $cfgparam{$tag}, $newtaghtml{$tag}, 'shell');
                 $tmplhtml{$tag}= $newtaghtml{$tag};
-                $tmplhtml{'status'} .= "$tag updated. ";
             }
         }
         if ( $doReset ) {
@@ -1547,6 +1560,7 @@ if ($page eq 'cfg')
         }
         if ( $action eq "Update" ) {
             my $entry = param ('cfgentry');
+            $tmplhtml{'cfgentry'} = $entry;
             if ( $entry ne '' ) {
                 if ( ! -e "$ifile" ) { # create an init copy b4 update
                     system("/bin/cp $cfile $ifile");
@@ -1570,6 +1584,7 @@ if ($page eq 'cfg')
         }
         if ( $action eq "Replace" ) { # plg replace line mode
             my $entry = param ('plgentry');
+            $tmplhtml{'plgentry'} = $entry;
             if ( $entry ne '' ) {
                 my $key = substr($entry, 0, -9) ; # take 10 chars from end usually it is true vs. false
                 $ret = replacePatternValue("$cfile", $key, $entry, '');
@@ -1803,8 +1818,10 @@ if ($page eq 'log')
     my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
     my $logcmb = '';
     my $mode = param('mode'); # last 100 entries or all
-    my @logfiles = ('server.log', 'spooler.log', 'mail.log', 'mail.info', 'mail.warn', 'mail.err', 'amavis.log', 'dagent.log', 'licensed.log', 'monitor.log', 'search.log',
-                    'gateway.log','ical.log', 'presence.log', 'webmeetings.log', 'z-push.log', 'z-push-error.log', 'fetchmail.log', 'nginx.log', 'mySqlDump.log', 'backup-user.log', 'restore-user.log');
+    my @logfiles = ('server.log','spooler.log','mail.log','mail.info','mail.warn','mail.err','amavis.log','dagent.log',
+                    'monitor.log','search.log','gateway.log','ical.log','z-push.log','z-push-error.log',
+                    'fetchmail.log','presence.log','webmeetings.log','nginx-error.log','nginx-access.log',
+                    'php-fpm.log','syslog','messages','mySqlDump.log','backup-user.log','restore-user.log');
     # process command first
     if ($action eq "Truncate") {
         $slog = param('slog'); # the log selected to show

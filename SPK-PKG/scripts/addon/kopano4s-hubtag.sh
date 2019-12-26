@@ -7,6 +7,8 @@ then
 	echo "admins only"
 	exit 1
 fi
+# ** get library and common procedures, settings, tags and download urls
+. /var/packages/Kopano4s/scripts/library
 . /var/packages/Kopano4s/scripts/common
 . /var/packages/Kopano4s/etc/package.cfg
 if [ $# -gt 0 ] && [ "$1" == "previous" ]

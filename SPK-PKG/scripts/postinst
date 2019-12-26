@@ -1,7 +1,8 @@
 #!/bin/sh
 # ** (c) 2018 vbettag - install for Kopano4Syno in Docker container
-# ** get common procedures, settings, tags and download urls
+# ** get library and common procedures, settings, tags and download urls
 MYDIR=$(dirname "$0")
+. "$MYDIR"/library
 . "$MYDIR"/common
 if [ "$RELEASE" = "Beta" ] ; then echo "$(date '+%Y.%m.%d-%H:%M:%S') postinst start" >> /tmp/k4sinst.log ; fi
 if [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ]
@@ -11,7 +12,13 @@ then
 	GET_BETA_STABLE
 	# GET_WIZZARD_CFG includes GET_WIZZARD_EDITION & GET_WIZZARD_SIZE
 	GET_WIZZARD_CFG
-	GET_TUNIG_PARAMS
+	if [ "$PKGWIZ_TUNING_BUFFER_0" = "true" ]
+	then
+		TUNING_BUFFER=0
+		INNODB_BUFFER=16
+	else
+		GET_TUNIG_PARAMS
+	fi
 	# ** inits: create log, user, group, share, mounts, etc, database
 	INIT_LOG
 	INIT_USR_GRP

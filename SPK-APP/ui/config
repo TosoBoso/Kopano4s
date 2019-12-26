@@ -10,8 +10,8 @@
          "allUsers": false, 
          "allowMultiInstance": false,
          "grantPrivilege": "local",
-         "width": 1240,
-         "height": 680,
+         "width": 1130,
+         "height": 630,
          "url": "webman/3rdparty/Kopano4s/index.cgi"
       },
       "SYNO.SDS._ThirdParty.App.k4swebapp": 

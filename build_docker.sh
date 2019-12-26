@@ -42,12 +42,26 @@ then
 	read -p "Pleae provide Kopano K_EDITION to build (Community) : " K_EDITION
 	if [ -z "$K_EDITION" ] ; then K_EDITION="Community" ; fi
 fi
-BUILD_PARAMS="--build-arg EDITION=${K_EDITION} --build-arg PHP_VER=7.0"
+BUILD_PARAMS="--build-arg EDITION=${K_EDITION}"
+if [ "$K_EDITION" = "Community" ]
+then
+	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=buster --build-arg PHP_VER=7.3"
+	#BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=stretch --build-arg PHP_VER=7.0"
+else
+	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=stretch"
+	if [ "$K_EDITION" = "Migration" ]
+	then
+		BUILD_PARAMS="$BUILD_PARAMS --build-arg PHP_VER=7.0"
+	else
+		# go for 7.2 or 7.3
+		BUILD_PARAMS="$BUILD_PARAMS --build-arg PHP_VER=7.0"
+	fi
+fi
 if [ "$K_EDITION" != "Community" ] && [ -z "$K_SNR" ]
 then
 	read -p "Pleae provide Kopano subscription Serial-Nr: " K_SNR
 fi
-echo "Building image for kopano 4s $K_EDITION you need to provide sudo pwd at initial start.."
+echo "Building image for kopano4s $K_EDITION you need to provide sudo pwd at initial start.."
 MYDIR=$(dirname "$0")
 if [ -z "$DOCKER_PATH" ]
 then
@@ -91,34 +105,37 @@ GET_K_DOWNLOAD_RELEASE_TAG()
 }
 if [ "$K_EDITION" = "Community" ]
 then
-	TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/core:/" "Debian_9.0" )
+	TAG1=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/core:/" "Debian_10" )
 	if [ -z "$TAG1" ]
 	then
 		echo "Could not evaluate Kopano core release tag from download; exiting.."
 		exit 1
 	fi
-	TAG2=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webapp:/" "Debian_9.0" )
+	#TAG1=8.7.85
+	TAG2=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webapp:/" "Debian_10" )
 	if [ -z "$TAG2" ]
 	then
 		echo "Could not evaluate Kopano webapp release tag from download; exiting.."
 		exit 1
 	fi
-	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+	#TAG2=3.5.12
+	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_10/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
 		echo "Could not evaluate Kopano z-push release tag from download; exiting.."
 		exit 1
 	fi
-	TAG4=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webmeetings:/" "Debian_9.0" )
+	TAG4=$( GET_K_DOWNLOAD_RELEASE_TAG "https://download.kopano.io/community/webmeetings:/" "Debian_10" )
 	if [ -z "$TAG4" ]
 	then
 		echo "Could not evaluate Kopano webmeetings release tag from download; exiting.."
 		exit 1
 	fi	
-	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
+	#IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
+	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}"
 	VER_TAG="C-${IMG_TAG}"
-	WM_IMG_TAG="Webmeetings-${TAG4}"
-	WM_VER_TAG="C-${WM_IMG_TAG}"
+	#WM_IMG_TAG="Webmeetings-${TAG4}"
+	#WM_VER_TAG="C-${WM_IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg COMMUNITY_BUILD=1"
 fi
 if [ "$K_EDITION" = "Supported" ]
@@ -129,12 +146,14 @@ then
 		echo "Could not evaluate Kopano core release tag from download; exiting.."
 		exit 1
 	fi
+	#TAG1=8.7.5
 	TAG2=$( GET_K_DOWNLOAD_RELEASE_TAG "https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/" "Debian_9.0" )
 	if [ -z "$TAG2" ]
 	then
 		echo "Could not evaluate Kopano webapp release tag from download; exiting.."
 		exit 1
 	fi
+	#TAG2=3.5.12
 	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
@@ -147,10 +166,11 @@ then
 		echo "Could not evaluate Kopano webmeetings release tag from download; exiting.."
 		exit 1
 	fi	
-	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
+	#IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
+	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}"
 	VER_TAG="S-${IMG_TAG}"
-	WM_IMG_TAG="Webmeetings-${TAG4}"
-	WM_VER_TAG="S-${WM_IMG_TAG}"
+	#WM_IMG_TAG="Webmeetings-${TAG4}"
+	#WM_VER_TAG="S-${WM_IMG_TAG}"
 	# passing SNR for download via arg http_proxy not found in docker history.
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg SUPPORTED_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
@@ -164,11 +184,12 @@ then
 		echo "Could not evaluate Kopano z-push release tag from download; exiting.."
 		exit 1
 	fi
-	TAG4="0.29.5"
-	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
+	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}"
+	#TAG4="0.29.5"
+	#IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
 	VER_TAG="D-${IMG_TAG}"
-	WM_IMG_TAG="Webmeetings-${TAG4}"
-	WM_VER_TAG="D-${WM_IMG_TAG}"
+	#WM_IMG_TAG="Webmeetings-${TAG4}"
+	#WM_VER_TAG="D-${WM_IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEFAULT_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
 if [ "$K_EDITION" = "Migration" ]

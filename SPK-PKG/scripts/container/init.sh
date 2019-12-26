@@ -14,8 +14,6 @@ W_SERVICES="nginx php${PHP_VER}-fpm"
 if [ "$EDITION" != "Migration" ]
 then
 	if grep -q ^PRESENCE_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES kopano-presence" ; fi
-	if grep -q ^WEBMEETINGS_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES kopano-webmeetings" ; fi
-	if grep -q ^COTURN_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES coturn" ; fi
 fi
 M_SERVICES="postfix"
 if grep -q ^POSTGREY_ENABLED=yes /etc/kopano/default ; then M_SERVICES="$M_SERVICES postgrey" ; fi
@@ -45,7 +43,6 @@ KGWYPID="/var/run/kopano/gateway.pid"
 KICLPID="/var/run/kopano/ical.pid"
 KMONPID="/var/run/kopano/monitor.pid"
 KPRESPID="/var/run/kopano/presence.pid"
-WEBMPID="/var/run/kopano-webmeetings.pid"
 AMAVPID="/var/run/amavis/amavis.pid"
 CLAMPID="/var/run/clamav/clamav.pid"
 PFIXPID="/var/spool/postfix/pid/master.pid"
@@ -194,8 +191,18 @@ start_kopano()
 	done
 	echo "Starting Kopano sys ..."
 	for S in $S_SERVICES; do
-		service $S start
+		service $S start >/tmp/service.out 2>/tmp/service.err
+		# filter out warnings on non-priviledged access to imklog and /proc/kmsg
+		cat /tmp/service.out && cat /tmp/service.err | grep -v imklog | grep -v kmsg
 	done
+	if [ -e /tmp/service.out ]
+	then
+		rm /tmp/service.out
+	fi
+	if [ -e /tmp/service.err ]
+	then
+		rm /tmp/service.err
+	fi
 	# remove flag for special case restart
 	if [ -e /etc/kopano.restart ]
 	then
@@ -255,78 +262,10 @@ kill_kopano()
 	rm -f /var/run/kopano/*.pid
 	rm -f /var/run/fetchmail/fetchmail.pid
 }
-set_secrets()
-{
-	local PRESENCE_SHARED_SECRET
-	local WEBMEETINGS_SHARED_SECRET
-	local WEBMEETINGS_SESSION_SECRET
-	local WEBMEETINGS_ENCRYPTION_SECRET
-	# only once: replace secrets in presence.cfg, config-spreedwebrtc.php, webmeetings.cfg
-	if [ ! -e /etc/kopano/ssl/PRESENCE_SHARED_SECRET ]
-	then
-		# no vim pkg so no `xxd -ps -l 32 -c 32 /dev/random`
-		PRESENCE_SHARED_SECRET="$(openssl rand -hex 32 | sed 's,/,_,g')"
-		echo $PRESENCE_SHARED_SECRET > /etc/kopano/ssl/PRESENCE_SHARED_SECRET
-	else
-		PRESENCE_SHARED_SECRET=`cat /etc/kopano/ssl/PRESENCE_SHARED_SECRET`
-	fi
-	if [ ! -e /etc/kopano/ssl/WEBMEETINGS_SHARED_SECRET ]
-	then
-		WEBMEETINGS_SHARED_SECRET="$(openssl rand -hex 32 | sed 's,/,_,g')"
-		echo $WEBMEETINGS_SHARED_SECRET > /etc/kopano/ssl/WEBMEETINGS_SHARED_SECRET
-	else
-		WEBMEETINGS_SHARED_SECRET=`cat /etc/kopano/ssl/WEBMEETINGS_SHARED_SECRET`
-	fi
-	if [ ! -e /etc/kopano/ssl/WEBMEETINGS_SESSION_SECRET ]
-	then
-		WEBMEETINGS_SESSION_SECRET="$(openssl rand -hex 32 | sed 's,/,_,g')"
-		echo $WEBMEETINGS_SESSION_SECRET > /etc/kopano/ssl/WEBMEETINGS_SESSION_SECRET
-	else
-		WEBMEETINGS_SESSION_SECRET=`cat /etc/kopano/ssl/WEBMEETINGS_SESSION_SECRET`
-	fi
-	if [ ! -e /etc/kopano/ssl/WEBMEETINGS_ENCRYPTION_SECRET ]
-	then
-		WEBMEETINGS_ENCRYPTION_SECRET="$(openssl rand -hex 32 | sed 's,/,_,g')"
-		echo $WEBMEETINGS_ENCRYPTION_SECRET > /etc/kopano/ssl/WEBMEETINGS_ENCRYPTION_SECRET
-	else
-		WEBMEETINGS_ENCRYPTION_SECRET=`cat /etc/kopano/ssl/WEBMEETINGS_ENCRYPTION_SECRET`
-	fi
-	if [ -e /etc/kopano/presence.cfg ]
-	then
-		sed -i -e "s~^#plugins~plugins"~ /etc/kopano/presence.cfg
-		sed -i -e "s~^#server_secret_key =~server_secret_key ="~ /etc/kopano/presence.cfg
-		sed -i -e "s~server_secret_key =.*~server_secret_key = $PRESENCE_SHARED_SECRET"~ /etc/kopano/presence.cfg
-		sed -i -e "s~#data_path.*~data_path = /var/lib/kopano/backup/presence/~" /etc/kopano/presence.cfg
-		mkdir -p /var/lib/kopano/backup/presence
-	fi
-	if [ -e /etc/kopano/webmeetings.cfg ]
-	then
-		sed -i -e "s~sharedsecret_secret =.*~sharedsecret_secret = $WEBMEETINGS_SHARED_SECRET"~ /etc/kopano/webmeetings.cfg
-		sed -i -e "s~sessionSecret =.*~sessionSecret = $WEBMEETINGS_SESSION_SECRET"~ /etc/kopano/webmeetings.cfg
-		sed -i -e "s~encryptionSecret =.*~encryptionSecret = $WEBMEETINGS_ENCRYPTION_SECRET"~ /etc/kopano/webmeetings.cfg	
-		sed -i -e "s~/webapp/~/~g"  /etc/kopano/webmeetings.cfg
-	fi
-	if [ -e /etc/kopano/webapp/config-spreedwebrtc.php ]
-	then
-		sed -i -e "s~/webapp/~/~g" /etc/kopano/webapp/config-spreedwebrtc.php
-		sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_PRESENCE_SHARED_SECRET',.*~DEFINE('PLUGIN_SPREEDWEBRTC_PRESENCE_SHARED_SECRET', '${PRESENCE_SHARED_SECRET}');"~ /etc/kopano/webapp/config-spreedwebrtc.php
-		sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_WEBMEETINGS_SHARED_SECRET',.*~DEFINE('PLUGIN_SPREEDWEBRTC_WEBMEETINGS_SHARED_SECRET', '${WEBMEETINGS_SHARED_SECRET}');"~ /etc/kopano/webapp/config-spreedwebrtc.php
-		sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_TURN_AUTHENTICATION_URL',.*~DEFINE('PLUGIN_SPREEDWEBRTC_TURN_AUTHENTICATION_URL', '');"~ /etc/kopano/webapp/config-spreedwebrtc.php
-		sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_TURN_USE_KOPANO_SERVICE',.*~DEFINE('PLUGIN_SPREEDWEBRTC_TURN_USE_KOPANO_SERVICE', false);"~ /etc/kopano/webapp/config-spreedwebrtc.php
-		if grep -q ^WEBMEETINGS_ENABLED=yes /etc/kopano/default
-		then
-			sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_USER_DEFAULT_ENABLE',.*~DEFINE('PLUGIN_SPREEDWEBRTC_USER_DEFAULT_ENABLE', true);"~ /etc/kopano/webapp/config-spreedwebrtc.php
-			sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_AUTO_START',.*~DEFINE('PLUGIN_SPREEDWEBRTC_AUTO_START', true);"~ /etc/kopano/webapp/config-spreedwebrtc.php
-		else
-			sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_USER_DEFAULT_ENABLE',.*~DEFINE('PLUGIN_SPREEDWEBRTC_USER_DEFAULT_ENABLE', false);"~ /etc/kopano/webapp/config-spreedwebrtc.php
-			sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_AUTO_START',.*~DEFINE('PLUGIN_SPREEDWEBRTC_AUTO_START', false);"~ /etc/kopano/webapp/config-spreedwebrtc.php		
-		fi
-		sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_REQUIRE_AUTHENTICATION',.*~DEFINE('PLUGIN_SPREEDWEBRTC_REQUIRE_AUTHENTICATION', true);"~ /etc/kopano/webapp/config-spreedwebrtc.php
-		sed -i -e "s~DEFINE('PLUGIN_SPREEDWEBRTC_DEBUG',.*~DEFINE('PLUGIN_SPREEDWEBRTC_DEBUG', false);"~ /etc/kopano/webapp/config-spreedwebrtc.php
-	fi
-}
 set_acl()
 {
+	# remove dangling softlink
+	if [ -h /etc/kopano/kopano ] ; then rm /etc/kopano/kopano ; fi
 	chown -R root.kopano /etc/kopano
 	if [ -e /etc/kopano/postfix/sasl_passwd ] ; then chown -R root.root /etc/kopano/postfix/sasl_passwd ; fi
 	# default mod 750 / 640 in etc-kopano 
@@ -341,9 +280,11 @@ set_acl()
 	chmod 640 /etc/kopano/ssl/*
 	chmod 755 /etc/kopano/ssl/clients
 	chmod 644 /etc/kopano/ssl/clients/*
+	if [ -h /etc/z-push/z-push ] ; then rm /etc/z-push/z-push ; fi
 	chown -R root.www-data /etc/z-push
 	chmod 751 /etc/z-push
 	chmod 640 /etc/z-push/*
+	if [ -h /var/lib/z-push/z-push ] ; then rm /var/lib/z-push/z-push ; fi
 	chown -R www-data.www-data /var/lib/z-push
 	chmod 770 /var/lib/z-push
 	if [ -e /var/lib/z-push/users ]
@@ -368,7 +309,15 @@ set_acl()
 	chown -R root.www-data /usr/share/kopano-webapp
 	chown -R root.www-data /usr/share/z-push
 	chown -R kopano.kopano /var/log/kopano
-	chown amavis.kopano /var/log/kopano/amavis.log
+	chown root.kopano /var/log/kopano/amavis.log
+	chown root.kopano /var/log/kopano/spamassassin.log
+	chown root.kopano /var/log/kopano/fetchmail.log
+	chown root.kopano /var/log/kopano/mail.*
+	chown root.kopano /var/log/kopano/nginx*
+	chown root.kopano /var/log/kopano/php-fpm*
+	chown root.kopano /var/log/kopano/daemon*
+	chown root.kopano /var/log/kopano/messages*
+	chown root.kopano /var/log/kopano/syslog*
 	chown www-data.kopano /var/log/kopano/webapp-usr.log
 	chown -R www-data.kopano /var/log/kopano/z-push/
 	find /usr/share/kopano-webapp -type f -exec chmod 640 "{}" ";"
@@ -379,6 +328,7 @@ set_acl()
 	chmod 750 /usr/share/z-push/z-push-admin.php
 	chmod 771 /var/log/kopano
 	chmod 660 /var/log/kopano/*.log
+	chmod 660 /var/log/kopano/mail.*
 	chmod 770 /var/log/kopano/z-push/
 	chmod 660 /var/log/kopano/z-push/*.log
 	chmod 660 /var/log/kopano/amavis.log
@@ -486,6 +436,7 @@ k_supported_license()
 	then
 		if [ ! -e /etc/kopano/license/base ]
 		then
+			echo "no valid license for kopano supported edition.."
 			return 1
 		fi
 		local K_SNR=`cat /etc/kopano/license/base`
@@ -495,6 +446,7 @@ k_supported_license()
 			echo "base license validated for kopano supported edition.."
 			return 0
 		else
+			echo "no valid license for kopano supported edition.."
 			return 1
 		fi
 	else
@@ -533,7 +485,7 @@ disable_postgrey()
 }
 init_kopano()
 {
-	# Init function to set database user, pwd, acl, secrets also if argument exists being reset
+	# Init function to set database user, pwd, acl also if argument exists being reset
 	# adjust postfix status in init-file for docker as even root does not have acl to read from /proc/$PPID/exe
 	sed -i -e 's~dir=$(ls -l /proc/$pid/exe~pgrep -f /usr/lib/postfix -s "$pid" \&\& echo y || true \n\t#dir=$(ls -l /proc/$pid/exe~' /etc/init.d/postfix
 	# set default index.html with redirect to webapp
@@ -623,8 +575,9 @@ init_kopano()
 		if [ ! -e /var/lib/postgrey/postgrey.db ] && [ -e /var/lib/postgrey2copy/postgrey.db ] ; then cp -R /var/lib/postgrey2copy/* /var/lib/postgrey ; fi
 		rm -R /var/lib/postgrey2copy
 	fi
-	# ensure the right php version for socket in kopanos nginx cfg file 
-	sed -i -e "s~fastcgi_pass.*~fastcgi_pass unix:/var/run/php/php${PHP_VER}-fpm.sock;~g" /etc/kopano/web/kopano-web.conf
+	# no more valid since latest versions: ensure the right php version for socket in kopanos nginx cfg file 
+	# sed -i -e "s~fastcgi_pass.*~fastcgi_pass unix:/var/run/php/php${PHP_VER}-fpm.sock;~g" /etc/kopano/web/kopano-web.conf
+	sed -i -e "s~php${PHP_VER}-fpm.sock~php7.0-fpm.sock~g" /etc/kopano/web/kopano-web.conf
 	# tune php-fpm 3x max children knowing the hungry footprint of z-push; create tuning file if non exist
 	if [ ! -e /etc/kopano/web/fpm-pool-target ]
 	then
@@ -644,7 +597,7 @@ init_kopano()
 	sed -i -e "s~pm.max_spare_servers = $MAS~pm.max_spare_servers = $max_spare_servers~" /etc/php/$PHP_VER/fpm/pool.d/www.conf
 	sed -i -e "s~;pm.max_requests = 500~pm.max_requests = 250~" /etc/php/$PHP_VER/fpm/pool.d/www.conf
 	sed -i -e "s~;request_terminate_timeout = 0~request_terminate_timeout = 120s~" /etc/php/$PHP_VER/fpm/pool.d/www.conf
-	sed -i -e "s~;rlimit_files = 1024~rlimit_files = 131072~" /etc/php/$PHP_VER/fpm/pool.d/www.conf
+	sed -i -e "s~;rlimit_files = 1024~rlimit_files = 80000~" /etc/php/$PHP_VER/fpm/pool.d/www.conf
 	sed -i -e "s~;catch_workers_output = yes~catch_workers_output = yes~" /etc/php/$PHP_VER/fpm/pool.d/www.conf
 	# create logs and give kopano group writes
 	touch /var/log/kopano/dagent.log
@@ -657,7 +610,6 @@ init_kopano()
 	touch /var/log/kopano/search.log
 	touch /var/log/kopano/server.log
 	touch /var/log/kopano/spooler.log
-	touch /var/log/kopano/webmeetings.log
 	touch /var/log/kopano/webapp-usr.log
 	touch /var/log/kopano/z-push/z-push.log
 	touch /var/log/kopano/z-push/z-push-error.log
@@ -672,7 +624,7 @@ init_kopano()
 	touch /var/log/kopano/messages
 	touch /var/log/kopano/syslog
 	touch /var/log/kopano/daemon.log
-	touch /var/log/kopano/php${PHP_VER}-fpm.log
+	touch /var/log/kopano/php-fpm.log
 	# postfix: creating lookup tables: virtual alias and bcc
 	if [ -e /etc/kopano/postfix/valiases ]
 	then
@@ -718,13 +670,15 @@ init_kopano()
 	usermod -g $RUN_GID kopano
 	usermod -u $RUN_UID kopano
 	usermod -u $AMA_UID amavis
-	# create file limits at large site for user kopano to run services via  sockets
+	# create file limits at large site for user kopano to run services via sockets
 	if ! grep -q kopano /etc/security/limits.conf
 	then
-		echo "increasing file-limits for user kopano running sockets.."
+		echo "increasing file-limits for user kopano adn www-data running sockets.."
 		sed -i -e "s~# End of file~~" /etc/security/limits.conf
 		echo "kopano          soft    nofile          60000" >> /etc/security/limits.conf
-		echo "kopano          soft    nofile          80000" >> /etc/security/limits.conf
+		echo "kopano          hard    nofile          80000" >> /etc/security/limits.conf
+		echo "www-data        soft    nofile          60000" >> /etc/security/limits.conf
+		echo "www-data        hard    nofile          80000" >> /etc/security/limits.conf
 		echo "# End of file" >> /etc/security/limits.conf
 	fi
 	# ensure php-fpms php.ini sits on soft links whci could have been overritten by apt init
@@ -789,18 +743,11 @@ init_kopano()
 	su - amavis -c 'razor-admin -create'
 	su - amavis -c 'razor-admin -register' >/dev/null
 	su - amavis -c 'razor-admin -discover'
-	#not anymore since payzor 1.0 su - amavis -c 'pyzor discover'
-	# webmmetings and presence adjustments
-	if [ -e /usr/share/kopano-webmeetings ]
-	then 
-		chown -R root.kopano /usr/share/kopano-webmeetings
-		usermod -d /usr/share/kopano-webmeetings kopano
-	fi
 	# change presence bind for all to localhost
-	if [ -e /etc/kopano/presence.cfg ]
-	then
-		sed -i -e "s~0.0.0.0~127.0.0.1~" /etc/kopano/presence.cfg
-	fi
+	#if [ -e /etc/kopano/presence.cfg ]
+	#then
+	#	sed -i -e "s~0.0.0.0~127.0.0.1~" /etc/kopano/presence.cfg
+	#fi
 	# seting extra locales grep from kopano default removing the quotes
 	local K_LOCALE=`grep KOPANO_LOCALE /etc/kopano/default | cut -f2 -d'=' | sed 's/^"\(.*\)"$/\1/'`
 	if [ -n "$K_LOCALE" ] && [ "$K_LOCALE" != "C" ] 
@@ -815,14 +762,7 @@ init_kopano()
 		ln -sf /usr/share/zoneinfo/"$TIMEZONE" /etc/localtime
 		dpkg-reconfigure -f noninteractive tzdata
 	fi
-	echo "setting acl, ssl, encryption shared secrets, fetchmail and plugins.."
-	# change run group for webmeetings for acls with synology
-	if [ -e /etc/kopano/default-webmeetings ]
-	then
-		sed -i -e "s~www-data~kopano~" /etc/kopano/default-webmeetings
-		sed -i -e "s~'/var/run'~'/var/run/kopano'~" /etc/kopano/default-webmeetings
-		sed -i -e "s~kopano-webmeetings.pid~webmeetings.pid~" /etc/kopano/default-webmeetings
-	fi
+	echo "setting acl, ssl, fetchmail and plugins.."
 	# users created or fetchmail active from previous install do init and expand services for session
 	if ! grep -q "place your configuration here" /etc/kopano/fetchmailrc
 	then
@@ -869,7 +809,7 @@ init_kopano()
 post_build()
 {
 	echo "$(date "+%Y-%m-%d-%H:%M")" >/etc/kopano/custom/postbuild.log
-	# optional packages to the container: courier-imap for mail-archive, coturn for webmeetings proxy
+	# optional packages to the container: courier-imap for mail-archive
 	apt-get update -y > /etc/update.list
 	if grep -q ^COURIER_IMAP_ENABLED=yes /etc/kopano/default
 	then 
@@ -879,12 +819,6 @@ post_build()
 		ln -sf /etc/kopano/courier /etc/courier
 		mkdir -p /var/run/courier
 		service start courier-imap
-	fi
-	if grep -q ^COTURN_ENABLED=yes /etc/kopano/default
-	then
-		apt-get install -y --no-install-recommends coturn >>/etc/kopano/custom/postbuild.log 2>&1
-		# configuration for coturn to be added here...
-		service start coturn
 	fi
 	# add custom packages	
 	if [ -e /etc/kopano/custom/dpkg-add ]
@@ -937,7 +871,6 @@ then
 	init_kopano
 	install_ssl
 	set_acl
-	set_secrets
 	post_build
 	if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default ; then echo "initializing av database.." && freshclam > /dev/null 2>&1; fi
 	# set init.done flag
@@ -956,8 +889,7 @@ case $1 in
 			k_srv_on kopano-monitor && k_srv_on kopano-gateway && k_srv_on kopano-ical &&
 			m_srv_on postfix && m_srv_on postgrey && m_srv_on clamav-daemon && m_srv_on amavis && m_srv_on fetchmail && 
 			m_srv_on courier-imap &&
-			w_srv_on nginx && w_srv_on php${PHP_VER}-fpm && w_srv_on kopano-presence && w_srv_on kopano-webmeetings && 
-			w_srv_on coturn && s_srv_on rsyslog && s_srv_on cron
+			w_srv_on nginx && w_srv_on php${PHP_VER}-fpm && w_srv_on kopano-presence && s_srv_on rsyslog && s_srv_on cron
 		then
 			echo "Kopano core and web is already running"
 			exit 0
@@ -996,6 +928,7 @@ case $1 in
 	restart)
 		# avoid docker while loop to exit
 		touch /etc/kopano.restart
+		if [ -e /etc/kopano.maintenance ] ; then rm /etc/kopano.maintenance ; fi
 		if k_srv_on kopano-server
 		then
 			stop_kopano
@@ -1015,7 +948,6 @@ case $1 in
 		fi
 		kill_kopano
 		install_ssl
-		set_secrets
 		start_kopano
 		exit 0
 		;;
@@ -1025,10 +957,6 @@ case $1 in
 		;;
 	reset)
 		echo "Image reset request. Intializing UID, GID, etc-cfg, log, ssl"
-		if [ -e /etc/kopano/ssl/PRESENCE_SHARED_SECRET ] ; then rm  /etc/kopano/ssl/PRESENCE_SHARED_SECRET ; fi
-		if [ -e /etc/kopano/ssl/WEBMEETINGS_SHARED_SECRET ] ; then rm /etc/kopano/ssl/WEBMEETINGS_SHARED_SECRET ; fi
-		if [ -e /etc/kopano/ssl/WEBMEETINGS_SESSION_SECRET ] ; then rm /etc/kopano/ssl/WEBMEETINGS_SESSION_SECRET ; fi
-		if [ -e /etc/kopano/ssl/WEBMEETINGS_ENCRYPTION_SECRET ] ; then rm /etc/kopano/ssl/WEBMEETINGS_ENCRYPTION_SECRET ; fi
 		# avoid docker while loop to exit
 		touch /etc/kopano.restart
 		if k_srv_on kopano-server
@@ -1042,8 +970,8 @@ case $1 in
 		init_kopano
 		install_ssl
 		set_acl
-		set_secrets
 		post_build
+		if [ -e /etc/kopano.maintenance ] ; then rm /etc/kopano.maintenance ; fi
 		if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default ; then echo "initializing av database.." && freshclam > /dev/null 2>&1; fi
 		# set init.done flag
 		if [ -e /etc/kopano/init.run ] ; then rm /etc/kopano/init.run ; fi
@@ -1071,8 +999,7 @@ case $1 in
 			k_srv_on kopano-monitor && k_srv_on kopano-gateway && k_srv_on kopano-ical &&
 			m_srv_on postfix && m_srv_on postgrey && m_srv_on clamav-daemon && m_srv_on amavis && m_srv_on kopano-spamd &&
 			m_srv_on fetchmail && m_srv_on courier-imap &&
-			w_srv_on nginx && w_srv_on php${PHP_VER}-fpm && w_srv_on kopano-presence && w_srv_on kopano-webmeetings && 
-			w_srv_on coturn && s_srv_on rsyslog && s_srv_on cron
+			w_srv_on nginx && w_srv_on php${PHP_VER}-fpm && w_srv_on kopano-presence && s_srv_on rsyslog && s_srv_on cron
 		then
 			echo "Running: $K_SERVICES"
 			echo "Running: $W_SERVICES"
@@ -1153,9 +1080,9 @@ case $1 in
 			fi
 			if w_srv_on php${PHP_VER}-fpm
 			then
-				RET="$RET, PHP5-FPM Running"
+				RET="$RET, PHP${PHP_VER}-FPM Running"
 			else
-				RET="$RET, PHP5-FPM Not Running"
+				RET="$RET, PHP${PHP_VER}-FPM Not Running"
 			fi
 			if w_srv_on kopano-presence
 			then
@@ -1167,28 +1094,6 @@ case $1 in
 				fi
 			else
 				RET="$RET, Presence Not Running"
-			fi
-			if w_srv_on kopano-webmeetings
-			then
-				if echo $W_SERVICES | grep -q "kopano-webmeetings"
-				then
-					RET="$RET, Webmeetings Running"
-				else
-					RET="$RET, Webmeetings Disabled"
-				fi
-			else
-				RET="$RET, Webmeetings Not Running"
-			fi
-			if w_srv_on coturn
-			then
-				if echo $W_SERVICES | grep -q "coturn"
-				then
-					RET="$RET, CoTurn Running"
-				else
-					RET="$RET, CoTurn Disabled"
-				fi
-			else
-				RET="$RET, CoTurn Not Running"
 			fi
 			echo $RET
 			RET="Mail:"
@@ -1294,10 +1199,16 @@ case $1 in
 		apt-get update && apt-get upgrade -y --allow-unauthenticated --assume-yes > /etc/update.list
 		echo "done"
 		;;
-	maintenance)
-		echo "running in maintenance mode: no kopano services will be started.."
+	maintain-on)
+		echo "switching on maintenance mode: services can be stopped and container remains running.."
 		touch /etc/kopano.maintenance
-		tail -f /dev/null
+		;;
+	maintain-off)
+		if [ -e /etc/kopano.maintenance ]
+		then
+			echo "switching off maintenance mode to standard mode; restart pls.."
+			rm /etc/kopano.maintenance
+		fi
 		;;
 	alive)
 		if ! k_supported_license 
@@ -1307,6 +1218,9 @@ case $1 in
 		fi
 		# clean up old pid.files
 		if ls /var/run/kopano/*.pid 1> /dev/null 2>&1; then rm /var/run/kopano/*.pid ; fi
+		# dummy maintenance mode if flag is set
+		if [ -e /etc/kopano.maintenance ] ; then tail -f /dev/null ; exit 0 ; fi
+		# continue standard mode
 		mysql_sock_on && start_kopano
 		if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default ; then freshclam > /dev/null 2>&1; fi
 		if ! w_srv_on nginx && tail -3 /var/log/nginx/error.log | grep -q ssl ; then default_ssl && service nginx start ; fi
@@ -1353,7 +1267,7 @@ case $1 in
 		sleep 15
 		;;
 	*)
-	echo "Valid parameters: start, stop, restart, reset, upgrade, ssl, acl, status, alive (up when core service running), maintenance (up)"
+	echo "Valid parameters: start, stop, restart, reset, upgrade, ssl, acl, status, alive (up when core service running), maintain-on/off"
 	exit 1
 	;;
 esac

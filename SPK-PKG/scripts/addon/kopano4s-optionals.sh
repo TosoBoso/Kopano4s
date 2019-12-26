@@ -14,9 +14,10 @@ then
 else
 	SUDO=""
 fi
-# get common and config
+# ** get library and common procedures, settings, tags and download urls
+. /var/packages/Kopano4s/scripts/library
 . /var/packages/Kopano4s/scripts/common
-. "$ETC_PATH"/package.cfg
+. /var/packages/Kopano4s/etc/package.cfg
 # default does not work message avoid repeating cmd ech else path
 MSG="please provide 2nd parameter for on or off"
 case "$1" in

@@ -1,8 +1,9 @@
 #!/bin/sh
 LOGIN=$(whoami)
-# get config
+# ** get library and common procedures, settings, tags and download urls
+. /var/packages/Kopano4s/scripts/library
+. /var/packages/Kopano4s/scripts/common
 . /var/packages/Kopano4s/etc/package.cfg
-MYSQL="/var/packages/MariaDB10/target/usr/local/mariadb10/bin/mysql"
 
 if [ $# -eq 0 ] 
 then
@@ -177,6 +178,7 @@ DIFFTIME=$(( $ENDTIME - $STARTTIME ))
 TASKTIME="$(($DIFFTIME / 60)) : $(($DIFFTIME % 60)) min:sec."
 MSG="Restore of $1 user completed in $TASKTIME"
 echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG"
+echo "$(date "+%Y.%m.%d-%H.%M.%S") $MSG" >> "$K_BACKUP_PATH"/restore-user.log 
 if [ "$NOTIFY" = "ON" ]
 then
 	/usr/syno/bin/synodsmnotify $NOTIFYTARGET Kopano4s-Restore-User "$MSG"
