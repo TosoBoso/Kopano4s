@@ -4,7 +4,7 @@
 case "$1" in
 	help)
 	echo "kopano-postfix (c) TosoBoso: script and postconf wrapper for postfix integration with kopano4s"
-	echo "Usage: kopano-postfix plus config, edit, relay, tls, stop, (re)start, reset, loglines, logsumm, map, queue, queuemsgs, show, requeue, release, resend, delete, flush, sync-/stats-/reset-/export-/import-/baseline-spamdb, train-spam/ham, test-smtp/amavis/spam/smail, help"
+	echo "Usage: kopano-postfix plus config, edit, relay, tls, stop, (re)start, reset, loglines, logsumm, map, queue, queuemsgs, show, requeue, release, resend, delete, flush, refresh-av, sync-/stats-/reset-/export-/import-/baseline-spamdb, train-spam/ham, test-smtp/amavis/spam/smail, help"
 	echo "config shows the current setting incl health check (postconf -n && postfix check)"
 	echo "edit plus argument changes main.cf entry (e.g. edit 'mynetworks = 127.0.0.0/8')"
 	echo "relay plus server, user, password arguments creates a relay server entry; off disables it"
@@ -22,7 +22,7 @@ case "$1" in
 	echo "test-amvis runs a telnet test session to the lmtp-amvis server on 10024 and reinject smtpd-service on 10025."
 	echo "test-spam runs a telnet test session with spam string in body that should be marked by spamassassin."
 	echo "test-smail recipient as argument (default: posmaster) runs sendmail for testing postfix incl. recipient msg."
-	echo "help obviously shows this dialog"
+	echo "refresh-av loads the latest clamav database; - you should do this regulary. help obviously shows this dialog."
 	exit 0	
 	;;
 	stop)
@@ -245,8 +245,8 @@ case "$1" in
 	fi
 	exit 0
 	;;
-	refresh-avdb)
-	echo "refreshing antivirus database by freshclam.."
+	refresh-av)
+	echo "refreshing antivirus database by freshclam (see also logs).."
 	CMD="freshclam >/dev/null 2>&1"
 	;;
 	sync-spamdb)
@@ -307,10 +307,10 @@ case "$1" in
 	exit 0
 	;;
 	baseline-spamdb)
-	echo "baseline training from spamassassin.apache.org/old/publiccorpus.."
+	echo "baseline training from spamassassin.apache.org/old/publiccorpus; run sync-spamdb later.."
 	CPATH=`pwd`
 	cd /var/lib/amavis
-	wget --no-check-certificate -q https://github.com/TosoBoso/Kopano4s/releases/download/v0.9.9/spamtrain.tgz
+	if [ ! -e spamtrain.tgz ] ; then echo "downloading spamtrain.tgz.." && wget --no-check-certificate -q https://github.com/TosoBoso/Kopano4s/releases/download/v0.9.9/spamtrain.tgz ; fi
 	tar xvf spamtrain.tgz >/dev/null 2>&1
 	chown -R amavis.debian-spamd /var/lib/amavis/spamtrain
 	echo "learning spam from training collection.."
@@ -318,7 +318,6 @@ case "$1" in
 	echo "learning ham from training collection.."
 	su amavis -c 'sa-learn --no-sync --progress --ham /var/lib/amavis/spamtrain/ham'
 	rm -R /var/lib/amavis/spamtrain
-	su amavis -c 'sa-learn --sync > /dev/null 2>&1'
 	cd $CPATH
 	exit 0
 	;;
@@ -482,7 +481,7 @@ case "$1" in
 		exit 0
 	;;
 	*)
-	echo "Usage: kopano-postfix plus config, edit, relay, tls, stop, (re)start, reset, loglines, logsumm, map, queue, queuemsgs, show, requeue, release, resend, delete, flush, sync-/stats-/reset-/export-/import-/baseline-spamdb, train-spam/ham, test-smtp/amavis/spam/smail, help"
+	echo "Usage: kopano-postfix plus config, edit, relay, tls, stop, (re)start, reset, loglines, logsumm, map, queue, queuemsgs, show, requeue, release, resend, delete, flush, refresh-av, sync-/stats-/reset-/export-/import-/baseline-spamdb, train-spam/ham, test-smtp/amavis/spam/smail, help"
 	exit 1
 	;;
 esac

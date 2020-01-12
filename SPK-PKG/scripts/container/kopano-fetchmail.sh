@@ -30,27 +30,24 @@ case "$1" in
 	fi
 	;;
 	start)
-	if grep -q "place your configuration here" $FRC
+	if grep -q "place your configuration here" $FRC || ! grep -q "^poll" $FRC
 	then
-		echo "at least 1 entry must be present and init has to be done before starting it.."
+		echo "at least 1 poll entry must be present and init has to be done before starting it.."
+		sed -i -e 's~FETCHMAIL_ENABLED.*~FETCHMAIL_ENABLED=no~' /etc/kopano/default
 		exit 1
 	fi
 	CMD="service fetchmail start"
 	;;
 	restart)
-	if grep -q "place your configuration here" $FRC
+	if grep -q "place your configuration here" $FRC || ! grep -q "^poll" $FRC
 	then
-		echo "at least 1 entry must be present and init has to be done before starting it.."
+		echo "at least 1 poll entry must be present and init has to be done before starting it.."
+		sed -i -e 's~FETCHMAIL_ENABLED.*~FETCHMAIL_ENABLED=no~' /etc/kopano/default
 		exit 1
-	fi
-	echo "restarting by stop gracefully then 4s later kill-all then start.."
-	if [ -e /var/run/fetchmail/fetchmail.pid ] && service fetchmail status | grep -q "fetchmail is running"
-	then
-		service fetchmail stop
-		sleep 4
 	fi
 	killall -q -9 fetchmail
 	if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm /var/run/fetchmail/fetchmail.pid ; fi
+	sleep 2
 	CMD="service fetchmail start"
 	;;
 	test)
@@ -60,21 +57,16 @@ case "$1" in
 	else
 		SEC=40
 	fi
-	if [ -e /var/run/fetchmail/fetchmail.pid ] && service fetchmail status | grep -q "fetchmail is running"
-	then
-		service fetchmail stop
-		sleep 4
-	fi
 	killall -q -9 fetchmail
-	# fake pid to avoid ugly red failed message for service stop...
-	touch /var/run/fetchmail/fetchmail.pid
+	if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm /var/run/fetchmail/fetchmail.pid ; fi
 	echo "fetchmail in debug mode hit crtl.c and then restart service.."
 	CMD="/etc/init.d/fetchmail debug-run"
 	;;
 	init)
-	if grep -q "#place your configuration here" $FRC
+	if grep -q "place your configuration here" $FRC || ! grep -q "^poll" $FRC
 	then
-		echo "at least 1 entry must be present before adding fetchmail to kopano-init.."
+		echo "at least 1 poll entry must be present and init has to be done before starting it.."
+		sed -i -e 's~FETCHMAIL_ENABLED.*~FETCHMAIL_ENABLED=no~' /etc/kopano/default
 		exit 1
 	fi
 	echo "init: enable fetchmail in kopano-default, add it to dagent local_admin_users and start it.."
@@ -113,11 +105,9 @@ case "$1" in
 		delaycompress
 	}
 	EOF
-	if service fetchmail status | grep -q "fetchmail is running"
-	then
-		service fetchmail stop
-		rm -f /var/run/fetchmail/fetchmail.pid
-	fi
+	# kill old fetchmail processes and pid for a clean start
+	killall -q -9 fetchmail
+	if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm -f /var/run/fetchmail/fetchmail.pid ; fi
 	CMD="service fetchmail start"
 	;;	
 	list)
@@ -275,6 +265,14 @@ case "$1" in
 		exit 1
 	fi
 	echo "removed fetchmail entry for k-user $2 as $3."
+	if ! grep -q "^poll" $FRC
+	then
+		# no more entries so disable service
+		echo "disable service as no more poll entries exist."
+		sed -i -e "s~# poll entries~#place your configuration here~" $FRC
+		sed -i -e 's~FETCHMAIL_ENABLED.*~FETCHMAIL_ENABLED=no~' /etc/kopano/default
+		exit 0
+	fi
 	killall -q -9 fetchmail
 	sleep 2
 	if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm /var/run/fetchmail/fetchmail.pid ; fi

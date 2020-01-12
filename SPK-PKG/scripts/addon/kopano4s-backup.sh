@@ -330,11 +330,7 @@ echo -e "$MSG"
 # prevent unnoticed backup error when pipe is failing
 set -o pipefail
 # delete old dump files dependent on keep versions / retention
-DBDUMPS=$(find $DUMP_PATH -name "$DPREFIX-*.sql.gz" | wc -l | sed 's/\ //g')
-if [ "$DBDUMPS" = "" ]
-then
-	DBDUMPS=0
-fi
+DBDUMPS=$(find $DUMP_PATH -name "$DPREFIX-*.sql.gz" | wc -l)
 while [ $DBDUMPS -ge $KEEP_BACKUPS ]
 do
 	# shellcheck disable=SC2012
@@ -351,10 +347,18 @@ DUMP_FILE_RUN="$DUMP_PATH/.$DPREFIX-${TSTAMP}.sql.gK_RUNNING"
 # here shellcheck goes wrong -e does not work with globbing use for loop
 if [ -e "$DUMP_PATH/.$DPREFIX-*.sql.gK_RUNNING" ]
 then
-	# shellcheck disable=SC2009
-	# SC2009 use pgrep not possible as not on syno 
-	RET=$(ps -f | grep -c kopano-backup.sh)
-	if [ $RET -le 2 ]
+	MAJOR_VERSION=$(grep majorversion /etc.defaults/VERSION | grep -o [0-9])
+	if [ $MAJOR_VERSION -gt 5 ]
+	then
+		# SC2009 use pgrep not possible as not on syno 
+		# shellcheck disable=SC2009
+		RET=$(ps -ef | grep kopano-backup.sh | grep -v grep)	
+	else
+		# SC2009 use pgrep not possible as not on syno 
+		# shellcheck disable=SC2009
+		RET=$(ps | grep kopano-backup.sh | grep -v grep)
+	fi
+	if [ -z "$RET" ]
 	then
 		rm -f "$DUMP_PATH/.$DPREFIX-*.sql.gK_RUNNING"
 	else

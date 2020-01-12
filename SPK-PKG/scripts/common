@@ -217,7 +217,7 @@ DISABLE_UI()
 # check in case k-volume is mounted encrypted add timeout option
 CHECK_MOUNTS()
 {
-	if [ ! -e "$K_SHARE/attachments" ]
+	if [ ! -e "$K_SHARE/attachments" ] || [ ! -e "$K_BACKUP_PATH" ]
 	then
 		MSG="Empty Kopano share, waiting ${MOUNT_TIMEOUT}s e.g. to allow mounting of encrypted share.."
 		if [ -n "$SUDO" ]
@@ -230,18 +230,18 @@ CHECK_MOUNTS()
 		local INIT_RUNNING=1
 		while [ $INIT_RUNNING -eq 1 ]
 		do
-			sleep 1
-			MOUNT_TIMER=$(($MOUNT_TIMER + 1))
+			sleep 2 
+			MOUNT_TIMER=$(($MOUNT_TIMER + 2))
 			if [ $MOUNT_TIMER -gt $MOUNT_TIMEOUT ]
 			then
 				INIT_RUNNING=0
 			fi
-			if [ -e "$K_SHARE/attachments" ]
+			if [ -e "$K_SHARE/attachments" ] && [ -e "$K_BACKUP_PATH" ]
 			then
 				INIT_RUNNING=0
 			fi
 		done
-		if [ ! -e "$K_SHARE/attachments" ]
+		if [ ! -e "$K_SHARE/attachments" ] || [ ! -e "$K_BACKUP_PATH" ]
 		then
 			MSG="Error Kopano share still empty post mount timeout $MOUNT_TIMEOUT sec"
 			if [ -n "$SUDO" ]
@@ -465,8 +465,10 @@ GET_WIZZARD_CFG()
 	if [ "$PKGWIZ_SPAM_HELO" = "true" ]
 	then
 		SPAM_HELO="ON"
+		SPAM_MX="ON"
 	else
 		SPAM_HELO="OFF"
+		SPAM_MX="OFF"
 	fi
 	if [ "$PKGWIZ_SPAM_RBL" = "true" ]
 	then
@@ -1064,12 +1066,18 @@ INIT_UPDATE()
 	else
 		ATTACHMENT_ON_FS="OFF"
 	fi
-	# add admin.cfg for local folders
+	# add admin.cfg for kopano-store-adm store-locale
 	if [ ! -e "$ETC_PATH/kopano/admin.cfg" ]
 	then
 		if [ ! -e "$ETC_PATH"/kopano/admin.cfg.init ] ; then cp "$TARGET_PATH"/merge/admin.cfg.init "$ETC_PATH"/kopano ; fi 
-		sed -i -e "s~#default_store_locale =~default_store_locale =\"$LOCALE~" $ETC_PATH/kopano/admin.cfg.init
+		sed -i -e "s~#default_store_locale =~default_store_locale = $LOCALE~" $ETC_PATH/kopano/admin.cfg.init
 		cp "$ETC_PATH"/kopano/admin.cfg.init "$ETC_PATH"/kopano/admin.cfg
+	fi
+	# remove quotes in default-store-locale from admin.cfg
+	if grep -q '="' "$ETC_PATH"/kopano/admin.cfg 
+	then
+		sed -i -e "s~default_store_locale.*~default_store_locale = $LOCALE~" "$ETC_PATH"/kopano/admin.cfg.init
+		sed -i -e "s~default_store_locale.*~default_store_locale = $LOCALE~" "$ETC_PATH"/kopano/admin.cfg
 	fi
 	# disable coredump in server.log to avoid log warnings and issues
 	if grep -q "#coredump_enabled" /etc/kopano/server.cfg
@@ -1109,10 +1117,7 @@ INIT_UPDATE()
 	if [ -z "$K_SEARCH" ] ; then K_SEARCH="ON" ; fi
 	if [ -z "$UNBLOCK_AFTERD" ] ; then UNBLOCK_AFTERD=4 ; fi
 	if [ -z "$MOUNT_TIMEOUT" ] ; then MOUNT_TIMEOUT=2 ; fi
-	# update php7.0-fpm socket in nginx.conf and kopano-web.conf (7.x is now on socket 7.0)
-	sed -i -e "s~/var/run/php7.0-fpm.sock~/var/run/php/php7.0-fpm.sock~"  $ETC_PATH/kopano/web/nginx.conf
-	sed -i -e "s~php7.2-fpm.sock~php7.0-fpm.sock~g"  $ETC_PATH/kopano/web/kopano-web.conf
-	sed -i -e "s~php7.3-fpm.sock~php7.0-fpm.sock~g"  $ETC_PATH/kopano/web/kopano-web.conf
+	if [ -z "$SPAM_MX" ] ; then SPAM_MX="OFF" ; fi
 	# amavis now holds spamassasin and clamav in same directory and soft links are used in container
 	if [ -e "$K_SHARE/spamassasin" ] ; then rm "$K_SHARE/spamassasin" ; fi
 	if [ -e "$K_SHARE/clamav" ] ; then rm "$K_SHARE/clamav" ; fi
@@ -1132,6 +1137,9 @@ INIT_UPDATE()
 		sed -i "$ a SPAMD_CONFIG=/etc/kopano/spamd.cfg" "$ETC_PATH/kopano/default.init"
 		sed -i "$ a SPAMD_OPTS=\"\"" "$ETC_PATH/kopano/default.init"
 	fi
+	# update to postgrey in postfix main.cf for check_policy_service
+	sed -i -e 's~check_policy_service.*~check_policy_service { inet:[127.0.0.1]:10023 timeout=10s default_action=DUNNO policy_context=submission }~' /etc/kopano/postfix/main.cf
+	if [ -e /etc/kopano/postfix/main.init ] ; then sed -i -e 's~check_policy_service.*~check_policy_service { inet:[127.0.0.1]:10023 timeout=10s default_action=DUNNO policy_context=submission }~' /etc/kopano/postfix/main.init ; fi
 }
 # ** create kopano share with synotool if not exists plus and set specific acls
 INIT_SHARE_ETC()
@@ -1375,6 +1383,10 @@ SET_CFG_OPTIONS()
 	then
 		sed -i -e "s~#smtpd_helo_restrictions~smtpd_helo_restrictions~" "$TARGET_PATH/merge/postfix/main.cf"
 	fi
+	if [ "$SPAM_MX" = "ON" ]
+	then
+		sed -i -e "s~#reject_unknown_sender_domain~ reject_unknown_sender_domain~" "$TARGET_PATH/merge/postfix/main.cf"
+	fi
 	if [ "$SPAM_RBL" = "ON" ]
 	then
 		sed -i -e "s~#reject_rbl_client~ reject_rbl_client~g" "$TARGET_PATH/merge/postfix/main.cf"
@@ -1543,7 +1555,7 @@ SET_K_LOCALE()
 		if [ ! -e "$ETC_PATH"/kopano/default ] ; then $SUDO cp "$ETC_PATH"/kopano/default.init "$ETC_PATH"/kopano/default ; fi
 		$SUDO sed -i -e "s~KOPANO_LOCALE.*~KOPANO_LOCALE=\"$LOCALE\"~" "$ETC_PATH"/kopano/default
 		$SUDO sed -i -e "s~KOPANO_USERSCRIPT_LOCALE.*~KOPANO_USERSCRIPT_LOCALE=\"$LOCALE\"~" "$ETC_PATH"/kopano/default
-		$SUDO sed -i -e "s~default_store_locale.*~default_store_locale =\"$LOCALE\"~" "$ETC_PATH"/kopano/admin.cfg.init
+		$SUDO sed -i -e "s~default_store_locale.*~default_store_locale = $LOCALE~" "$ETC_PATH"/kopano/admin.cfg.init
 		if [ "$K_EDITION" != "Migration" ]
 		then
 			# migration edition does not yet know this setting and kopano-admin will fail so only un-comment for others
@@ -1650,6 +1662,7 @@ SET_PKG_CFG()
 		echo MY_DOMAIN="\"$MY_DOMAIN\""
 		echo ALIAS_SYS="\"$ALIAS_SYS\""
 		echo SPAM_HELO="\"$SPAM_HELO\""
+		echo SPAM_MX="\"$SPAM_MX\""
 		echo SPAM_RBL="\"$SPAM_RBL\""
 		echo K_BOUNCE_SPAM="\"$K_BOUNCE_SPAM\""
 		echo K_AMAVISD="\"$K_AMAVISD\""

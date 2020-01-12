@@ -106,7 +106,7 @@ my $jscript = ''; # java script per page
 my $menu = ''; # menu html text highlighted with current page
 my $page = ''; # page to process from query string
 my $action = ''; # action to process from query string
-my $form = ''; # multi form submit e.g. for z-admin page
+my $form = ''; # multi form submit e.g. for k-admin page
 my $status = ''; # status field
 my $cmdline=''; # command to pass to system
 my @rawDataCmd; #  command reply from system
@@ -823,6 +823,7 @@ if ($page eq 'alias')
 }
 if ($page eq 'smtp') 
 {
+    my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
     my $maincfg = '/etc/kopano/postfix/main.cf';
     my $hdrcfg = '/etc/kopano/postfix/header_checks';
     my $relayhost;
@@ -840,6 +841,7 @@ if ($page eq 'smtp')
     my $entry = '';
     my @ports = ('587', '465', '25', 'via:');
     my $cfgtxt = '';
+    my $ret;
     # get timestamp
     my $start_time = timegm(gmtime());
     # convert message maxsite to MB
@@ -962,6 +964,9 @@ if ($page eq 'smtp')
             my $domain_entry = "mydomain = $main_domain";
             system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh edit '$domain_entry' > /dev/null");
             $domains = $new_tlsdomains;
+            # also save in package.cfg
+            $ret = setCfgValue($pkgcfg, "MAIL_DOMAINS", $domains, 'shstring');
+            $ret = setCfgValue($pkgcfg, "MY_DOMAIN", $main_domain, 'shstring');
         }
         if ( $new_maxsize ne $maxsize ) {
             my $maxsizeBytes = $new_maxsize * 1024 * 1024;
@@ -1113,9 +1118,9 @@ if ($page eq 'fetch')
                     chomp($reply);
                     if ( $reply =~ 'init') {
                         system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-fetchmail.sh init >/dev/null");
-                        $reply = 'Fetchmail initialized for 1st entry. ';
+                        $reply = 'Fetchmail initialized for 1st entry.';
                     }
-                    $status .=  $reply;
+                    $status .=  $reply . ' ';
                 }
             }
             else {
@@ -1190,7 +1195,7 @@ if ($page eq 'fetch')
     }    
     my $endTime = timegm(gmtime());
     my $sdiff = $endTime - $startTime;
-    $status .= "Requests completed in $sdiff seconds.";
+    $status .= " Requests completed in $sdiff seconds.";
     # fill dynamic html array to be printed on pages
     $tmplhtml{'chkactive'} = $chkactive;
     $tmplhtml{'cycle'} = $cycle;
@@ -1202,7 +1207,237 @@ if ($page eq 'fetch')
 }
 if ($page eq 'spamav') 
 {
-    
+    my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
+	my $domain = getCfgValue($pkgcfg, 'MY_DOMAIN');
+    my $chkamavis = getCfgValue($pkgcfg, 'K_AMAVISD') eq 'ON' ? 'checked' : ''; # enabled?
+    my $chkbounce = getCfgValue($pkgcfg, 'K_BOUNCE_SPAM') eq 'ON' ? 'checked' : ''; # enabled?
+    my $chkclamav = getCfgValue($pkgcfg, 'K_CLAMAVD') eq 'ON' ? 'checked' : ''; # enabled?
+    my $chkpostgrey = getCfgValue($pkgcfg, 'K_POSTGREY') eq 'ON' ? 'checked' : ''; # enabled?
+    my $chkspamd = getCfgValue($pkgcfg, 'K_SPAMD') eq 'ON' ? 'checked' : ''; # enabled?
+    my $chkhelo = getCfgValue($pkgcfg, 'SPAM_HELO') eq 'ON' ? 'checked' : ''; # enabled?
+    my $chkmx = getCfgValue($pkgcfg, 'SPAM_MX') eq 'ON' ? 'checked' : ''; # enabled?
+    my $chkrbl = getCfgValue($pkgcfg, 'SPAM_RBL') eq 'ON' ? 'checked' : ''; # enabled?
+    my $amavisdir = getCfgValue($pkgcfg, 'K_SHARE') . '/amavis';
+    my $restart = 0; #need to restart to make settings effective?
+
+    # process request to add, update, delete entries first considering the input forms
+    $form = param('form');
+    if ($action eq 'Save' && $form eq 'settings') {
+        $tmplhtml{'spamavtxt'} = '';
+        my $new_chkamavis = param('amavis') eq 'on' ? 'checked' : '';
+        if ( $new_chkamavis ne $chkamavis ) {
+            $restart = 1;
+            $chkamavis = $new_chkamavis;
+            if ( $chkamavis eq 'checked' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh amavis on |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh amavis off |";
+            }
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $tmplhtml{'spamavtxt'} .= "$reply\n ";
+                }
+            }
+        }
+        my $new_chkbounce = param('bounce') eq 'on' ? 'checked' : '';
+        if ( $new_chkbounce ne $chkbounce ) {
+            $restart = 1;
+            $chkbounce = $new_chkbounce;
+            if ( $chkbounce eq 'checked' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh bounce-spam on |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh bounce-spam off |";
+            }
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $tmplhtml{'spamavtxt'} .= "$reply\n ";
+                }
+            }
+        }
+        my $new_chkclamav = param('clamav') eq 'on' ? 'checked' : '';
+        if ( $new_chkclamav ne $chkclamav ) {
+            $restart = 1;
+            $chkclamav = $new_chkclamav;
+            if ( $chkclamav eq 'checked' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh clamav on |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh clamav off |";
+            }
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $tmplhtml{'spamavtxt'} .= "$reply\n ";
+                }
+            }
+        }
+        my $new_chkpostgrey = param('postgrey') eq 'on' ? 'checked' : '';
+        if ( $new_chkpostgrey ne $chkpostgrey ) {
+            $restart = 1;
+            $chkpostgrey = $new_chkpostgrey;
+            if ( $chkpostgrey eq 'checked' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh postgrey on |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh postgrey off |";
+            }
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $tmplhtml{'spamavtxt'} .= "$reply\n ";
+                }
+            }
+        }
+        my $new_chkspamd = param('spamd') eq 'on' ? 'checked' : '';
+        if ( $new_chkspamd ne $chkspamd ) {
+            $restart = 1;
+            $chkspamd = $new_chkspamd;
+            if ( $chkspamd eq 'checked' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh spamd on |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh spamd off |";
+            }
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $tmplhtml{'spamavtxt'} .= "$reply\n ";
+                }
+            }
+        }
+        my $new_chkhelo = param('helo') eq 'on' ? 'checked' : '';
+        if ( $new_chkhelo ne $chkhelo ) {
+            $restart = 1;
+            $chkhelo = $new_chkhelo;
+            if ( $chkhelo eq 'checked' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh helo-check on |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh helo-check off |";
+            }
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $tmplhtml{'spamavtxt'} .= "$reply\n ";
+                }
+            }
+        }
+        my $new_chkmx = param('mx') eq 'on' ? 'checked' : '';
+        if ( $new_chkmx ne $chkmx ) {
+            $restart = 1;
+            $chkmx = $new_chkmx;
+            if ( $chkmx eq 'checked' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh mx-check on |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh mx-check off |";
+            }
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $tmplhtml{'spamavtxt'} .= "$reply\n ";
+                }
+            }
+        }
+        my $new_chkrbl = param('rbl') eq 'on' ? 'checked' : '';
+        if ( $new_chkrbl ne $chkrbl ) {
+            $restart = 1;
+            $chkrbl = $new_chkrbl;
+            if ( $chkrbl eq 'checked' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh rbl-check on |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/addon/kopano4s-optionals.sh rbl-check off |";
+            }
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $tmplhtml{'spamavtxt'} .= "$reply\n ";
+                }
+            }
+        }
+        if ( $restart == 1 ) {
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-restart.sh |";
+            if (open(DAT, $cmdline)) {
+                @rawDataCmd = <DAT>;
+                close(DAT);
+                foreach my $reply (@rawDataCmd) {
+                    chomp($reply);
+                    $tmplhtml{'spamavtxt'} .= "$reply\n ";
+                }
+            }
+        }
+    }
+    if ($form eq 'cmds') {
+        if ( $action eq 'Refresh' ) {
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh refresh-av |";
+        }
+        if ( $action eq 'Spam' ) {
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh train-spam |";
+        }
+        if ( $action eq 'Ham' ) {
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh train-ham |";
+        }
+        if ( $action eq 'BaseSet' ) {
+            my $spamfile = $amavisdir . '/spamtrain.tgz';
+            if (-e $spamfile) {
+               $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh baseline-spamdb |";
+            }
+            else {
+               system("/bin/sh wget --no-check-certificate -q https://github.com/TosoBoso/Kopano4s/releases/download/v0.9.9/spamtrain.tgz -o $spamfile 2>&1 &");
+               $status .= " loading spamtrain.tgz as background task. Start training in ~7-15m";            
+            }
+        }
+        if ( $action eq 'Sync-DB' ) {
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh sync-spamdb |";
+        }
+        if ( $action eq 'DB-Stats' ) {
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh stats-spamdb |";
+        }
+        if (open(DAT, $cmdline)) {
+            @rawDataCmd = <DAT>;
+            close(DAT);
+            foreach my $reply (@rawDataCmd) {
+                chomp($reply);
+                $tmplhtml{'spamavtxt'} .= "$reply\n ";
+            }
+        }
+    }
+    my $endTime = timegm(gmtime());
+    my $sdiff = $endTime - $startTime;
+    $status .= " Requests completed in $sdiff seconds.";
+    # fill dynamic html array to be printed on pages
+    $tmplhtml{'chkamavis'} = $chkamavis;
+    $tmplhtml{'chkbounce'} = $chkbounce;
+    $tmplhtml{'chkclamav'} = $chkclamav;
+    $tmplhtml{'chkpostgrey'} = $chkpostgrey;
+    $tmplhtml{'chkspamd'} = $chkspamd;
+    $tmplhtml{'chkhelo'} = $chkhelo;
+    $tmplhtml{'chkmx'} = $chkmx;
+    $tmplhtml{'chkrbl'} = $chkrbl;
+    #$tmplhtml{'amavisdir'} = $amavisdir;
+    $tmplhtml{'domain'} = $domain;
+    $tmplhtml{'status'} = $status;
 }
 if ($page eq 'report') 
 {
@@ -1816,7 +2051,7 @@ if ($page eq 'tools')
             close(DAT);
             foreach my $reply (@rawDataCmd) {
                 chomp($reply);
-                $tmplhtml{'toolstxt'} .= "$reply\n ";
+                $tmplhtml{'autoblocktxt'} .= "$reply\n ";
             }
         }
     }
@@ -1827,7 +2062,7 @@ if ($page eq 'tools')
             close(DAT);
             foreach my $reply (@rawDataCmd) {
                 chomp($reply);
-                $tmplhtml{'toolstxt'} .= "$reply\n ";
+                $tmplhtml{'autoblocktxt'} .= "$reply\n ";
             }
         }
     }
@@ -1838,7 +2073,7 @@ if ($page eq 'tools')
             close(DAT);
             foreach my $reply (@rawDataCmd) {
                 chomp($reply);
-                $tmplhtml{'toolstxt'} .= "$reply\n ";
+                $tmplhtml{'autoblocktxt'} .= "$reply\n ";
             }
         }
     }
@@ -1852,10 +2087,11 @@ if ($page eq 'log')
     my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
     my $logcmb = '';
     my $mode = param('mode'); # last 100 entries or all
-    my @logfiles = ('server.log','spooler.log','mail.log','mail.info','mail.warn','mail.err','amavis.log','dagent.log',
-                    'monitor.log','search.log','gateway.log','ical.log','z-push.log','z-push-error.log',
-                    'fetchmail.log','presence.log','webmeetings.log','nginx-error.log','nginx-access.log',
-                    'php-fpm.log','syslog','messages','mySqlDump.log','backup-user.log','restore-user.log');
+    my @logfiles = ('server.log','spooler.log','dagent.log','mail.log','mail.info','mail.warn','mail.err',
+                    'amavis.log','clamav.log','freshclam.log','razor-agent.log','spamassassin.log','spamd.log',
+                    'fetchmail.log','monitor.log','search.log','gateway.log','ical.log','presence.log','webmeetings.log',
+                    'z-push.log','z-push-error.log','nginx-error.log','nginx-access.log','php-fpm.log',
+                     'syslog','messages','mySqlDump.log','backup-user.log','restore-user.log');
     # process command first
     if ($action eq "Truncate") {
         $slog = param('slog'); # the log selected to show

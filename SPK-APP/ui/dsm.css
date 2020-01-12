@@ -35,8 +35,7 @@ th, td {
 }
 textarea {
 	padding: 2px 2px;
-	/* font-family: verdana, tahoma, arial, helvetica, sans-serif; */
-	font-family: Lucida Console, Monaco, monospace;
+	font-family: verdana, tahoma, arial, helvetica, sans-serif;
 	font-size: 12px;
 	font-style: normal;
 	font-variant: normal;
@@ -107,9 +106,26 @@ h3 {
 	padding-top: 1px;
 	width: auto;
 }
+/* special foramting rules hide, mono, nav, tab, form*/
 .hide { 
 	display: none; 
 }
+/* overwrite textarea for monospace system fonts in text-boexes  */
+.mono {
+  background-color: inherit;
+}
+.mono textarea {
+	padding: 2px 2px;
+	font-family: Lucida Console, Monaco, monospace;
+	font-size: 12px;
+	font-style: normal;
+	font-variant: normal;
+	font-weight: normal;
+	line-height: normal;
+	text-align: left;
+	margin: 0;
+}
+
 /* menu style vertical nav via a, li, ul */
 .nav {
   background-color: inherit;

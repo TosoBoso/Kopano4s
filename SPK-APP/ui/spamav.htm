@@ -8,8 +8,100 @@
 	</head>
 	<body>
 	<!--:menu:-->
-	<h3><p> SPAM / Antivirus admin is work in progress and will be available in later release</p></h3>
-	<p><b><u>Tips:</u></b>&nbsp;</p>
+	<!-- Tab links -->
+	<div class="tab"><ol>
+		<li><a href="#" class="tablinks" onclick="openTab(event, 'settings-tab')" id="defaultTab">Settings</a></li>
+		<li><a href="#" class="tablinks" onclick="openTab(event, 'spf-tab')">SPF-Out</a></li>
+		<li><a href="#" class="tablinks" onclick="openTab(event, 'dmarc-tab')">DMARC-Out</a></li>
+	</ol></div>
+	<!-- Tab content -->
+	<hr>
+	<div id="settings-tab" class="tabcontent">
+		<form action="index.cgi" method="get">
+			<input type="hidden" name="page" value="spamav"/><input type="hidden" name="form" value="settings"/>
+			&nbsp;Spam-AV Services: &nbsp;Amavis incl. Spamassasin<input type="checkbox" name="amavis" value="on"/<!--:chkamavis:-->>on
+			&nbsp;&nbsp;Bounce SPAM <input type="checkbox" name="bounce" value="on"/<!--:chkbounce:-->>on
+			&nbsp;&nbsp;ClamAntiVirus <input type="checkbox" name="clamav" value="on"/<!--:chkclamav:-->>on
+			&nbsp;&nbsp;Postgrey <input type="checkbox" name="postgrey" value="on"/<!--:chkpostgrey:-->>on
+			&nbsp;&nbsp;Kopano-Spamd <input type="checkbox" name="spamd" value="on"/<!--:chkspamd:-->>on
+			&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Save"><br>
+			&nbsp;Postfix-Options: &nbsp;&nbsp;&nbsp;&nbsp;Strict HELO-Checks (valid fqdn hosts) <input type="checkbox" name="helo" value="on"/<!--:chkhelo:-->>on
+			&nbsp;&nbsp;MX-Domain-Check <input type="checkbox" name="mx" value="on"/<!--:chkmx:-->>on
+			&nbsp;&nbsp;Real-time Blackhole List RBL-Spamhaus.org/sorbs.net<input type="checkbox" name="rbl" value="on"/<!--:chkrbl:-->>on
+		</form>
+		<form action="index.cgi" method="get">
+			<input type="hidden" name="page" value="spamav"/><input type="hidden" name="form" value="cmds"/>
+			&nbsp;AV Database&nbsp;<input type="submit" name="action" value="Refresh">
+			&nbsp;&nbsp;Spamassasin train from amavis respective folder for &nbsp;<input type="submit" name="action" value="Spam">
+			&nbsp;<input type="submit" name="action" value="Ham">&nbsp;
+			<input type="submit" name="action" value="BaseSet">&nbsp;then&nbsp;<input type="submit" name="action" value="Sync-DB">
+			&nbsp;and show &nbsp;<input type="submit" name="action" value="DB-Stats">
+		</form>
+		<div class="mono"><textarea name="reply" rows="10" cols="130"> <!--:spamavtxt:--></textarea></div>
+		<p><b><u>Tips:</u></b>&nbsp;Enabling bounce-spam means you never see it; default is sending it to spam folder. K-Spamd is a daemon to learn
+		         what you moved to spam. Be careful with mx-domain check: if your sending mail host is unknown (no dns, mx) you will reject yourself sending mails.</p>
+	</div>
+	<div id="spf-tab" class="tabcontent">
+		<h3>SPF Wizard powerd by openspf.org - copy and paste the below result as your DNS entry -</h3>
+		<input type="text" name="dnsentry" id="dnsentry" size="90" value=""/>
+    	<div class="form"><table>
+			<tr>
+                <td style="width: 500px;">Your Mail-Domain to define the Sending Policy Framework (SPF):</td>
+                <td><input type="text" name="domain" id="domain" value="<!--:domain:-->" class="frmT" title="The domain for which you want to add the SPF record.<br />i.e. <b>example.com</b>" onfocusout="getSPF();" /></td>
+            </tr>
+			<tr>
+				<td>Allow servers listed as MX to send email for this domain:</td>
+				<td>
+					<select name="mx_allow" id="mx_allow" class="frmS" title="Do these MX servers send emails for this domain?Current handlers:<br><b>mx1.domain.com<br>mx2.domain.com</b>" onchange="getSPF();" >
+						<option value="0">No</option>
+						<option value="1">Yes (recommended)</option>
+					</select>
+				</td>
+			</tr>
+        	<tr>
+                <td>Allow any hostname ending in <span id="domainSP" style="font-weight: bold;"></span> to send email for this domain:</td>
+                <td>
+                    <select name="host_allow" id="host_allow" class="frmS" title="Are all subdomains allowed to send emails for this main domain?" onchange="getSPF();">
+                        <option value="0">No (recommended)</option>
+                        <option value="1">Yes</option>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <td>IP addresses in CIDR format that deliver or relay mail for this domain:</td>
+                <td><input type="text" name="ip_additional" id="ip_additional" class="frmT" title="Add the server IP addresses that may send mail with subnet mask space separated. Use /32 for a single IP.<br />i.e. <b>10.0.0.1/32 192.168.0.1/28</b>" onkeyup="getSPF();" /></td>
+            </tr>
+            <tr>
+                <td>Add any other server hostname that may deliver or relay mail for this domain:</td>
+                <td><input type="text" name="host_additional" id="host_additional" class="frmT" title="Add the servers that are allowed to send mails for this domain space separated.<br />i.e. <b>ns1.example.com ns2.example.com</b>" onkeyup="getSPF();" /></td>
+            </tr>
+            <tr>
+                <td>Any domains that may deliver or relay mail for this domain:</td>
+                <td><input type="text" name="domain_additional" id="domain_additional" class="frmT" title="Add other domains that can send emails for this domain, such a third party service space separated.<br />i.e. <b>3rdparty.com 1stparty.com</b>" onkeyup="getSPF();" /></td>
+            </tr>
+            <tr>
+                <td>How strict should be the servers treating the emails?:</td>
+                <td>
+                    <select name="restrict" id="restrict" class="frmS" title="Select the option that best fits." onchange="getSPF();">
+                        <option value="0">-</option>
+                        <option value="1">Fail (Will be rejected)</option>
+                        <option value="2">SoftFail (Accepted but marked)</option>
+                        <option value="3">Neutral (Probably accepted)</option>
+                    </select>
+                </td>
+            </tr>			
+        </table></div>
+    	<br>
+    	<!-- TODO: in perl dig +short txt to get existing entry -->
+		<p><b><u>Tips:</u></b>&nbsp;SPF lets you define who is entitled to send mails and so improve your reputation as Non-SPAM(er).</p>
+	</div>
+	<div id="dmarc-tab" class="tabcontent">
+		<form action="index.cgi" method="get">
+			<input type="hidden" name="page" value="spamav"/>
+			<h3>DMARC Wizard is still work in progress.. </h3>
+			</form>
+		<p><b><u>Tips:</u></b>&nbsp;..</p>
+	</div>
 	<!-- style for bottom position -->
 	<div style='position:absolute;bottom:0;padding:0px 0px;'>
 		<textarea name="status" rows="1" cols="135"> <!--:status:--> </textarea>

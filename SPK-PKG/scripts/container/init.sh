@@ -44,7 +44,9 @@ KICLPID="/var/run/kopano/ical.pid"
 KMONPID="/var/run/kopano/monitor.pid"
 KPRESPID="/var/run/kopano/presence.pid"
 AMAVPID="/var/run/amavis/amavis.pid"
-CLAMPID="/var/run/clamav/clamav.pid"
+CLAMPID="/var/run/clamav/clamd.pid"
+CLAMPLD="/var/run/clamav/clamd.load"
+CLAMCTL="/var/run/clamav/clamd.ctl"
 PFIXPID="/var/spool/postfix/pid/master.pid"
 PGRYPID="/var/run/postgrey.pid"
 FEMLPID="/var/run/fetchmail/fetchmail.pid"
@@ -94,7 +96,7 @@ k_srv_on()
 	# disabled daemon and not part of services then we would return ok
 	if echo $K_SERVICES | grep -q "$DAEMON"
 	then
-	if service $DAEMON status | grep -q "is running"
+		if service $DAEMON status | grep -q "is running"
 		then
 			return 0
 		else
@@ -116,11 +118,30 @@ m_srv_on()
 	# disabled daemon and not part of services then we would return ok
 	if echo $M_SERVICES | grep -q "$DAEMON"
 	then
-	if service $DAEMON status | grep -q "is running"
+		if service $DAEMON status | grep -q "is running"
 		then
 			return 0
 		else
-			return 1
+			# special case fetchmail under buster init file not working
+			if [ "$DAEMON" = "fetchmail" ]
+			then
+				local PIDFILE="/var/run/fetchmail/fetchmail.pid"
+				if test -e $PIDFILE
+				then
+					local PID=$(ps -ef | grep -v grep | grep fetchmail | head -1 | awk '{print $2}')
+					if [ -n "$PID" ] && grep -q $PID $PIDFILE
+					then
+						return 0
+					else
+						return 1
+					fi
+				else		
+					return 1
+				fi
+			else
+				return 1			
+			fi
+			return 1			
 		fi
 	else
 		return 0
@@ -138,7 +159,7 @@ w_srv_on()
 	# disabled daemon and not part of services then we would return ok
 	if echo $W_SERVICES | grep -q "$DAEMON"
 	then
-	if service $DAEMON status | grep -q "is running"
+		if service $DAEMON status | grep -q "is running"
 		then
 			return 0
 		else
@@ -160,7 +181,7 @@ s_srv_on()
 	# disabled daemon and not part of services then we would return ok
 	if echo $S_SERVICES | grep -q "$DAEMON"
 	then
-	if service $DAEMON status | grep -q "is running"
+		if service $DAEMON status | grep -q "is running"
 		then
 			return 0
 		else
@@ -195,6 +216,18 @@ start_kopano()
 		# filter out warnings on non-priviledged access to imklog and /proc/kmsg
 		cat /tmp/service.out && cat /tmp/service.err | grep -v imklog | grep -v kmsg
 	done
+	# special case clamav-daemon loading long in bg mode: restart amavisd after ~3-6 min..
+	if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default
+	then
+		echo "Started  clamav-daemon in bg mode restarting amavis once it is loaded.."
+		echo "$(date "+%Y.%m.%d-%H:%M:%S") Started clamav-daemon in bg mode restarting amavis once it is loaded.." >/var/log/clamd-bgload.log
+		if [ -e "$CLAMCTL" ] ; then rm "$CLAMCTL" ; fi
+		# mark for this script clamd loading via clamd.load and fake running via PID file
+		touch "$CLAMPLD"
+		local PID=$(ps -ef | grep -v grep | grep clamd | head -1 | awk '{print $2}')
+		echo "$PID" > "$CLAMPID"
+		chown clamav.clamav "$CLAMPID"
+	fi
 	if [ -e /tmp/service.out ]
 	then
 		rm /tmp/service.out
@@ -259,8 +292,13 @@ kill_kopano()
 		killall -q -9 $S
 	done
 	# remove stale pids
-	rm -f /var/run/kopano/*.pid
-	rm -f /var/run/fetchmail/fetchmail.pid
+	if ls /var/run/kopano/*.pid >/dev/null 2>&1; then rm /var/run/kopano/*.pid ; fi
+	if [ -e "$AMAVPID" ] ; then rm -f "$AMAVPID" ; fi
+	if [ -e "$CLAMPID" ] ; then rm -f "$CLAMPID" ; fi
+	if [ -e "$CLAMPLD" ] ; then rm -f "$CLAMPLD" ; fi
+	if [ -e "$PGRYPID" ] ; then rm -f "$PGRYPID" ; fi
+	if [ -e "$FEMLPID" ] ; then rm -f "$FEMLPID" ; fi
+	if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm -f /var/run/fetchmail/fetchmail.pid ; fi
 }
 set_acl()
 {
@@ -301,16 +339,16 @@ set_acl()
 		chmod 751 /etc/kopano/webapp/dist
 		chmod 640 /etc/kopano/webapp/dist/*	
 	fi
-	# remove recursive softlink in etc-kopano
-	if [ -h /etc/kopano/kopano ] ; then rm /etc/kopano/kopano ; fi
-
 	# other than etc-kopano: /var/www/html /usr/share-web, /var-log
 	chown -R root.www-data /var/www/html && chmod 750 /var/www/html && chmod 640 /var/www/html/*.html
 	chown -R root.www-data /usr/share/kopano-webapp
 	chown -R root.www-data /usr/share/z-push
+	# remove recursive softlink in log-kopano
+	if [ -h /var/log/kopano/kopano ] ; then rm /var/log/kopano/kopano ; fi
 	chown -R kopano.kopano /var/log/kopano
-	chown root.kopano /var/log/kopano/amavis.log
-	chown root.kopano /var/log/kopano/spamassassin.log
+	chown amavis.kopano /var/log/kopano/amavis.log
+	chown amavis.kopano /var/log/kopano/razor-agent.log
+	chown amavis.kopano /var/log/kopano/spamassassin.log
 	chown root.kopano /var/log/kopano/fetchmail.log
 	chown root.kopano /var/log/kopano/mail.*
 	chown root.kopano /var/log/kopano/nginx*
@@ -332,6 +370,7 @@ set_acl()
 	chmod 770 /var/log/kopano/z-push/
 	chmod 660 /var/log/kopano/z-push/*.log
 	chmod 660 /var/log/kopano/amavis.log
+	chmod 660 /var/log/kopano/razor-agent.log
 	chmod 660 /var/log/kopano/clamav.log
 	chmod 660 /var/log/kopano/freshclam.log
 	chmod 660 /var/log/kopano/spamassassin.log
@@ -497,6 +536,11 @@ init_kopano()
 		echo '<body><br>Got lost ? Goto <a href="/webapp/index.php">Webapp</a> <a href="/Microsoft-Server-ActiveSync">Microsoft-Server-ActiveSync</a>' >> /var/www/html/index.html
 		echo '<br><br><img src="robot.png"></body></html>' >> /var/www/html/index.html
 	fi
+	# sync amavis spam-bounce off from kopanos default to default-amavis as amavis bouncce is on initially
+	if grep -q ^BOUNCE_SPAM_ENABLED=no /etc/kopano/default
+	then 
+		sed -i -e "s~\$final_spam_destiny.*~\$final_spam_destiny       = D_PASS;~" /etc/kopano/default-amavis
+	fi
 	# stopp all services to modify kopano users settings and have congig copied over
 	kill_kopano
 	if service kopano-monitor status | grep -q "is running" ; then service kopano-monitor stop ; fi
@@ -617,9 +661,9 @@ init_kopano()
 	touch /var/log/kopano/mail.info
 	touch /var/log/kopano/mail.warn
 	touch /var/log/kopano/mail.err
-	touch /var/log/kopano/amavis.log
 	touch /var/log/kopano/clamav.log
 	touch /var/log/kopano/freshclam.log
+	touch /var/log/kopano/razor-agent.log
 	touch /var/log/kopano/spamassassin.log
 	touch /var/log/kopano/messages
 	touch /var/log/kopano/syslog
@@ -743,6 +787,9 @@ init_kopano()
 	su - amavis -c 'razor-admin -create'
 	su - amavis -c 'razor-admin -register' >/dev/null
 	su - amavis -c 'razor-admin -discover'
+	# change postgrey default to bind ip4 only (without it fails binding ip6) and set delay 2m only if default
+	sed -i -e "s~inet=10023~inet=127.0.0.1:10023~" /etc/kopano/default-postgrey
+	if ! grep -q "10023 --delay" /etc/kopano/default-postgrey ; then sed -i -e "s~10023~10023 --delay=120~" /etc/kopano/default-postgrey ; fi
 	# change presence bind for all to localhost
 	#if [ -e /etc/kopano/presence.cfg ]
 	#then
@@ -764,13 +811,11 @@ init_kopano()
 	fi
 	echo "setting acl, ssl, fetchmail and plugins.."
 	# users created or fetchmail active from previous install do init and expand services for session
-	if ! grep -q "place your configuration here" /etc/kopano/fetchmailrc
+	if grep -q ^FETCHMAIL_ENABLED=yes /etc/kopano/default
 	then
-		if grep -q ^FETCHMAIL_ENABLED=no /etc/kopano/default
-		then
-			M_SERVICES="$M_SERVICES fetchmail"
-		fi
 		/usr/local/bin/kopano-fetchmail.sh init
+		killall -q -9 fetchmail
+		if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm /var/run/fetchmail/fetchmail.pid ; fi
 	fi
 	# now adjustments for webapp plugins like mdm, passwd, fetchmail 
 	# fetchmail webapp-plugin settings
@@ -1005,6 +1050,10 @@ case $1 in
 			echo "Running: $W_SERVICES"
 			echo "Running: $M_SERVICES"
 			echo "Running: $S_SERVICES"
+			if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default && [ -e "$CLAMPLD" ]
+			then
+				echo "clamav-daemon loading in background (1-5m) restarting dependent service amavis once done.."
+			fi
 			exit 0
 		else
 			RET="Core:"
@@ -1156,7 +1205,13 @@ case $1 in
 					RET="$RET, Fetchmail Disabled"
 				fi
 			else
-				RET="$RET, Fetchmail Not Running"
+				RUNNING=$(ps -ef | grep -v grep | grep -c fetchmail)
+				if [ $RUNNING -gt 1 ]
+				then
+					RET="$RET, multiple Fetchmails Running"
+				else
+					RET="$RET, Fetchmail Not Running"
+				fi
 			fi
 			if m_srv_on courier-imap
 			then
@@ -1222,7 +1277,13 @@ case $1 in
 		if [ -e /etc/kopano.maintenance ] ; then tail -f /dev/null ; exit 0 ; fi
 		# continue standard mode
 		mysql_sock_on && start_kopano
-		if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default ; then freshclam > /dev/null 2>&1; fi
+		# adjust php-fmp socket according to version in case running socket differs from config kopano-web.conf
+		if ! grep -q "php${PHP_VER}-fpm" /etc/kopano/web/kopano-web.conf && [ -e "/var/run/php/php${PHP_VER}-fpm.sock" ]
+		then
+			sed -i -e "s~/var/run/php/php7.*~/var/run/php/php${PHP_VER}-fpm.sock;~g" /etc/kopano/web/kopano-web.conf
+			service nginx restart
+		fi
+		# reset ssl config back to self signed default for nginx and disabled for kopano in case of errors
 		if ! w_srv_on nginx && tail -3 /var/log/nginx/error.log | grep -q ssl ; then default_ssl && service nginx start ; fi
 		if ! k_srv_on kopano-server && tail -3 /var/log/kopano/server.log | grep -q ssl ; then disable_ssl && service kopano-server start ; fi
 		echo "staying alive while kopano service is running.."
@@ -1232,11 +1293,28 @@ case $1 in
 			sleep 10
 			# run kopano-dbadm for warnings if advised in server.log
 			if tail -2 /var/log/kopano/server.log | grep warning | grep -q kopano-dbadm ; then dbadm_repair ; fi
+			# restart amavis once clamd has loaded aka clamd-load and clamd.ctl exist
+			if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default && [ -e "$CLAMPLD" ] && [ -e "$CLAMCTL" ]
+			then
+				rm "$CLAMPLD"
+				echo "clamav-daemon loaded, now restarting dependent daemon amavis.."
+				echo "$(date "+%Y.%m.%d-%H:%M:%S") clamav loaded, restarting amavis.." >>/var/log/clamd-bgload.log
+				service amavis restart
+			fi
 			HEALTH_C_TIMER=$(expr $HEALTH_C_TIMER + 10)
-			# health check each 3 mins for critical services
+			# health check each 3 mins for critical services inlc. daily refresh aof clamav database
 			if [ $HEALTH_C_TIMER -gt 180 ]
 			then
 				HEALTH_C_TIMER=0
+				TS=$(date "+%Y.%m.%d")
+				if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default && [ ! -e "/var/run/clamav/freshclam.${TS}" ]
+				then
+					echo "daily refresh of clam-av database this may take some time (1-3m).."
+					if ls /var/run/clamav/freshclam.* >/dev/null 2>&1; then rm /var/run/clamav/freshclam.* ; fi
+					touch "/var/run/clamav/freshclam.${TS}"
+					freshclam > /dev/null 2>&1
+					echo "done with refreshing clamd antivirus database"
+				fi
 				if ! k_srv_on kopano-spooler ; then service kopano-spooler start ; fi
 				if ! k_srv_on kopano-dagent ; then service kopano-dagent start ; fi
 				if ! s_srv_on rsyslog ; then service rsyslog start ; fi
@@ -1245,6 +1323,22 @@ case $1 in
 				if ! w_srv_on nginx ; then service nginx start ; fi
 				if ! w_srv_on php${PHP_VER}-fpm ; then service php${PHP_VER}-fpm start ; fi
 				if ! m_srv_on clamav-daemon ; then service clamav-daemon start ; fi
+				# ensure only 1 fetchmail is running as service start script is not stable on stop or restart
+				if grep -q ^FETCHMAIL_ENABLED=yes /etc/kopano/default
+				then
+					RUNNING=$(ps -ef | grep -v grep | grep -c fetchmail)
+					if [ $RUNNING -gt 1 ]
+					then
+						echo "multiple fetchmail services found restarting 1 only.."
+						killall -q -9 fetchmail
+						if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm -f /var/run/fetchmail/fetchmail.pid ; fi
+					fi
+					if [ $RUNNING -gt 1 ] || [ $RUNNING -eq 0 ] 
+					then
+						service fetchmail start					
+					fi
+				fi
+				# restart or disable amavis and postgrey
 				if ! m_srv_on amavis
 				then
 					service amavis start
@@ -1255,7 +1349,7 @@ case $1 in
 				then
 					service postgrey start
 					sleep 2
-					if ! m_srv_on amavis postgrey ; then disable_postgrey ; fi
+					if ! m_srv_on postgrey ; then disable_postgrey ; fi
 				fi
 			fi
 		done

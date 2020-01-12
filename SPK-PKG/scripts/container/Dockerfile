@@ -285,6 +285,8 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$SEARCH_CONFIG~-C \$SEARCH_CONFIG~" /etc/init.d/kopano-search ; fi && \
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$SPAMD_CONFIG~-C \$SPAMD_CONFIG~" /etc/init.d/kopano-spamd ; fi && \
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$PRESENCE_CONFIG~-C \$PRESENCE_CONFIG~" /etc/init.d/kopano-presence ; fi && \
+# convert clamav-daemon to run in bg mode as it takes awfull long (1-2m) to load and blocks other services
+	sed -i -e "s~start-stop-daemon --start~start-stop-daemon --start -b~" /etc/init.d/clamav-daemon && \ 
 # exclude userscripts from exposed mountpoint in synology softlink it instead,
 	mv /etc/kopano/userscripts /etc/kopano/k-userscripts && \
 	cp -R /etc/kopano/k-userscripts /etc && rm -R /etc/kopano/k-userscripts && \
@@ -318,38 +320,35 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	mkdir -p /etc/kopano/custom && echo '#!/bin/sh' > /etc/kopano/custom/cron.hourly && echo "# put your kopnao cron jobs here" >> /etc/kopano/custom/cron.hourly && \	
 	cp /etc/kopano/custom/cron.hourly /etc/kopano/custom/cron.daily && cp /etc/kopano/custom/cron.daily /etc/kopano/custom/cron.weekly && chmod 750 /etc/kopano/custom/cron.* && chown root.kopano /etc/kopano/custom/cron.* && \
 	ln -sf /etc/kopano/custom/cron.hourly /etc/cron.hourly/kopano && ln -sf /etc/kopano/custom/cron.daily /etc/cron.daily/kopano && ln -sf /etc/kopano/custom/cron.weekly /etc/cron.weekly/kopano && \
-# prevent syslog logrotate warnings
-	sed -i -e 's/\(printerror "could not determine current runlevel"\)/#\1/' /usr/sbin/invoke-rc.d && \
-	sed -i -e 's/^\(POLICYHELPER=\).*/\1/' /usr/sbin/invoke-rc.d && \
-# adjust  logrotate path in php7x-fpm, rsyslog for mail.*, daemon, messages, add amavis, fetchmail, spamassassin in /etc/logrotate.d/
-	sed -i -e "s~/var/log/php${PHP_VER}-fpm.log~/var/log/kopano/php-fpm.log~" /etc/logrotate.d/php${PHP_VER}-fpm && \
-	sed -i -e "s~/var/log/syslog~/var/log/kopano/syslog~" /etc/logrotate.d/rsyslog && \
-	sed -i -e "s~/var/log/mail~/var/log/kopano/mail~" /etc/logrotate.d/rsyslog && \
-	sed -i -e "s~/var/log/daemon~/var/log/kopano/daemon~" /etc/logrotate.d/rsyslog && \
-	sed -i -e "s~/var/log/messages~/var/log/kopano/messages~" /etc/logrotate.d/rsyslog && \
-	sed -i -e "s~/var/log/kopano/mail.log~/var/log/kopano/mail.log\n/var/log/kopano/amavis.log~" /etc/logrotate.d/rsyslog && \
-	sed -i -e "s~/var/log/kopano/amavis.log~/var/log/kopano/amavis.log\n/var/log/kopano/fetchmail.log~" /etc/logrotate.d/rsyslog && \
-	sed -i -e "s~/var/log/kopano/fetchmail.log~/var/log/kopano/fetchmail.log\n/var/log/kopano/spamassassin.log~" /etc/logrotate.d/rsyslog && \
-# now we set the permission via su user group in existing files in /etc/logrotate.d/
-	sed -i -e "s~log {~log {\n\tsu kopano kopano~g" /etc/logrotate.d/kopano && \
-	sed -i -e "s~/var/log/~/var/log/kopano/~" /etc/logrotate.d/z-push.lr && \
-	sed -i -e "s~log {~log {\n\tsu www-data kopano~" /etc/logrotate.d/z-push.lr && \
-	sed -i -e "s~www-data www-data~www-data kopano~g" /etc/logrotate.d/z-push.lr && \
-	sed -i -e "s~log {~log {\n\tsu root kopano~" /etc/logrotate.d/clamav-daemon && \
-	sed -i -e "s~log {~log {\n\tsu root kopano~" /etc/logrotate.d/clamav-freshclam && \
-	sed -i -e "s~/var/log/nginx/~/var/log/kopano/nginx~" /etc/logrotate.d/nginx && \
-	sed -i -e "s~log {~log {\n\tsu root kopano~" /etc/logrotate.d/nginx && \
-	sed -i -e "s~www-data adm~root kopano~" /etc/logrotate.d/nginx && \
-
-	sed -i -e "s~{~{\n\tsu root kopano~" /etc/logrotate.d/rsyslog && \
 # expose postfix, nginx and other log files to kopano folder
 	ln -sf /var/log/kopano/mail.log /var/log/mail.log && ln -sf /var/log/kopano/mail.info /var/log/mail.info  && \
 	ln -sf /var/log/kopano/mail.warn /var/log/mail.warn && ln -sf /var/log/kopano/mail.err /var/log/mail.err && \
-	if [ -e /var/log/clamav ] ; then rm -R /var/log/clamav ; fi  && ln -sf /var/log/kopano /var/log/clamav && \
+	if [ -e /var/log/clamav ] ; then rm -R /var/log/clamav ; fi && ln -sf /var/log/kopano /var/log/clamav && \
+	ln -sf /var/log/kopano /var/log/amavis && ln -sf /var/log/kopano /var/log/spamassassin && \
+	ln -sf /var/log/kopano/daemon.log /var/log/daemon.log && \
 	ln -sf /var/log/kopano/messages /var/log/messages && ln -sf /var/log/kopano/syslog /var/log/syslog && \
-	ln -sf /var/log/kopano/daemon.log /var/log/daemon.log && ln -sf /var/log/kopano /var/log/spamassassin && \
 	ln -sf /var/log/kopano/php-fpm.log /var/log/php${PHP_VER}-fpm.log && \
 	ln -sf /var/log/kopano/nginx-access.log /var/log/nginx/access.log && ln -sf /var/log/kopano/nginx-error.log /var/log/nginx/error.log && \
+# adjust logrotate users and path in php7x-fpm, rsyslog for mail.*, daemon, messages, add amavis, fetchmail, spamassassin in /etc/logrotate.d/
+	sed -i -e "s~log {~log {\n     su root kopano~" /etc/logrotate.d/clamav-daemon && \
+	sed -i -e "s~log {~log {\n     su root kopano~" /etc/logrotate.d/clamav-freshclam && \
+	mv /etc/logrotate.d/razor /etc/logrotate.d/amavis && sed -i -e "s~/var/log~/var/log/kopano/amavis.log\n/var/log/kopano/spamassassin.log\n/var/log/kopano~" /etc/logrotate.d/amavis && \
+	sed -i -e "s~log {~log {\n\tsu amavis kopano~g" /etc/logrotate.d/amavis && \
+	sed -i -e "s~log {~log {\n\tsu kopano kopano~g" /etc/logrotate.d/kopano && \
+	sed -i -e "s~log {~log {\n\tsu www-data kopano~" /etc/logrotate.d/z-push.lr && \
+	sed -i -e "s~/var/log/~/var/log/kopano/~" /etc/logrotate.d/z-push.lr && \
+	sed -i -e "s~log {~log {\n\tsu root kopano~" /etc/logrotate.d/nginx && \
+	sed -i -e "s~/var/log/nginx/~/var/log/kopano/nginx~" /etc/logrotate.d/nginx && \
+	sed -i -e "s~log {~log {\n\tsu root kopano~" /etc/logrotate.d/php${PHP_VER}-fpm && \
+	sed -i -e "s~/var/log/php${PHP_VER}-fpm.log~/var/log/kopano/php-fpm.log~" /etc/logrotate.d/php${PHP_VER}-fpm && \
+	sed -i -e "s~{~{\n\tsu root kopano~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/syslog~/var/log/kopano/syslog~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/daemon~/var/log/kopano/daemon~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/messages~/var/log/kopano/messages~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~/var/log/mail~/var/log/kopano/mail~" /etc/logrotate.d/rsyslog && \
+# prevent syslog logrotate warnings
+	sed -i -e 's/\(printerror "could not determine current runlevel"\)/#\1/' /usr/sbin/invoke-rc.d && \
+	sed -i -e 's/^\(POLICYHELPER=\).*/\1/' /usr/sbin/invoke-rc.d && \
 # copy and softlink for webapp and all plugins by plugin-dir/config.php to /etc/kopano/webapp/plg.conf-pluginname.php
 	if [ -e /usr/share/kopano-webapp/config.php ] && [ ! -e /etc/kopano/webapp/webapp.conf.php ] ; then cp /usr/share/kopano-webapp/config.php /etc/kopano/webapp/webapp.conf.php ; fi && \
 	if [ -e /etc/kopano/webapp/webapp.conf.php ] ; then ln -sf /etc/kopano/webapp/webapp.conf.php /usr/share/kopano-webapp/config.php ; fi && \

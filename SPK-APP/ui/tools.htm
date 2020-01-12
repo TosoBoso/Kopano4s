@@ -10,85 +10,33 @@
 	<!--:menu:-->
 	<!-- Tab links -->
 	<div class="tab"><ol>
-		<li><a href="#" class="tablinks" onclick="openTab(event, 'IP-Autoblock')" id="defaultOpen">IP-Autoblock</a></li>
-		<li><a href="#" class="tablinks" onclick="openTab(event, 'SPF')">SPF</a></li>
+		<li><a href="#autoblock" class="tablinks" onclick="openTab(event, 'autoblock-tab')" id="autoblock">IP-Autoblock</a></li>
+		<li><a href="#replication" class="tablinks" onclick="openTab(event, 'replication-tab')" id="replication">DB-Replication</a></li>
 	</ol></div>
 	<!-- Tab content -->
 	<hr>
-	<div id="IP-Autoblock" class="tabcontent">
+	<div id="autoblock-tab" class="tabcontent">
 		<form action="index.cgi" method="get">
 		<input type="hidden" name="page" value="tools"/>
+		<input type="hidden" name="tab" value="autoblock"/>
 		<input type="submit" name="action" value="List-IPs"/>&nbsp;
 		<input type="submit" name="action" value="Activate"/>&nbsp;
 		<input type="submit" name="action" value="Disable"/>&nbsp;
 		</form>
-		<div class="mono"><textarea name="reply" rows="10" cols="132"> <!--:toolstxt:--></textarea></div>
-		<p><b><u>Tips:</u></b>&nbsp;Autoblock works in concert with <a href="https://www.cphub.net/?p=f2b4s" target="_blank">Fail2Ban4S</a>. Activate copies over the k4s f2b config files. Disable removes them. List-IPs shows bans.</p>
+		<div class="mono"><textarea name="reply" rows="10" cols="132"> <!--:autoblocktxt:--></textarea></div>
+		<p><b><u>Tips:</u></b>&nbsp;Autoblock works combined with <a href="https://www.cphub.net/?p=f2b4s" target="_blank">Fail2Ban4S</a>. Activate copies over the k4s f2b configuration. Disable removes it. List-IPs shows bans.</p>
 	</div>
-	<div id="SPF" class="tabcontent">
-		<h3>SPF Wizard powerd by openspf.org - copy and paste the below result as your DNS entry -</h3>
-		<input type="text" name="dnsentry" id="dnsentry" size="90" value=""/>
-    	<div class="form"><table>
-			<tr>
-                <td style="width: 500px;">Your Domain:</td>
-                <td><input type="text" name="domain" id="domain" class="frmT" title="The domain for which you want to add the SPF record.<br />i.e. <b>example.com</b>" onfocusout="getSPF();" /></td>
-            </tr>
-			<tr>
-				<td>Allow servers listed as MX to send email for this domain:</td>
-				<td>
-					<select name="mx_allow" id="mx_allow" class="frmS" title="Do these MX servers send emails for this domain?Current handlers:<br><b>mx1.domain.com<br>mx2.domain.com</b>" onchange="getSPF();" >
-						<option value="0">No</option>
-						<option value="1">Yes (recommended)</option>
-					</select>
-				</td>
-			</tr>
-			
-			            <tr>
-                <td>Allow current IP address of the domain to send email for this domain:</td>
-                <td>
-                    <select name="ip_allow" id="ip_allow" class="frmS" title="Do the domain main IP send emails for this domain?<br>Main IP: <b>10.0.0.1<b>" onchange="getSPF();">
-                        <option value="0">No</option>
-                        <option value="1">Yes (recommended)</option>
-                    </select>
-                </td>
-            </tr>
-            <tr>
-                <td>Allow any hostname ending in <span id="domainSP" style="font-weight: bold;"></span> to send email for this domain:</td>
-                <td>
-                    <select name="host_allow" id="host_allow" class="frmS" title="Are all subdomains allowed to send emails for this main domain?" onchange="getSPF();">
-                        <option value="0">No (recommended)</option>
-                        <option value="1">Yes</option>
-                    </select>
-                </td>
-            </tr>
-            <tr>
-                <td>IP addresses in CIDR format that deliver or relay mail for this domain:</td>
-                <td><input type="text" name="ip_additional" id="ip_additional" class="frmT" title="Add the server IP addresses that may send mail with subnet mask space separated. Use /32 for a single IP.<br />i.e. <b>10.0.0.1/32 192.168.0.1/28</b>" onkeyup="getSPF();" /></td>
-            </tr>
-            <tr>
-                <td>Add any other server hostname that may deliver or relay mail for this domain:</td>
-                <td><input type="text" name="host_additional" id="host_additional" class="frmT" title="Add the servers that are allowed to send mails for this domain space separated.<br />i.e. <b>ns1.example.com ns2.example.com</b>" onkeyup="getSPF();" /></td>
-            </tr>
-            <tr>
-                <td>Any domains that may deliver or relay mail for this domain:</td>
-                <td><input type="text" name="domain_additional" id="domain_additional" class="frmT" title="Add other domains that can send emails for this domain, such a third party service space separated.<br />i.e. <b>3rdparty.com 1stparty.com</b>" onkeyup="getSPF();" /></td>
-            </tr>
-            <tr>
-                <td>How strict should be the servers treating the emails?:</td>
-                <td>
-                    <select name="restrict" id="restrict" class="frmS" title="Select the option that best fits." onchange="getSPF();">
-                        <option value="0">-</option>
-                        <option value="1">Fail (Will be rejected)</option>
-                        <option value="2">SoftFail (Accepted but marked)</option>
-                        <option value="3">Neutral (Probably accepted)</option>
-                    </select>
-                </td>
-            </tr>
-			
-        </table></div>
-    	<br>
-    	<!-- TODO: in perl dig +short txt to get existing entry -->
-		<p><b><u>Tips:</u></b>&nbsp;</p>
+	<div id="replication-tab" class="tabcontent">
+		<form action="index.cgi" method="get">
+		<input type="hidden" name="page" value="tools"/>
+		<input type="hidden" name="tab" value="replication"/>
+		<input type="submit" name="action" value="State"/>&nbsp;
+		<input type="submit" name="action" value="Activate"/>&nbsp;
+		<input type="submit" name="action" value="Disable"/>&nbsp;
+		<h3>K4S-Databse replication wizard is still work in progress.. </h3>
+		</form>
+		<div class="mono"><textarea name="reply" rows="10" cols="132"> <!--:replicationtxt:--></textarea></div>
+		<p><b><u>Tips:</u></b>&nbsp;..</p>
 	</div>
 	<!-- style for bottom position -->
 	<div style='position:absolute;bottom:0;padding:0px 0px;'>

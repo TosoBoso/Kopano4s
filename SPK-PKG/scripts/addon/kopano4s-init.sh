@@ -169,18 +169,17 @@ then
 fi
 if [ "$MOB" = "ON" ]
 then
-#find /usr/share/kopano-webapp -type d -exec chmod 750 "{}" ";"
 	# remove legacy z-push incl. state in kopano-etc and backup area
 	if [ -e $K_SHARE/backup/etc/kopano/z-push ] ; then rm -R $K_SHARE/backup/etc/kopano/z-push ; fi
 	if [ -e /etc/kopano/z-push ] && [ -h /etc/kopano/z-push ] ; then rm /etc/kopano/z-push ; fi
 	if [ -e /etc/kopano/z-push ] && [ ! -h /etc/kopano/z-push ] ; then rm -R /etc/kopano/z-push ; fi
-	# delete all subdirectories of z-push aka mindepth 1
+	# delete files and all subdirectories of z-push aka mindepth 1
 	SDIR=$(find $K_SHARE/z-push -mindepth 1 -maxdepth 1 -type d -exec basename "{}" ";")
 	for S in $SDIR ; do rm -R $K_SHARE/z-push/$S ; done 
 	find $K_SHARE/z-push -type f -exec rm "{}" ";"
 	if [ "$ACL" = "OFF" ]
 	then
-		chown -R http.kopano $K_SHARE/z-push
+		chown -R http.http $K_SHARE/z-push
 		chmod 770 $K_SHARE/z-push
 	fi
 fi
@@ -285,14 +284,9 @@ then
 		rm /tmp/docker-run.err
 		# init phase docker post build
 		INIT_DOCKER
-		if grep -q ^AMAVISD_ENABLED=yes /etc/kopano/default
-		then 
-			WAIT=120
-		else
-			WAIT=60
-		fi
+		WAIT=20
 		if [ $# -gt 1 ] && [ "$2" = "nowait" ] ; then WAIT=1 ; fi
-		echo "waiting for services to restart: ${WAIT}s.."
+		echo "waiting for services to restart: ${WAIT}ss.."
 		sleep $WAIT
 		echo -e "\n" | docker exec -i kopano4s init.sh status
 fi

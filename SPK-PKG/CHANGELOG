@@ -1,3 +1,6 @@
+[2020-01-02 v.1.1.0  [Deal with different php-fpm versions, enhancements Amavis & ClamAV incl. bg mode plus UI]
+[2019-12-25 v.1.0.9  [Enhancements to MySQL and Kopano buffer tuning % patterns incl. kaopano4s-tuning command]
+[2019-12-20 v.1.0.8  [Switch to Supported 8.7.7, Community 9.01; Fix logrotate mail/php7.* recursive issue]
 [2019-11-16 v.1.0.7  [Integration with Fail2Ban4s. Enhanced error handling container init & DSM5 support]
 [2019-11-03 v.1.0.6  [Fix migration edition add user via gui & restore-user, fix Admin-GUI issues show users]
 [2019-09-15 v.1.0.5  [Support to run k4s beta on DSM 5.2 for migration, enhancements kopano4s-restore-user]
@@ -24,4 +27,4 @@
 [2018-05-22 v.0.8.3  [Dagent default with no plugin, enable pid-/log-file in all cfgs, add pflogsumm]
 [2018-05-19 v.0.8.2  [Option Migration version for Zarafa import and container with no exposed ports]
 [2018-05-13 v.0.8.1  [Initial Kopano4s release on Docker forked from Zarafa4home v. 0.75]
-Roadmap: PHP 7.2 -in testing,  SPAM/AV GUI, Kopano meet, mattermost, LDAP integration, Tools/Report GUI.
+Roadmap: PHP 7.2 for Default / Supported, DMARC, Kopano meet, mattermost, LDAP integration.

@@ -24,13 +24,13 @@ if [ "$CSV" = "YES" ]
 then
 	echo "k-user, device name, last sync, attention, device-id"
 else
-	echo -e "k-user \t| device name \t\t| last sync \t\t| device-id \t\t\t| attention"
-	echo -e "-------------------------------------------------------------------------------------------------------------------"
+	echo -e "k-user \t| device name \t\t\t| last sync \t\t| device-id \t\t\t| attention"
+	echo -e "-------------------------------------------------------------------------------------------------------------------------"
 fi
 
 # send enter and skip -t as it messes up when called from perl ui
 # run kopano admin command and strip of unneccessary tabs etc
-DEVLST=$(echo -e "\n" | $SUDO docker exec -i kopano4s /usr/share/z-push/z-push-admin.php -a list | grep -v "All synchronized" | grep -v "Device id" | grep -v "\-\-\-" | cut -d " " -f1)
+DEVLST=$(echo -e "\n" | $SUDO docker exec -i kopano4s /usr/share/z-push/z-push-admin.php -a list | grep -v "All synchronized" | grep -v "no devices found" | grep -v "Device id" | grep -v "\-\-\-" | cut -d " " -f1)
 for DEV in $DEVLST; do
 	echo -e "\n" | $SUDO docker exec -i kopano4s /usr/share/z-push/z-push-admin.php -a list -d $DEV >/tmp/kdev
 	# can have multiple users per device: nested loop
@@ -42,7 +42,7 @@ for DEV in $DEVLST; do
 		DTYPE=$(grep type /tmp/kdev | cut -d ":" -f2- | sed "s~^[ \t]*~~")
 		LSYNC=$(grep Last /tmp/kdev | cut -d ":" -f2- | sed "s~^[ \t]*~~")
 		ATTN=$(grep Attention /tmp/kdev | cut -d ":" -f2- | sed "s~^[ \t]*~~")
-		if [ "_$DNAME" = "_" ]
+		if [ -z "$DNAME" ]
 		then
 			DNAME=$DTYPE
 		fi
@@ -50,7 +50,23 @@ for DEV in $DEVLST; do
 		then
 			echo "$KUSER,$DNAME,$LSYNC,$ATTN,$DEV"
 		else
-			# lsync, dname smaller 10 chars add extra tab
+			# kuser, dname, lsync smaller 7 / 20/10 / 6 chars add extra tabs
+			if [ "$KUSER" = "no user data synchronized to device" ]
+			then
+				KUSER="no user data"
+			fi
+			if [ ${#KUSER} -lt 7 ]
+			then
+				KUSER="$KUSER\t"
+			fi
+			if [ ${#DNAME} -eq 20 ]
+			then
+				DNAME="$DNAME "
+			fi
+			if [ ${#DNAME} -lt 20 ]
+			then
+				DNAME="$DNAME\t\t"
+			fi
 			if [ ${#DNAME} -lt 10 ]
 			then
 				DNAME="$DNAME\t"
@@ -63,4 +79,5 @@ for DEV in $DEVLST; do
 		fi
 	done
 done
+if [ -z "$DEVLST" ] ; then echo "no devices found" ; fi
 if [ -e /tmp/kdev ] ; then rm /tmp/kdev ; fi
