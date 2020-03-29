@@ -978,6 +978,8 @@ if ($page eq 'smtp')
             my $blockstr = '"?.*\. (' . $new_blocktype . ')"?/ REJECT"';
             my $ret = setPatternValue($hdrcfg, '/name ?=', $blockstr);
             $blocktype = $new_blocktype;
+            # also save in package.cfg
+            $ret = setCfgValue($pkgcfg, "BLOCK_ATTACHMENTS", $blocktype, 'shstring');
         }
     }
     if ( $action eq 'Update' ) {
@@ -1086,7 +1088,7 @@ if ($page eq 'fetch')
                 setPatternValue($fetchcfg, '#mda=', 'on', 'shell');
             }
             else {
-                setPatternValue($fetchcfg, '#mda=', 'of', 'shell');
+                setPatternValue($fetchcfg, '#mda=', 'off', 'shell');
             }
         }
     }
@@ -1808,7 +1810,7 @@ if ($page eq 'cfg')
             $tmplhtml{'status'} .= "Resetting container. ";
         }
     }
-    if ( $action eq "Show" || $action eq "Update" || $action eq "Replace" || $action eq "Reset" ) {
+    if ( $action eq "Show" || $action eq "Update" || $action eq "Reset" ) {
         my $cfile = ''; # cfg or plg file to show or update or reset
         my $ifile = ''; # cfg or plg file to reset from or save copy
         my $section = param('section'); 
@@ -1828,37 +1830,52 @@ if ($page eq 'cfg')
             $ifile = "/etc/kopano/webapp/dist/plg.conf-$splg";
         }
         if ( $action eq "Update" ) {
-            my $entry = param ('cfgentry');
-            $tmplhtml{'cfgentry'} = $entry;
-            if ( $entry ne '' ) {
-                if ( ! -e "$ifile" ) { # create an init copy b4 update
-                    system("/bin/cp $cfile $ifile");
-                }
-                if ( $cfgpath ne '/etc/z-push' && $cfgpath ne '/etc/kopano/webapp' ) {
-                    my ($key,$val) = split('=', $entry);
-                    if ( $key && $val ) {
-                        $key =~ s/^\s+|\s+$//g; # trim whitespaces
-                        $val =~ s/^\s+|\s+$//g;
-                        $ret = setCfgValue("$cfile", $key, $val, '');
-                        $tmplhtml{'status'} = "Updated $cfile for $key = $val. ";
+            if ( $section eq 'cfg') { # section config
+                my $entry = param ('cfgentry');
+                $tmplhtml{'cfgentry'} = $entry;
+                if ( $entry ne '' ) {
+                    if ( ! -e "$ifile" ) { # create an init copy b4 update
+                        system("/bin/cp $cfile $ifile");
+                    }
+                    if ( $cfgpath ne '/etc/z-push' && $cfgpath ne '/etc/kopano/webapp' ) {
+                        my ($key,$val) = split('=', $entry);
+                        if ( $key && $val ) {
+                            $key =~ s/^\s+|\s+$//g; # trim whitespaces
+                            $val =~ s/^\s+|\s+$//g;
+                            my $type='';
+                            $type = 'shell' if ( $scfg eq 'default' ); # for default change type to shell aka no space post =
+                            $ret = setCfgValue("$cfile", $key, $val, $type);
+                            $tmplhtml{'status'} = "Updated $cfile for $key = $val. ";
+                            #$tmplhtml{'status'} .= $ret;
+                        }
+                    }
+                    else { # update-replace mode for php define entries
+                        my $key = substr($entry, 0, -8) ; # take 8 chars from end usually it is true vs. false
+                        if ( $entry =~ /"/ ) { # be careful with double-quotes
+                            $ret = replacePatternValue("$cfile", $key, $entry, 'doublequotes');
+                        }
+                        else {
+                            $ret = replacePatternValue("$cfile", $key, $entry, '');
+                        }
+                        $tmplhtml{'status'} = "Replaced in $cfile for $entry. ";
                         #$tmplhtml{'status'} .= $ret;
                     }
                 }
-                else {
-                    my $key = substr($entry, 0, -9) ; # take 10 chars from end usually it is true vs. false
-                    $ret = replacePatternValue("$cfile", $key, $entry, 'doublequotes');
-                    $tmplhtml{'status'} = "Replaced in $cfile for $entry. ";
-                }
             }
-        }
-        if ( $action eq "Replace" ) { # plg replace line mode
-            my $entry = param ('plgentry');
-            $tmplhtml{'plgentry'} = $entry;
-            if ( $entry ne '' ) {
-                my $key = substr($entry, 0, -9) ; # take 10 chars from end usually it is true vs. false
-                $ret = replacePatternValue("$cfile", $key, $entry, '');
-                $tmplhtml{'status'} = "Replaced in $cfile for $entry. ";
-                #$tmplhtml{'status'} .= $ret;
+            else { # section plugin always in update-replace mode
+                my $entry = param ('plgentry');
+                $tmplhtml{'plgentry'} = $entry;
+                if ( $entry ne '' ) {
+                    my $key = substr($entry, 0, -8) ; # take 8 chars from end usually it is true vs. false
+                    if ( $entry =~ /"/ ) { # be careful with double-quotes
+                        $ret = replacePatternValue("$cfile", $key, $entry, 'doublequotes');
+                    }
+                    else {
+                        $ret = replacePatternValue("$cfile", $key, $entry, '');
+                    }
+                    $tmplhtml{'status'} = "Replaced in $cfile for $entry. ";
+                    #$tmplhtml{'status'} .= $ret;
+                }
             }
         }
         if ( $action eq "Reset" ) {
@@ -2163,7 +2180,7 @@ if ($page eq 'cmd')
     my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
     my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
     my @commands = ('kopano-admin', 'kopano-cli', 'kopano-storeadm', 'kopano-status', 'kopano-restart', 'kopano4s-init', 'kopano4s-optionals', 'kopano-postfix', 'kopano-fetchmail', 'kopano-backup', 'kopano4s-restore-user', 'kopano4s-backup', 
-                    'kopano4s-downgrade', 'kopano4s-upgrade', 'kopano4s-tuning', 'kopano4s-attachment-tofs', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
+                    'kopano4s-downgrade', 'kopano4s-upgrade', 'kopano4s-tuning', 'kopano4s-attachment-tofs', 'kopano4s-replication', 'kopano-localize-folders', 'kopano-set-oof', 'kopano-pubfolders', 'kopano-gab-sync', 'kopano-folderlist', 'kopano-devicelist', 'z-push-admin');
     # process command first
     if ($action eq "Run") {
         $rcmd = param('rcmd');
@@ -2257,13 +2274,14 @@ if ($page eq 'cmd')
 }
 $tmplhtml{'debug'} = "<!-- debug info:" . $debug . "-->";
 # *** end of process body
-
 # *** process common tail: print html page
 if (open(IN,"$page.htm")) {
     while (<IN>) {
-        # add dynamic template-html part before printing page
+        # add the dynamic template-html part $tmplhtml{$1} gatherd from comment before printing
         s/<!--:([^:]+):-->/$tmplhtml{$1}/g;
-        print $_;
+        # special case: input string with embedded double quotes so change to value= single quotes
+        s/value=\"([\w\s="-.,;]+)\"/value='$1'/ if ($_ =~ /input type="text"/ && $_ =~ /value=\".*\".*\"/);
+        print "$_";
     }
     print "\n";
     close(IN);

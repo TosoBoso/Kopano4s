@@ -5,14 +5,19 @@ FRC="/etc/kopano/fetchmailrc"
 case "$1" in
 	help)
 	echo "kopano-fetchmail (c) TosoBoso: script for fetchmail integration with kopano via postfix"
-	echo "Usage: kopano-fetchmail list, add, remove, (no)keep, (re)start, stop, status, init, test, help"
-	echo "list entries, add new fetchmail user or remove it. Init as a service or run in test mode"
+	echo "Usage: kopano-fetchmail list, add, remove, (no)keep, (re)start, stop, status, init, test, help."
+	echo "list entries, add new fetchmail user or remove it. Init as a service or run in test mode to debug."
 	exit 0
 	;;
 	status)
 	if service fetchmail status | grep -q "fetchmail is running"
 	then
-		echo "fetchmail is running."
+		if grep -q '#mda=on' $FRC
+		then
+			echo "fetchmail is running mda-mode (no Spam/AV)."		
+		else
+			echo "fetchmail is running via postfix and Spam/AV."		
+		fi
 	else
 		echo "fetchmail is NOT running."	
 	fi	

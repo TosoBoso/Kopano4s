@@ -251,17 +251,14 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	kopano-webapp-plugin-mdm \
 	kopano-webapp-plugin-pimfolder \
 	kopano-webapp-plugin-quickitems \
-	kopano-webapp-plugin-spell-en \
-	kopano-webapp-plugin-spell-de-de \
-	kopano-webapp-plugin-spell-es \
-	kopano-webapp-plugin-spell-fr \
-	kopano-webapp-plugin-spell-it \
-	kopano-webapp-plugin-spell-nl \
 	kopano-webapp-plugin-titlecounter \
 	kopano-webapp-plugin-webappmanual && \
+# issues community edition with presence, plugins smime and spell-checker
 	if [ "$EDITION" != "Community" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-smime  ; fi && \
+	if [ "$EDITION" != "Community" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-spell-en kopano-webapp-plugin-spell-de-de kopano-webapp-plugin-spell-es kopano-webapp-plugin-spell-fr kopano-webapp-plugin-spell-it kopano-webapp-plugin-spell-nl ; fi && \
+	if [ "$EDITION" != "Community" ] && [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-presence ; fi && \
 # full package installs not part of migration package; removed kopano-webmeetings
-	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-spamd kopano-presence kopano-webapp-plugin-meetings ; fi && \
+	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-spamd kopano-webapp-plugin-meetings ; fi && \
 # 4later	mattermost-server kopano-webapp-plugin-mattermost \
 	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-files kopano-webapp-plugin-filesbackend-smb kopano-webapp-plugin-filesbackend-owncloud ; fi && \
 # copy over non core kopano plugins

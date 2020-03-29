@@ -362,8 +362,12 @@ set_acl()
 	find /usr/share/kopano-webapp -type d -exec chmod 750 "{}" ";"
 	find /usr/share/z-push -type f -exec chmod 640 "{}" ";"
 	find /usr/share/z-push -type d -exec chmod 750 "{}" ";"
+	# make z-push tools executable: listfolders, z-push-admin, z-push-top, gab-sync, gab2contacts
 	chmod 750 /usr/share/z-push/backend/kopano/listfolders.php
+	chmod 750 /usr/share/z-push/tools/gab-sync/gab-sync.php
+	chmod 750 /usr/share/z-push/tools/gab2contacts/gab2contacts.php
 	chmod 750 /usr/share/z-push/z-push-admin.php
+	chmod 750 /usr/share/z-push/z-push-top.php
 	chmod 771 /var/log/kopano
 	chmod 660 /var/log/kopano/*.log
 	chmod 660 /var/log/kopano/mail.*
@@ -532,9 +536,10 @@ init_kopano()
 	then
 		echo '<html><head><title>Got lost?</title>' > /var/www/html/index.html
 		echo '<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">' >> /var/www/html/index.html
-		echo '<style>body{text-align:center;vertical-align:middle;font-family:Verdana;font-size: 110%;}</style></head>' >> /var/www/html/index.html
-		echo '<body><br>Got lost ? Goto <a href="/webapp/index.php">Webapp</a> <a href="/Microsoft-Server-ActiveSync">Microsoft-Server-ActiveSync</a>' >> /var/www/html/index.html
-		echo '<br><br><img src="robot.png"></body></html>' >> /var/www/html/index.html
+		echo '<style>body{text-align:center;vertical-align:middle;font-family:Verdana;font-size: 110%;}</style>' >> /var/www/html/index.html
+		echo '<meta http-equiv="refresh" content="1; URL=/webapp/index.php"></head>' >> /var/www/html/index.html
+		echo '<body><br><img src="robot.png"><br>If redirect fails goto <a href="/webapp/index.php">Webapp</a>,' >> /var/www/html/index.html
+		echo '<a href="/Microsoft-Server-ActiveSync">Microsoft-Server-ActiveSync</a></body></html>' >> /var/www/html/index.html
 	fi
 	# sync amavis spam-bounce off from kopanos default to default-amavis as amavis bouncce is on initially
 	if grep -q ^BOUNCE_SPAM_ENABLED=no /etc/kopano/default
@@ -912,14 +917,14 @@ if [ ! -e /etc/kinit.done ]
 then
 	echo "image intializing UID, GID, etc-cfg, log, ssl, post-build"
 	# set init.run flag to avoid overlapping init /  upgrades
-	touch /etc/kopano/init.run
+	touch /etc/kopano.init
 	init_kopano
 	install_ssl
 	set_acl
 	post_build
 	if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default ; then echo "initializing av database.." && freshclam > /dev/null 2>&1; fi
 	# set init.done flag
-	if [ -e /etc/kopano/init.run ] ; then rm /etc/kopano/init.run ; fi
+	if [ -e /etc/kopano.init ] ; then rm /etc/kopano.init ; fi
 	echo "$(date "+%Y-%m-%d-%H:%M")" > /etc/kinit.done
 	if [ ! -e /run/mysqld/mysqld10.sock ]
 	then
@@ -1011,7 +1016,7 @@ case $1 in
 		fi
 		kill_kopano
 		# set init.run flag to avoid overlapping init /  upgrades
-		touch /etc/kopano/init.run
+		touch /etc/kopano.init
 		init_kopano
 		install_ssl
 		set_acl
@@ -1019,13 +1024,13 @@ case $1 in
 		if [ -e /etc/kopano.maintenance ] ; then rm /etc/kopano.maintenance ; fi
 		if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default ; then echo "initializing av database.." && freshclam > /dev/null 2>&1; fi
 		# set init.done flag
-		if [ -e /etc/kopano/init.run ] ; then rm /etc/kopano/init.run ; fi
+		if [ -e /etc/kopano.init ] ; then rm /etc/kopano.init ; fi
 		echo "$(date "+%Y-%m-%d-%H:%M")" > /etc/kinit.done
 		start_kopano
 		exit 0
 		;;
 	status)
-		if [ -e /etc/kopano4h/init.run ]
+		if [ -e /etc/kopano.init ]
 		then
 			echo "Init still running revisit for service run status later.."
 			exit 0
@@ -1266,11 +1271,13 @@ case $1 in
 		fi
 		;;
 	alive)
-		if ! k_supported_license 
+		if ! k_supported_license
 		then 
 			echo "fatal error: could no validate /etc/kopano/license/base for kopano supported edition"	
 			exit 1
 		fi
+		# set dockerhost as parent ip in hosts to make logging more readable for postfix etc.
+		if ! grep -q dockerhost /etc/hosts ; then echo "${PARENT}  dockerhost" >> /etc/hosts ; fi
 		# clean up old pid.files
 		if ls /var/run/kopano/*.pid 1> /dev/null 2>&1; then rm /var/run/kopano/*.pid ; fi
 		# dummy maintenance mode if flag is set

@@ -156,9 +156,9 @@ then
 		exit 1
 	fi
 	# do not restore in active slave mode as it breaks replication and stop if mysql read-only
-	if [ "$K_REPLICATION" = "SLAVE" ] && ( (kopano-replication | grep -q "running") || (grep -q "^read-only" "$MYETC"/my.cnf))
+	if [ "$K_REPLICATION" = "SLAVE" ] && ( (kopano4s-replication | grep -q "running") || (grep -q "^read-only" "$MYETC"/my.cnf))
 	then
-		MSG="refuse restore: replication running or mysql read-only do kopano-replication reset first"
+		MSG="refuse restore: replication running or mysql read-only do kopano4s-replication reset first"
 		echo "$MSG"
 		if [ "$NOTIFY" = "ON" ]
 		then
@@ -223,8 +223,9 @@ then
 		echo -e "$TS $MSG" >> "$DUMP_LOG"
 		echo "$TS $MSG"
 	fi
-	# restoring attachements if they exist
-	if [ "$ATTACHMENT_ON_FS" = "ON" ] && [ -e "$DUMP_PATH"/attachments-${TSTAMP}.tgz ] 
+	# restoring attachements if they exist and renaming old attachments naming convention
+	if [ -e "$DUMP_PATH"/attachments-${TSTAMP}.tgz ] ; then mv "$DUMP_PATH"/attachments-${TSTAMP}.tgz "$DUMP_PATH"/attachments-kopano-${TSTAMP}.tgz; fi
+	if [ "$ATTACHMENT_ON_FS" = "ON" ] && [ -e "$DUMP_PATH"/attachments-kopano-${TSTAMP}.tgz ] 
 	then
 		MSG="restoring attachments linked to $DB_NAME..."
 		TS=$(date "+%Y.%m.%d-%H:%M%S")
@@ -235,7 +236,7 @@ then
 		cd "$K_SHARE" || exit
 		if [ -e attachments.old ] ; then rm -R attachments.old ; fi
 		mv attachments attachments.old
-		tar -zxvf "$DUMP_PATH"/attachments-${TSTAMP}.tgz attachments/
+		tar -zxvf "$DUMP_PATH"/attachments-kopano-${TSTAMP}.tgz attachments/
 		chown -R kopano.kopano attachments
 		chmod 770 attachments
 		if [ -e attachments.old ] ; then rm -R attachments.old ; fi
@@ -333,6 +334,16 @@ set -o pipefail
 DBDUMPS=$(find $DUMP_PATH -name "$DPREFIX-*.sql.gz" | wc -l)
 while [ $DBDUMPS -ge $KEEP_BACKUPS ]
 do
+
+	if [ "$ATTACHMENT_ON_FS" = "ON" ]
+	then
+		# shellcheck disable=SC2012
+		TS=$(ls -tr1 "$DUMP_PATH"/"$DPREFIX"-*.sql.gz | head -n 1 | grep -o "[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]")
+		if [ -e "$DUMP_PATH"/attachments*-${TS}.tgz ]
+		then
+			rm "$DUMP_PATH"/attachments*-${TS}.tgz
+		fi
+	fi
 	# shellcheck disable=SC2012
 	# need to rewrite SC2012: Use find instead of ls to better handle non-alpha
 	ls -tr1 "$DUMP_PATH"/"$DPREFIX"-*.sql.gz | head -n 1 | xargs rm -f
@@ -396,7 +407,7 @@ then
 	echo -e "$MSG"
 	CUR_PATH=$(pwd)
 	cd "$K_SHARE" || exit
-	tar cfz "$DUMP_PATH"/attachments-${TSTAMP}.tgz attachments/
+	tar cfz "$DUMP_PATH"/attachments-kopano-${TSTAMP}.tgz attachments/
 	cd "$CUR_PATH" || exit
 fi
 ENDTIME=$(date +%s)

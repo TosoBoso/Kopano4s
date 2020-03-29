@@ -38,7 +38,7 @@ else
 	then
 		# not considering using { cmd1; cmd2}
 		# shellcheck disable=SC2129
-		echo "NOTIFY=1" > "$CFG"
+		echo "NOTIFY=ON" > "$CFG"
 		# shellcheck disable=SC2129
 		echo "NOTIFYTARGET=\"@administrators\"" >> "$CFG"
 		# shellcheck disable=SC2129
@@ -52,7 +52,7 @@ else
 fi
 # read config and add sql dump path
 . "$CFG"
-if [ "_$NOTIFY" = "_" ] ; then NOTIFY=0 ; fi
+if [ -z "$NOTIFY" ] ; then NOTIFY= "ON" ; fi
 if [ -n "$K_BACKUP_PATH" ] && [ -e "$K_BACKUP_PATH" ]
 then
 	DUMP_PATH="$K_BACKUP_PATH"
@@ -338,8 +338,8 @@ then
 		cat /tmp/out.sql
 		exit 1
 	fi
-	MSVR=$(grep Master_Host /tmp/out.sql | cut -d':' -f2-)	
-	MUSR=$(grep Master_User /tmp/out.sql | cut -d':' -f2-)
+	MSVR=$(grep -a Master_Host /tmp/out.sql | cut -d':' -f2-)	
+	MUSR=$(grep -a Master_User /tmp/out.sql | cut -d':' -f2-)
 	SQL="SHOW MASTER STATUS\G;"
 	$MYSQL -u$MUSR -p$K_REPLICATION_PWD -h$MSVR -e "$SQL" >/tmp/out.sql 2>&1
 	ERR=$?
@@ -349,8 +349,8 @@ then
 		cat /tmp/out.sql
 		exit 1
 	fi
-	LFNO=$(grep File /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
-	LPOS=$(grep Position /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+	LFNO=$(grep -a File /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+	LPOS=$(grep -a Position /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
 	LOGSYNC="CHANGE MASTER TO MASTER_LOG_FILE='${LFNO}', MASTER_LOG_POS=${LPOS}"
 	SQL="STOP SLAVE; RESET SLAVE; $LOGSYNC; START SLAVE;"
 	$MYSQL -uroot -p$2 -e "$SQL" >/tmp/out.sql 2>&1
@@ -568,13 +568,14 @@ then
 		cat /tmp/out.sql
 		exit 1
 	fi
+	# using grep -a to deal with pseudo binary file
 	SLIO=$(grep Slave_IO_Running /tmp/out.sql | cut -d':' -f2-)
 	# skip Slave_SQL_Running_State so only 1stl line via head -1
-	SLSQL=$(grep Slave_SQL_Running /tmp/out.sql | head -1 | cut -d':' -f2-)
-	SLSEC=$(grep Seconds_Behind_Master /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
-	MSVR=$(grep Master_Host /tmp/out.sql | cut -d':' -f2-)
-	MUSR=$(grep Master_User /tmp/out.sql | cut -d':' -f2-)
-	SERR=$(grep Last_Error /tmp/out.sql | cut -d':' -f2-)
+	SLSQL=$(grep -a Slave_SQL_Running /tmp/out.sql | head -1 | cut -d':' -f2-)
+	SLSEC=$(grep -a Seconds_Behind_Master /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+	MSVR=$(grep -a Master_Host /tmp/out.sql | cut -d':' -f2-)
+	MUSR=$(grep -a Master_User /tmp/out.sql | cut -d':' -f2-)
+	SERR=$(grep -a Last_Error /tmp/out.sql | cut -d':' -f2-)
 	MSG=""
 	RERR=0
 	if [ "$SLIO" != " Yes" ] && [ "$SLSQL" != " Yes" ]
@@ -621,9 +622,9 @@ then
 			cat /tmp/out.sql
 			exit 1
 		fi
-		LFNO=$(grep File /tmp/out.sql | cut -d':' -f2-)
-		LPOS=$(grep Position /tmp/out.sql | cut -d':' -f2-)
-		SSVR=$(grep Host /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+		LFNO=$(grep -a File /tmp/out.sql | cut -d':' -f2-)
+		LPOS=$(grep -a Position /tmp/out.sql | cut -d':' -f2-)
+		SSVR=$(grep -a Host /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
 		MSG="${MSG}:${LFNO} at${LPOS}"
 	else
 		if [ $RERR -eq 0 ]
@@ -632,7 +633,7 @@ then
 		fi
 	fi
 	echo "$MSG"
-	if [ $RERR -gt 0 ] && [ $NOTIFY -gt 0 ]
+	if [ $RERR -gt 0 ] && [ "$NOTIFY" = "ON" ]
 	then
 		/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" kopano-replication "$MSG"
 		exit 1
@@ -650,9 +651,9 @@ then
 		cat /tmp/out.sql
 		exit 1
 	fi	
-	LFNO=$(grep File /tmp/out.sql | cut -d':' -f2-)
-	LPOS=$(grep Position /tmp/out.sql | cut -d':' -f2-)
-	SSVRS=$(grep Host /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+	LFNO=$(grep -a File /tmp/out.sql | cut -d':' -f2-)
+	LPOS=$(grep -a Position /tmp/out.sql | cut -d':' -f2-)
+	SSVRS=$(grep -a Host /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
 	MSG=""
 	RERR=0
 	if [ $# -gt 0 ] && [ "$1" = "health" ]
@@ -676,12 +677,13 @@ then
 					exit 1
 				fi
 				SLIO=$(grep Slave_IO_Running /tmp/out.sql | cut -d':' -f2-)
-				SLSQL=$(grep Slave_SQL_Running /tmp/out.sql | cut -d':' -f2-)
-				SLSEC=$(grep Seconds_Behind_Master /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
-				MSVR=$(grep Master_Host /tmp/out.sql | cut -d':' -f2-)
-				MUSR=$(grep Master_User /tmp/out.sql | cut -d':' -f2-)
-				SERR=$(grep Last_Error /tmp/out.sql | cut -d':' -f2-)
-				SHST=$(grep hostname /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+				# skip Slave_SQL_Running_State so only 1stl line via head -1
+				SLSQL=$(grep -a Slave_SQL_Running /tmp/out.sql | head -1 | cut -d':' -f2-)
+				SLSEC=$(grep -a Seconds_Behind_Master /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
+				MSVR=$(grep -a Master_Host /tmp/out.sql | cut -d':' -f2-)
+				MUSR=$(grep -a Master_User /tmp/out.sql | cut -d':' -f2-)
+				SERR=$(grep -a Last_Error /tmp/out.sql | cut -d':' -f2-)
+				SHST=$(grep -a hostname /tmp/out.sql | cut -d':' -f2- | cut -c 2-)
 				if [ "$SLIO" != " Yes" ] && [ "$SLSQL" != " Yes" ]
 				then
 					MSG="io&sql replication $SSVR stopped"
@@ -721,7 +723,7 @@ then
 					fi
 				fi
 				echo "$MSG"
-				if [ $RERR -gt 0 ] && [ $NOTIFY -gt 0 ]
+				if [ $RERR -gt 0 ] && [ "$NOTIFY" = "ON" ]
 				then
 					/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" kopano-replication "$MSG"
 				fi
@@ -731,7 +733,7 @@ then
 		# without health and multible slave loop
 		MSG="replication running to slave $SSVRS by ${MSVR}${LFNO} at${LPOS}"
 		echo "$MSG"
-		if [ $RERR -gt 0 ] && [ $NOTIFY -gt 0 ]
+		if [ $RERR -gt 0 ] && [ "$NOTIFY" = "ON" ]
 		then
 			/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" kopano-replication "$MSG"
 			exit 1
