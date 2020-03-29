@@ -32,7 +32,7 @@ ENV	URL_CORE=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/support
 ENV URL_CORE=${URL_CORE:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/}}
 ENV URL_CORE=${URL_CORE:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/}}
 ENV URL_CORE=${URL_CORE:-https://download.kopano.io/community/core:/}
-ENV NAME_CORE=${DEFAULT_BUILD:+8.7.1.0_0+1-Debian_9.0-amd64.tar.gz}
+ENV NAME_CORE=${DEFAULT_BUILD:+8.7.7.0_0+11.d8a1f01-Debian_9.0-amd64.tar.gz}
 ENV NAME_CORE=${NAME_CORE:-${MIGRATION_BUILD:+8.4.5.0_0+33-Debian_9.0-amd64.tar.gz}}
 ENV NAME_CORE=${NAME_CORE:-${COMMUNITY_BUILD:+Debian_10-amd64.tar.gz}}
 ENV NAME_CORE=${NAME_CORE:-Debian_9.0-amd64.tar.gz}
@@ -40,7 +40,7 @@ ENV URL_WEBAPP=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/suppo
 ENV URL_WEBAPP=${URL_WEBAPP:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/archives/}}
 ENV URL_WEBAPP=${URL_WEBAPP:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/}}
 ENV URL_WEBAPP=${URL_WEBAPP:-https://download.kopano.io/community/webapp:/}
-ENV NAME_WEBAPP=${DEFAULT_BUILD:+3.5.6.2298+94-Debian_9.0-all.tar.gz}
+ENV NAME_WEBAPP=${DEFAULT_BUILD:+3.5.12.2482+108.4fb788c-Debian_9.0-all.tar.gz}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-${MIGRATION_BUILD:+3.4.24.1929+84-Debian_9.0-all.tar.gz}}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-${COMMUNITY_BUILD:+Debian_10-all.tar.gz}}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-Debian_9.0-all.tar.gz}
@@ -333,6 +333,7 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	sed -i -e "s~log {~log {\n\tsu amavis kopano~g" /etc/logrotate.d/amavis && \
 	sed -i -e "s~log {~log {\n\tsu kopano kopano~g" /etc/logrotate.d/kopano && \
 	sed -i -e "s~log {~log {\n\tsu www-data kopano~" /etc/logrotate.d/z-push.lr && \
+	sed -i -e "s~create www-data www-data~create www-data kopano~" /etc/logrotate.d/z-push.lr && \
 	sed -i -e "s~/var/log/~/var/log/kopano/~" /etc/logrotate.d/z-push.lr && \
 	sed -i -e "s~log {~log {\n\tsu root kopano~" /etc/logrotate.d/nginx && \
 	sed -i -e "s~/var/log/nginx/~/var/log/kopano/nginx~" /etc/logrotate.d/nginx && \

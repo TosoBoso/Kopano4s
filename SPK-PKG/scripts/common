@@ -906,6 +906,19 @@ PKG_PRE_CHECK()
 		fi
 	fi
 }
+# ** check if we can login with root my-sql pwd and issues warning hint fro mariadb pwd policy
+SQL_PWD_CHECK()
+{
+	local DB_MPASS="$PKGWIZ_DB_PASSWD"
+	local SQL="SHOW DATABASES;"
+	$MYSQL -uroot -p"${DB_MPASS}" -e "$SQL" >/tmp/out.sql 2>&1
+	local ERR=$?
+	if [ "$ERR" -eq 1 ]
+	then
+		GUI_MESSAGE "Could not validate SQL root pwd. MariaDB recently introduced pwd policy >10 chars, mixed letters etc invalidating old pwds. Consider resetting your pwd via mariadb GUI. "
+		exit 1
+	fi
+}
 # ** verify downloads available for building container otherwise exit
 DOWNL_PRE_CHECK()
 {
@@ -1116,7 +1129,9 @@ INIT_UPDATE()
 	# init K_SEARCH by enabled when it did not exist aka is empty (-z)
 	if [ -z "$K_SEARCH" ] ; then K_SEARCH="ON" ; fi
 	if [ -z "$UNBLOCK_AFTERD" ] ; then UNBLOCK_AFTERD=4 ; fi
-	if [ -z "$MOUNT_TIMEOUT" ] ; then MOUNT_TIMEOUT=2 ; fi
+	# set mount timeout to 30 if it did not exist or was set wrong to 2sec in 1.09
+	if [ -z "$MOUNT_TIMEOUT" ] ; then MOUNT_TIMEOUT=30 ; fi
+	if [ $MOUNT_TIMEOUT le 10 ] ; then MOUNT_TIMEOUT=30 ; fi
 	if [ -z "$SPAM_MX" ] ; then SPAM_MX="OFF" ; fi
 	# amavis now holds spamassasin and clamav in same directory and soft links are used in container
 	if [ -e "$K_SHARE/spamassasin" ] ; then rm "$K_SHARE/spamassasin" ; fi
@@ -1690,7 +1705,6 @@ SET_DOCKER_ENV()
 {
 	# we are soft-linking the mounts in docker share via etc to deal with Synology Docker GUI issues (mounts "outside")
 	# create soflinks from k-etc-docker-volumes to kopano-share for mounts into docker; create docker path for downloaded image case
-	# to get the right localtime and timezone mount /etc/localtime & /etc/TZ in container
 	$SUDO mkdir -p "$DOCKER_PATH/kopano4s"
 	$SUDO ln -sf "$ETC_PATH/kopano" "$DOCKER_PATH/kopano4s/etc-kopano"
 	$SUDO ln -sf "$ETC_PATH/z-push" "$DOCKER_PATH/kopano4s/etc-z-push"
@@ -1698,7 +1712,6 @@ SET_DOCKER_ENV()
 	$SUDO ln -sf "$K_SHARE/archive" "$DOCKER_PATH/kopano4s/archive"
 	$SUDO ln -sf "$K_SHARE/attachments" "$DOCKER_PATH/kopano4s/attachments"
 	$SUDO ln -sf "$K_BACKUP_PATH" "$DOCKER_PATH/kopano4s/backup"
-	$SUDO ln -sf /etc/localtime "$DOCKER_PATH/kopano4s/localtime"
 	$SUDO ln -sf "$K_SHARE/log" "$DOCKER_PATH/kopano4s/log"
 	$SUDO ln -sf /run/mysqld "$DOCKER_PATH/kopano4s/mysocket"
 	$SUDO ln -sf "$K_SHARE/postgrey" "$DOCKER_PATH/kopano4s/postgrey"
@@ -1728,7 +1741,6 @@ SET_DOCKER_ENV()
 	local K_ARC="$DOCKER_PATH/kopano4s/archive"
 	local K_ATC="$DOCKER_PATH/kopano4s/attachments"
 	local K_BUP="$DOCKER_PATH/kopano4s/backup"
-	local K_LT="$DOCKER_PATH/kopano4s/localtime"
 	local K_LOG="$DOCKER_PATH/kopano4s/log"
 	local M_SOCK="$DOCKER_PATH/kopano4s/mysocket"
 	local K_GRY="$DOCKER_PATH/kopano4s/postgrey"
@@ -1737,7 +1749,7 @@ SET_DOCKER_ENV()
 	local K_SPL="$DOCKER_PATH/kopano4s/spool"
 	local K_ZPU="$DOCKER_PATH/kopano4s/z-push"
 
-	DOCKER_MOUNTS="-v $M_SOCK:/run/mysqld:ro -v $K_RUN:/run/kopano -v $K_LT:/etc/localtime:ro -v $K_ETC:/etc/kopano -v $Z_ETC:/etc/z-push \
+	DOCKER_MOUNTS="-v $M_SOCK:/run/mysqld:ro -v $K_RUN:/run/kopano -v $K_ETC:/etc/kopano -v $Z_ETC:/etc/z-push \
 	-v $K_AMV:/var/lib/amavis -v $K_ARC:/var/lib/kopano/archive -v $K_ATC:/var/lib/kopano/attachments -v $K_BUP:/var/lib/kopano/backup \
 	-v $K_LOG:/var/log/kopano -v $K_GRY:/var/lib/postgrey -v $K_SRC:/var/lib/kopano/search -v $K_SPL:/var/spool/postfix -v $K_ZPU:/var/lib/z-push"
 	# set tls name preferred so core componets like server expose with right name via 237
@@ -1820,8 +1832,9 @@ SET_SOFTLINKS()
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-fix-ipm-subtree.sh /usr/local/bin/kopano-fix-ipm-subtree
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-folderlist.sh /usr/local/bin/kopano-folderlist
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-fsck.sh /usr/local/bin/kopano-fsck
-	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-localize-folders.sh /usr/local/bin/kopano-localize-folders
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-gab-sync.sh /usr/local/bin/kopano-gab-sync
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-grouplist.sh /usr/local/bin/kopano-grouplist
+	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-localize-folders.sh /usr/local/bin/kopano-localize-folders
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-mailbox-permissions.sh /usr/local/bin/kopano-mailbox-permissions
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-migration-imap.sh /usr/local/bin/kopano-migration-imap
 	ln -sf /var/packages/Kopano4s/scripts/wrapper/kopano-migration-pst.sh /usr/local/bin/kopano-migration-pst
@@ -1983,7 +1996,7 @@ DROP_SOFTLINKS()
 	rm /var/run/kopano
 	if [ -e /usr/local/etc/nginx/conf.d/www.Kopano4s.conf ] ; then rm /usr/local/etc/nginx/conf.d/www.Kopano4s.conf ; fi
 }
-# ** drop user and database unless kepp was selected in WIZZARD-UI
+# ** drop user and database unless keep was selected in WIZZARD-UI
 DROP_USER_DATABASE_SHARE()
 {
 	if [ "$PKGWIZ_NO_GUI" = "true" ] ; then echo "deleting kopano database in cmd-line mode you have to pass the mysql root pwd.." ; fi

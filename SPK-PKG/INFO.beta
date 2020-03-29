@@ -1,5 +1,5 @@
 package="Kopano4s"
-version="1.11"
+version="1.12"
 description="Kopano is an open e-mail and groupware platform that can be used as an alternative for MS Exchange. It comes via Docker using pre-packaged binaries. With Meet and Mattermost K4S enters into Unified Communications."
 displayname="Kopano4s"
 maintainer="vbettag"

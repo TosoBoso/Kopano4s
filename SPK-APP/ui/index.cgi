@@ -2099,6 +2099,7 @@ if ($page eq 'log')
 {
     my $logtxt = '';
     my $slog = '';
+    my $lfilter = '';
     my $logpath = '';
     my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
     my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
@@ -2129,15 +2130,16 @@ if ($page eq 'log')
     }
     if ($action eq "Show") {
         $slog = param('slog'); # the log selected to show
+        $lfilter = param('filter'); # the log filter pattern
         $logpath = '/var/log/kopano';
         $logpath .= '/z-push' if ($slog =~ /z-push/);
         $logpath = $buppath if ($slog =~ /-user.log/) || ($slog =~ /mySqlDump.log/);
-        if ( $mode eq 'all' ) {
+        if ( $mode eq 'all' && $lfilter eq '') {
             if (open(IN,"$logpath/$slog")) 
             {
                 while (<IN>) {
                     chomp;
-                    $logtxt .= "$_\n ";
+                    $logtxt .= "$_\n " if ($lfilter eq '' || $_ =~ /$lfilter/);
                 }
                 close(IN);
             }
@@ -2149,7 +2151,7 @@ if ($page eq 'log')
                 close(DAT);
                 foreach my $reply (@rawDataCmd) {
                     chomp($reply);
-                    $logtxt .= "$reply\n ";
+                    $logtxt .= "$reply\n " if ($lfilter eq '' || $reply =~ /$lfilter/);
                 }
             }
         }
@@ -2162,6 +2164,7 @@ if ($page eq 'log')
     # fill dynamic html array to be printed on pages
     $tmplhtml{'logcmb'} = $logcmb;
     $tmplhtml{'logtxt'} = $logtxt;
+    $tmplhtml{'filter'} = $lfilter;
     if ( $mode eq 'all' ) {
         $tmplhtml{'chkall'} = 'checked';
         $tmplhtml{'chklast'} = '';
