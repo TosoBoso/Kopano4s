@@ -32,7 +32,7 @@ if [ $# -gt 0 ] && [ "$1" = "core" ]
 then
 	B_CORE=1
 fi
-if [ $# -gt 0 ] && [ "$1" = "wmeet" ]
+if [ $# -gt 0 ] && [ "$1" = "webmeet" ]
 then
 	B_WMEET=1
 fi
@@ -45,8 +45,12 @@ fi
 BUILD_PARAMS="--build-arg EDITION=${K_EDITION}"
 if [ "$K_EDITION" = "Community" ]
 then
-	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=buster --build-arg PHP_VER=7.3"
-	#BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=stretch --build-arg PHP_VER=7.0"
+	if [ $B_WMEET -gt 0 ] && [ $B_CORE -ne 1 ]
+	then
+		BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=stretch --build-arg PHP_VER=7.0"
+	else
+		BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=buster --build-arg PHP_VER=7.3"	
+	fi
 else
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=stretch"
 	if [ "$K_EDITION" = "Migration" ]
@@ -131,11 +135,10 @@ then
 		echo "Could not evaluate Kopano webmeetings release tag from download; exiting.."
 		exit 1
 	fi	
-	#IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
 	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}"
 	VER_TAG="C-${IMG_TAG}"
-	#WM_IMG_TAG="Webmeetings-${TAG4}"
-	#WM_VER_TAG="C-${WM_IMG_TAG}"
+	WM_IMG_TAG="Webmeetings-${TAG4}"
+	WM_VER_TAG="C-${WM_IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg COMMUNITY_BUILD=1"
 fi
 if [ "$K_EDITION" = "Supported" ]
@@ -166,11 +169,10 @@ then
 		echo "Could not evaluate Kopano webmeetings release tag from download; exiting.."
 		exit 1
 	fi	
-	#IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
 	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}"
 	VER_TAG="S-${IMG_TAG}"
-	#WM_IMG_TAG="Webmeetings-${TAG4}"
-	#WM_VER_TAG="S-${WM_IMG_TAG}"
+	WM_IMG_TAG="Webmeetings-${TAG4}"
+	WM_VER_TAG="S-${WM_IMG_TAG}"
 	# passing SNR for download via arg http_proxy not found in docker history.
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg SUPPORTED_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
@@ -252,9 +254,18 @@ fi
 # if we created image with repo copy it over to place it on a webserver e.g. for wget $PARENT/repo/k4s-${K_EDITION}-repo.tgz
 if [ $# -gt 1 ] && [ "$2" = "get-repo" ]
 then
-	"$SUDO" docker create -ti --name k4s-repo tosoboso/k4s-repo:${VER_TAG} bash
-	"$SUDO" docker cp k4s-repo:/root/k4s-${K_EDITION}-repo.tgz .
-	"$SUDO" docker rm -fv k4s-repo
+	if [ $B_CORE -gt 0 ]
+	then
+		"$SUDO" docker create -ti --name k4s-repo tosoboso/k4s-repo:${VER_TAG} bash
+		"$SUDO" docker cp k4s-repo:/root/k4s-${K_EDITION}-repo.tgz .
+		"$SUDO" docker rm -fv k4s-repo
+	fi
+	if [ $B_WMEET -gt 0 ]
+	then
+		"$SUDO" docker create -ti --name k4s-repo tosoboso/k4s-repo:${WM_VER_TAG} bash
+		"$SUDO" docker cp k4s-repo:/root/k4s-${K_EDITION}-wmeet-repo.tgz .
+		"$SUDO" docker rm -fv k4s-repo
+	fi
 	echo "collected k4s-repo with deb files:"
 	ls -al k4s-*repo*
 fi

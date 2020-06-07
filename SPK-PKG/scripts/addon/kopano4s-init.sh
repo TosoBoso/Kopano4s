@@ -286,7 +286,7 @@ then
 		INIT_DOCKER
 		WAIT=20
 		if [ $# -gt 1 ] && [ "$2" = "nowait" ] ; then WAIT=1 ; fi
-		echo "waiting for services to restart: ${WAIT}ss.."
+		echo "waiting for services to restart: ${WAIT}s.."
 		sleep $WAIT
 		echo -e "\n" | docker exec -i kopano4s init.sh status
 fi

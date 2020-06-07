@@ -1131,7 +1131,7 @@ INIT_UPDATE()
 	if [ -z "$UNBLOCK_AFTERD" ] ; then UNBLOCK_AFTERD=4 ; fi
 	# set mount timeout to 30 if it did not exist or was set wrong to 2sec in 1.09
 	if [ -z "$MOUNT_TIMEOUT" ] ; then MOUNT_TIMEOUT=30 ; fi
-	if [ $MOUNT_TIMEOUT le 10 ] ; then MOUNT_TIMEOUT=30 ; fi
+	if [ $MOUNT_TIMEOUT -lt 10 ] ; then MOUNT_TIMEOUT=30 ; fi
 	if [ -z "$SPAM_MX" ] ; then SPAM_MX="OFF" ; fi
 	# amavis now holds spamassasin and clamav in same directory and soft links are used in container
 	if [ -e "$K_SHARE/spamassasin" ] ; then rm "$K_SHARE/spamassasin" ; fi

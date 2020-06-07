@@ -3,7 +3,9 @@
 # this interim is no slim container as we need to collect locale kopano.mo LC_MESSAGES in /usr/share/locale/lang to copy over
 # default build with copy repo from intermediate for tuning once web-repo is extracted call it with --build-arg ENV_BUILD=web-repo
 ARG ENV_BUILD=copy-repo
-FROM debian:stretch as k4s-intermediate
+ARG DEBIAN_VER=stretch
+FROM debian:${DEBIAN_VER} as k4s-intermediate
+ARG DEBIAN_VER
 ARG EDITION
 ARG PHP_VER
 ARG ENV_BUILD
@@ -13,22 +15,28 @@ ARG	SUPPORTED_BUILD
 ARG	COMMUNITY_BUILD
 ARG	K_SNR
 ARG	DOCKER_HOST
+ARG	DEBUG
 ENV TERM=ansi
 ENV DEBIAN_FRONTEND=noninteractive
 # set dependent on build arguments the urls + if arg switch was set and - is if null; build staggered and if all null set default community
+ENV DEBUG=${DEBUG:-0}
 ENV ENV_BUILD=${ENV_BUILD}
 ENV EDITION=${DEFAULT_BUILD:+Default}
 ENV EDITION=${EDITION:-${MIGRATION_BUILD:+Migration}}
 ENV EDITION=${EDITION:-${SUPPORTED_BUILD:+Supported}}
 ENV EDITION=${EDITION:-Community}
-ENV URL_WEBMEET=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webmeetings:/final/tarballs/}
-ENV URL_WEBMEET=${URL_WEBMEET:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webmeetings:/final/tarballs/}}
+ENV URL_WEBMEET=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webmeetings:/master/tarballs/}
+ENV URL_WEBMEET=${URL_WEBMEET:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webmeetings:/master/tarballs/}}
 ENV URL_WEBMEET=${URL_WEBMEET:-https://download.kopano.io/community/webmeetings:/}
 ENV NAME_WEBMEET="Debian_9.0-amd64.tar.gz"
-# layer 1 steps 3-18 or 19: create trusted local kopano repository
+# create trusted local kopano repository
 RUN echo "** use an interim container to build trusted local repo for kopano $EDITION to tranfer into main container.."
-# debug only RUN echo "** $EDITION WM: $URL_WEBMEET"
-RUN apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends wget apt-utils locales unzip
+RUN if [ "$DEBUG" -gt 0 ] ; then echo "** $EDITION WM: $URL_WEBMEET" ; fi
+# setting up locales first then debian basics, 
+RUN apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends locales
+RUN if [ ! -e /usr/share/locale/locale.alias ] ; then ln -s /etc/locale.alias /usr/share/locale/locale.alias ; fi
+RUN sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && dpkg-reconfigure locales 
+RUN apt-get install -y --no-install-recommends apt-utils wget unzip
 # stretch-security: prepare repo standad structure with main for creating hashed packages and release files
 RUN	chmod 711 /root && mkdir -p /root/repo &&  mkdir -p /root/repo/dists && mkdir -p /root/repo/dists/kopano && \ 
 	mkdir -p /root/repo/dists/kopano/main && mkdir -p /root/repo/dists/kopano/main/binary-amd64 && \
@@ -40,10 +48,8 @@ RUN	chmod 711 /root && mkdir -p /root/repo &&  mkdir -p /root/repo/dists && mkdi
 	echo "APT::FTPArchive::Release {" >/root/repo/aptftp.conf && \
 	echo " Origin \"Kopano\"; Label \"Kopano core\"; Suite \"kopano\"; Components \"main\"; Architectures \"amd64\"; };" >>/root/repo/aptftp.conf
 WORKDIR /root/repo
-RUN if [ ! -e /usr/share/locale/locale.alias ] ; then ln -s /etc/locale.alias /usr/share/locale/locale.alias ; fi
-RUN sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && dpkg-reconfigure locales 
 # downloading packages and packing everything into a local apt repository incl. deb [trusted=yes]
-RUN echo "Env-build: $ENV_BUILD"
+RUN if [ "$DEBUG" -gt 0 ] ; then echo "Env-build: $ENV_BUILD" ; fi
 RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_WEBMEET $URL_WEBMEET && \
 	tar -zxvf *.gz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && rm *.gz ; fi
 RUN	echo "** create trusted local repository to comply with stretch-security which takes some time.." && \
@@ -55,20 +61,24 @@ RUN tar -zcvf k4s-${EDITION}-wmeet-repo.tgz repo/
 RUN	echo "** completed interim build for ${EDITION} edition **"
 
 # Two different containers as baseline for main container: 1st one uses copy from intermediate other uses web-repo which saves ~50MB
-FROM debian:stretch-slim as k4s-copy-repo
 ARG EDITION
+ARG DEBIAN_VER
+FROM debian:${DEBIAN_VER}-slim as k4s-copy-repo
 ENV EDITION=${EDITION:-Community}
 ONBUILD COPY --from=k4s-intermediate /root/k4s-${EDITION}-wmeet-repo.tgz /root/k4s-${EDITION}-wmeet-repo.tgz
 
-FROM debian:stretch-slim as k4s-web-repo
 ARG EDITION
+ARG DEBIAN_VER
+FROM debian:${DEBIAN_VER} as k4s-web-repo
+ENV EDITION=${EDITION:-Community}
 ONBUILD RUN echo "No copy of repo from intermediate container but using web-repo"
 
-# now the main container in which we copy the local repo from interim container
+# now the main container in which we copy the local repo from interim container or local web-repo
 FROM k4s-${ENV_BUILD} as k4s-main
 MAINTAINER vbettag "tosoboso@web.de"
 # set arg and env variables plus DEBIAN_FRONTEND to noninteractive
 ARG EDITION
+ARG DEBIAN_VER
 ARG	BUILD
 ARG TAG
 ARG	PARENT
@@ -83,29 +93,28 @@ ENV BUILD=${Build} \
 	LC_ALL="en_GB.UTF-8" \
 	TIMEZONE="CET" \
 	TERM=ansi \
-	DEBIAN_FRONTEND=noninteractive
+	DEBIAN_FRONTEND=noninteractive \
+	CORE_SERVICE=webmeetings
 WORKDIR /root
 COPY /container/dpkg-remove.wmeet /root/dpkg-remove
-COPY /container/init.sh.wmeet /usr/local/bin/init.sh
-RUN PASSWD="openssl rand -base64 32"
-# layer 2 step 16 or 17: merging run layers to save space in nested docker file system
+COPY /container/init_new.sh /usr/local/bin/init.sh
+# setting up locales first then debian basics, merging run layers to save space in nested docker file system
 RUN echo "** setup debian system basics...." && \ 
-	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends --assume-yes \ 
-	wget locales apt-transport-https ssl-cert ca-certificates rsyslog dialog && \
-	# remove nginx files and prepare for php7.x-fpm instead of php-fpm which is 7.0 EOL
+	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends --assume-yes locales && \
 	# set locales GB/US UTF-8 and DE plus CET timezone plus optional other locale at build time
 	sed -i -e "s~# en_GB.UTF-8~en_GB.UTF-8~" /etc/locale.gen && sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && \
 	sed -i -e "s~# de_DE.UTF-8~de_DE.UTF-8~" /etc/locale.gen && \
 	if [ ! -e /usr/share/locale/locale.alias ] ; then ln -s /etc/locale.alias /usr/share/locale/locale.alias ; fi && \
 	ln -sf /usr/share/zoneinfo/"$TIMEZONE"  /etc/localtime && dpkg-reconfigure locales && dpkg-reconfigure tzdata && \
-	if echo $EDITION | grep -q "Supported" ; then touch /etc/K_SUPPORTED ; else touch /etc/K_COMMUNITY ; fi && \
+	apt-get install -y --no-install-recommends apt-utils wget gosu procps vim-tiny && \
 # if web-repo arg is provided do wget instead of copying from interactive container which is saving ~100MB image size
 	if [ -n "$WEBREPO" ] ; then wget "$WEBREPO"/k4s-${EDITION}-wmeet-repo.tgz ; fi && \ 
 # layer 2 step 8 or 9 prepare, download and install kopano
 	echo "** setup kopano: user, download, webmeetings...." && \
-	groupadd -g 65540 kopano && useradd -u 1030 -g 65540 -p$PASSWD -M kopano && \
-	usermod -d/usr/share/kopano kopano -s/bin/false -c'kopano demon with Synology UID' && usermod -Gkopano -a root && \
-# install kopano webmeetings using pepo from interim build incl. kopano.mo locales for localized mail-folders
+	if echo $EDITION | grep -q "Supported" ; then touch /etc/K_SUPPORTED ; fi && \
+	groupadd -g 65599 kopano && useradd -u 1099 -g 65599 -p $(openssl rand -base64 32) -M kopano && \
+	usermod -d /usr/share/kopano kopano -s/bin/false -c'kopano demon with Synology UID' && usermod -Gkopano -a root && \
+# install kopano webmeetings using pepo from interim build
 	chmod 711 /root && echo "deb [trusted=yes] file:/root/repo kopano main" > /etc/apt/sources.list.d/kopano.list && \
 	tar -zxvf /root/k4s-${EDITION}-wmeet-repo.tgz -C /root && rm /root/k4s-${EDITION}-wmeet-repo.tgz && \
 	apt-get update -y > /etc/update.list && apt-get install --no-install-recommends --allow-unauthenticated --assume-yes \ 
@@ -117,19 +126,20 @@ RUN echo "** setup debian system basics...." && \
 	apt-get autoremove -y  && \
 	dpkg --list | grep "^rc" | cut -d " " -f 3 | xargs --no-run-if-empty dpkg --purge  && \
 	apt-get clean && \
-	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /etc/apt/sources.list.d/kopano.list /root/dpkg-remove && chmod 755 /etc/init.d/kopano-* && \
+	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /etc/apt/sources.list.d/kopano.list /root/dpkg-remove && \
 # softlink stuff copying over etc and etc-default files
-	if [ ! -e /etc/kopano/default-webmeetings ] && [ -e /etc/default/kopano-webmeetings ] ; then cp /etc/default/kopano-webmeetings /etc/kopano/default-webmeetings && ln -sf /etc/kopano/default-webmeetings /etc/default/kopano-webmeetings ; fi && \
-# move files to be exposed and mounted via synology to be copied over by init-script
-	mv /etc/kopano /etc/kopano2copy && \
-# remove kopano-logs as they will be mounted and initialised later
-	rm -R /var/log/kopano && \
+	if [ -e /etc/default/kopano-webmeetings ] ; then cp /etc/default/kopano-webmeetings /etc/kopano/default-webmeetings && ln -sf /etc/kopano/default-webmeetings /etc/default/kopano-webmeetings ; fi && \
+# move files to be exposed and mounted via synology to be copied over by entrypoint-script init.sh
+	mkdir /etc-dist && mv /etc/kopano /etc-dist/kopano && \
 # entry-script, kopano scripts made executable
 	chmod 700 /usr/local/bin/init.sh && \
 	echo "** completed building ${EDITION}-${TAG} **"
-# layer 4 steps 17,18 or 18,19: set workdir for backups later, entrypoint and expose ports
-WORKDIR /var/lib/kopano/backup
-ENTRYPOINT ["/usr/local/bin/init.sh"]
-CMD ["alive"]
-# ports kopano(s): webmeetings 8090, spreed 1935
+# layer 4 steps 17,18 or 18,19: set workdir, entrypoint and expose ports
+WORKDIR /root
+# volumes for compatibility usually over-mounted
+#VOLUME [/etc/kopano]
+#VOLUME [/var/log/kopano]
+ENTRYPOINT ["init.sh"]
+CMD ["start"]
+# ports webmeetings 8090, spreed 1935
 EXPOSE 8090 1935

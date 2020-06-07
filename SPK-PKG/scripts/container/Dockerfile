@@ -218,7 +218,7 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 # layer 2 step 8 or 9 prepare, download and install kopano
 	echo "** setup $EDITION kopano: user, download, install core, licensed, webapp incl. add-ons, z-push incl. autodiscover...." && \
 	groupadd -g 65540 kopano && useradd -u 1030 -g 65540 -p$PASSWD -M kopano && \
-	usermod -d/usr/share/kopano kopano -s/bin/false -c'kopano demon with Synology UID' && usermod -Gkopano -a root && \
+	usermod -d /usr/share/kopano kopano -s/bin/false -c'kopano demon with Synology UID' && usermod -Gkopano -a root && \
 	# change usr-grp-ids and add scanner users to respective groups to allow file handling for amavis under kopano
 	groupmod -g 130 amavis && usermod -u 130 -g 130 amavis && groupmod -g 129 clamav && usermod -u 129 -g 129 clamav && \
 	groupmod -g 128 debian-spamd && usermod -u 128 -g 128 debian-spamd && groupmod -g 127 postgrey && usermod -u 127 -g 127 postgrey && \
@@ -257,9 +257,9 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	if [ "$EDITION" != "Community" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-smime  ; fi && \
 	if [ "$EDITION" != "Community" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-spell-en kopano-webapp-plugin-spell-de-de kopano-webapp-plugin-spell-es kopano-webapp-plugin-spell-fr kopano-webapp-plugin-spell-it kopano-webapp-plugin-spell-nl ; fi && \
 	if [ "$EDITION" != "Community" ] && [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-presence ; fi && \
-# full package installs not part of migration package; removed kopano-webmeetings
-	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-spamd kopano-webapp-plugin-meetings ; fi && \
-# 4later	mattermost-server kopano-webapp-plugin-mattermost \
+# full package installs not part of migration package incl. python3-flexmock; removed kopano-webmeetings
+	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-spamd kopano-webapp-plugin-meetings python3-flexmock ; fi && \
+# 4later mattermost-server kopano-webapp-plugin-mattermost \
 	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-files kopano-webapp-plugin-filesbackend-smb kopano-webapp-plugin-filesbackend-owncloud ; fi && \
 # copy over non core kopano plugins
 	if [ -e /root/repo/plugins ] ; then cp -R /root/repo/plugins /usr/share/kopano-webapp ; fi && \
@@ -344,9 +344,11 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	sed -i -e "s~/var/log/daemon~/var/log/kopano/daemon~" /etc/logrotate.d/rsyslog && \
 	sed -i -e "s~/var/log/messages~/var/log/kopano/messages~" /etc/logrotate.d/rsyslog && \
 	sed -i -e "s~/var/log/mail~/var/log/kopano/mail~" /etc/logrotate.d/rsyslog && \
-# prevent syslog logrotate warnings
+# prevent syslog and clamav logrotate warnings 
 	sed -i -e 's/\(printerror "could not determine current runlevel"\)/#\1/' /usr/sbin/invoke-rc.d && \
 	sed -i -e 's/^\(POLICYHELPER=\).*/\1/' /usr/sbin/invoke-rc.d && \
+	sed -i -e "s~/etc/init.d/~/etc/init.d/clamav-daemon status > /dev/null \&\& /etc/init.d/~" /etc/logrotate.d/clamav-daemon && \
+	sed -i -e "s~/etc/init.d/~/etc/init.d/clamav-freshclam status > /dev/null \&\& /etc/init.d/~" /etc/logrotate.d/clamav-freshclam && \
 # copy and softlink for webapp and all plugins by plugin-dir/config.php to /etc/kopano/webapp/plg.conf-pluginname.php
 	if [ -e /usr/share/kopano-webapp/config.php ] && [ ! -e /etc/kopano/webapp/webapp.conf.php ] ; then cp /usr/share/kopano-webapp/config.php /etc/kopano/webapp/webapp.conf.php ; fi && \
 	if [ -e /etc/kopano/webapp/webapp.conf.php ] ; then ln -sf /etc/kopano/webapp/webapp.conf.php /usr/share/kopano-webapp/config.php ; fi && \
