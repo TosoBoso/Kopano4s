@@ -125,11 +125,10 @@ m_srv_on()
 			# special case fetchmail under buster init file not working
 			if [ "$DAEMON" = "fetchmail" ]
 			then
-				local PIDFILE="/var/run/fetchmail/fetchmail.pid"
-				if test -e $PIDFILE
+				if test -e $FEMLPID
 				then
 					local PID=$(ps -ef | grep -v grep | grep fetchmail | head -1 | awk '{print $2}')
-					if [ -n "$PID" ] && grep -q $PID $PIDFILE
+					if [ -n "$PID" ] && grep -q $PID $FEMLPID
 					then
 						return 0
 					else
@@ -298,7 +297,6 @@ kill_kopano()
 	if [ -e "$CLAMPLD" ] ; then rm -f "$CLAMPLD" ; fi
 	if [ -e "$PGRYPID" ] ; then rm -f "$PGRYPID" ; fi
 	if [ -e "$FEMLPID" ] ; then rm -f "$FEMLPID" ; fi
-	if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm -f /var/run/fetchmail/fetchmail.pid ; fi
 }
 set_acl()
 {
@@ -820,7 +818,7 @@ init_kopano()
 	then
 		/usr/local/bin/kopano-fetchmail.sh init
 		killall -q -9 fetchmail
-		if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm /var/run/fetchmail/fetchmail.pid ; fi
+		if [ -e "$FEMLPID" ] ; then rm -f "$FEMLPID" ; fi
 	fi
 	# now adjustments for webapp plugins like mdm, passwd, fetchmail 
 	# fetchmail webapp-plugin settings
@@ -1338,7 +1336,7 @@ case $1 in
 					then
 						echo "multiple fetchmail services found restarting 1 only.."
 						killall -q -9 fetchmail
-						if [ -e /var/run/fetchmail/fetchmail.pid ] ; then rm -f /var/run/fetchmail/fetchmail.pid ; fi
+						if [ -e "$FEMLPID" ] ; then rm -f "$FEMLPID" ; fi
 					fi
 					if [ $RUNNING -gt 1 ] || [ $RUNNING -eq 0 ] 
 					then

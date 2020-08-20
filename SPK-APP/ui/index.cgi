@@ -112,6 +112,7 @@ my $cmdline=''; # command to pass to system
 my @rawDataCmd; #  command reply from system
 my $startTime = timegm(gmtime());
 my $dsmbuild = getCfgValue('/etc.defaults/VERSION', 'buildnumber');
+my $dsmlang = getCfgValue('/etc/jitsi/.cfg', 'SYNOPKG_DSM_LANGUAGE');
 
 # *** common head: set html context, verify login, get global parameters, javascript, menu
 print "Content-type: text/html\n\n";
@@ -120,7 +121,7 @@ print "Content-type: text/html\n\n";
 # app_priv used post usr_priv for non admin and is not yet working for older dsm versions b4 6.1
 ($isAdmin,$uiUser,$dsmToken) = app_priv('SYNO.SDS._ThirdParty.App.kopano4s') if !$isAdmin;
 
-# autheticate in usr/app_priv returns uiUser null if it does not work e.g. in c,d-line mode
+# autheticate in usr/app_priv returns uiUser null if it does not work e.g. in cmd-line mode
 if ($uiUser eq 'null' && $isDebug) { # tweak for debugging from cmd-line
    $isAdmin = 1;
    $uiUser = $cgiUser;

@@ -43,24 +43,16 @@ then
 	if [ -z "$K_EDITION" ] ; then K_EDITION="Community" ; fi
 fi
 BUILD_PARAMS="--build-arg EDITION=${K_EDITION}"
-if [ "$K_EDITION" = "Community" ]
+
+if [ "$K_EDITION" = "Migration" ]
+# old migration running on stretch with php-7.0
 then
-	if [ $B_WMEET -gt 0 ] && [ $B_CORE -ne 1 ]
-	then
-		BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=stretch --build-arg PHP_VER=7.0"
-	else
-		BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=buster --build-arg PHP_VER=7.3"	
-	fi
+	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=stretch --build-arg PHP_VER=7.0"
+# debian buster with php-7.3
 else
-	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=stretch"
-	if [ "$K_EDITION" = "Migration" ]
-	then
-		BUILD_PARAMS="$BUILD_PARAMS --build-arg PHP_VER=7.0"
-	else
-		# go for 7.2 or 7.3
-		BUILD_PARAMS="$BUILD_PARAMS --build-arg PHP_VER=7.0"
-	fi
+	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEBIAN_VER=buster --build-arg PHP_VER=7.3"	
 fi
+
 if [ "$K_EDITION" != "Community" ] && [ -z "$K_SNR" ]
 then
 	read -p "Pleae provide Kopano subscription Serial-Nr: " K_SNR
@@ -122,7 +114,9 @@ then
 		echo "Could not evaluate Kopano webapp release tag from download; exiting.."
 		exit 1
 	fi
-	#TAG2=3.5.12
+	#TAG2=4.2
+	# currently we cut of 3rd suffix as it is 3 digit number
+	TAG2=$(echo $TAG2 | cut -f1-2 -d .)
 	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_10/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
@@ -149,15 +143,17 @@ then
 		echo "Could not evaluate Kopano core release tag from download; exiting.."
 		exit 1
 	fi
-	#TAG1=8.7.5
+	#TAG1=8.7.16
 	TAG2=$( GET_K_DOWNLOAD_RELEASE_TAG "https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/" "Debian_9.0" )
 	if [ -z "$TAG2" ]
 	then
 		echo "Could not evaluate Kopano webapp release tag from download; exiting.."
 		exit 1
 	fi
-	#TAG2=3.5.12
-	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+	#TAG2=4.2
+	# currently we cut of 3rd suffix as it is 3 digit number
+	TAG2=$(echo $TAG2 | cut -f1-2 -d .)
+	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_10/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
 		echo "Could not evaluate Kopano z-push release tag from download; exiting.."
@@ -178,20 +174,16 @@ then
 fi
 if [ "$K_EDITION" = "Default" ]
 then
-	TAG1="8.7.7.0"
-	TAG2="3.5.12"
-	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_9.0/all/" "z-push-kopano_" )
+	TAG1="8.7.14"
+	TAG2="4.1"
+	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_10/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
 		echo "Could not evaluate Kopano z-push release tag from download; exiting.."
 		exit 1
 	fi
 	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}"
-	#TAG4="0.29.5"
-	#IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}_WMeet-${TAG4}"
 	VER_TAG="D-${IMG_TAG}"
-	#WM_IMG_TAG="Webmeetings-${TAG4}"
-	#WM_VER_TAG="D-${WM_IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEFAULT_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
 if [ "$K_EDITION" = "Migration" ]

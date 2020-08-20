@@ -189,7 +189,7 @@ SAVE_LOG_ETC()
 }
 RESTORE_LOG_ETC()
 {
-	cp /tmp/k4spackage.log "$LOG"
+	if [ -e /tmp/k4spackage.log ] ; then cp /tmp/k4spackage.log "$LOG" ; fi
 	if [ ! -e "$ETC_PATH/kopano" ]
 	then
 		cp -R -f "$K_SHARE/backup/etc/kopano" "$ETC_PATH"
@@ -1038,17 +1038,28 @@ INIT_UPDATE()
 	then
 		rm -R "$ETC_PATH/kopano/z-push"
 	fi
-	ä change to new naming convention for z-push and webapp confs incl. pkugins
+	# change to new naming convention for z-push and webapp confs incl. pkugins and remove obsolete webapp cfgs
 	if [ ! -e "$ETC_PATH/z-push/z-push.conf.php" ] ; then cp "$TARGET_PATH"/merge/z-push/* "$ETC_PATH"/z-push ; fi
 	if [ ! -e "$ETC_PATH/kopano/webapp/webapp.conf.php" ] ; then mv "$ETC_PATH"/kopano/webapp/config.php "$ETC_PATH"/kopano/webapp/webapp.conf.php ; fi
-	PDIR=$(find "$ETC_PATH"/kopano/webapp/config-* -maxdepth 0 | cut -d '-' -f2-)
-	for P in $PDIR ; do mv "$ETC_PATH"/kopano/webapp/config-"${P}" "$ETC_PATH"/kopano/webapp/plg.conf-"${P}" ; done
+	if [ ! -e "$ETC_PATH/kopano/webapp/plg.conf-contactfax.php" ]
+	then
+		PDIR=$(find "$ETC_PATH"/kopano/webapp/config-* -maxdepth 0 | cut -d '-' -f2-)
+		for P in $PDIR ; do mv "$ETC_PATH"/kopano/webapp/config-"${P}" "$ETC_PATH"/kopano/webapp/plg.conf-"${P}" ; done
+	fi
+	if [ -e /etc/kopano/webapp/config.php ] ; then rm /etc/kopano/webapp/config* ; fi
+	if [ -e /etc/kopano/webapp/dist/config.php ] ; then rm /etc/kopano/webapp/dist/config* ; fi
+	if [ -e /etc/kopano/webapp/plg.conf-spell.php ] ; then rm /etc/kopano/webapp/plg.conf-spell* ; fi
+	if [ -e /etc/kopano/webapp/dist/plg.conf-spell.php ] ; then rm /etc/kopano/webapp/dist/plg.conf-spell* ; fi
+	if [ -e /etc/kopano/webapp/plg.conf-spreedwebrtc.php ] ; then rm /etc/kopano/webapp/plg.conf-spreedwebrtc.php ; fi
+	if [ -e /etc/kopano/webapp/dist/plg.conf-spreedwebrtc.php ] ; then rm /etc/kopano/webapp/dist/plg.conf-spreedwebrtc.php ; fi
+	if [ -e /etc/kopano/webapp/plg.conf-meetings.php ] ; then rm /etc/kopano/webapp/plg.conf-meetings.php ; fi
+	if [ -e /etc/kopano/webapp/dist/plg.conf-meetings.php ] ; then rm /etc/kopano/webapp/dist/plg.conf-meetings.php ; fi
 	# adjust mdm to port 9080
 	if [ -e "$ETC_PATH"/kopano/webapp/plg.conf-mdm.php ] && ! grep -q 9080 "$ETC_PATH"/kopano/webapp/plg.conf-mdm.php
 	then
 		sed -i -e "s~localhost~localhost:9080~" "$ETC_PATH"/kopano/webapp/plg.conf-mdm.php
 	fi
-	# ensure k4samavis exists, then uid is passed to file and user was not esetup with capital K
+	# ensure k4samavis exists, then uid is passed to file and user was not setup with capital K
 	if ! grep -q k4samavis: /etc/passwd
 	then
 		# ** add kopano group and user to join root for access patterns to rc and log files

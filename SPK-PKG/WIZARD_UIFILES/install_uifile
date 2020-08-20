@@ -107,10 +107,6 @@
 			"desc": "Gateway for IMAP/POP3 and ICAL protocol (optional when using Z-Push Active-Sync).",
 			"defaultValue": false
 		 },{
-			"key": "PKGWIZ_CONF_CHAT",
-			"desc": "Conference, Chat: Webmeetings (Spreed WebRTC), Mattermost (group chat), Presence.",
-			"defaultValue": false
-		 },{
 			"key": "PKGWIZ_FILES_DOC",
 			"desc": "Files, Docs: smb / owncloud files, libre-office document editor plugins.",
 			"defaultValue": false

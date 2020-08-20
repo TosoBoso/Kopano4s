@@ -7,7 +7,9 @@
 # keep expect tcl-expect gnupg gpgv; javascript-common not in slim pkg
 # keep libx11-6 libx11-data linked to zarafa pkgs
 mawk
+apt-utils
+# keep python2.7-minimal libpython2.7-stdlib for filesbackend-smb php-smbclient
 # keep mysql-common php-pear php-mail php-mail-mime php-net-dime php-net-smtp poppler
 # keep w3m xterm same as catdoc linked to zarafa pkgs
 # only listed tk8.6 x11-common x11-utils xterm
-# wget needed to verif snr
+# wget needed to verify snr

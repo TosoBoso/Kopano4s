@@ -11,6 +11,7 @@ if [ "$SYNOPKG_PKG_STATUS" != "UPGRADE" ]
 then
 	# ** verify conflicting container and downloads available for building container otherwise exit
 	PKG_PRE_CHECK
+	SQL_PWD_CHECK
 	GET_WIZZARD_EDITION
 	GET_VER_TAG
 	DOWNL_PRE_CHECK

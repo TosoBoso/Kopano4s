@@ -1,27 +1,6 @@
 #!/bin/sh
-# (c) 2018 vbettag initialisation for Kopano4Syno in Docker container
-# kopano-monitor, gateway, ical disabled by default and added if found in etc-default
-if [ ! -e /etc/kopano/default ] && [ -e /etc/kopano/default.init ] ; then cp /etc/kopano/default.init /etc/kopano/default ; fi
-# Community new feature remove -d(emonized) for dagent from default for community edition and do it reverse if downgraded
-if [ "$EDITION" = "Community" ] && grep -q "^DAGENT_OPTS" /etc/kopano/default ; then sed -i -e 's~DAGENT_OPTS~#DAGENT_OPTS~' /etc/kopano/default ; fi
-if [ "$EDITION" != "Community" ] && grep -q "^#DAGENT_OPTS" /etc/kopano/default ; then sed -i -e 's~#DAGENT_OPTS~DAGENT_OPTS~' /etc/kopano/default ; fi
-K_SERVICES="kopano-server kopano-spooler kopano-dagent"
-if grep -q ^SEARCH_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-search" ; fi
-if grep -q ^MONITOR_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-monitor" ; fi
-if grep -q ^GATEWAY_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-gateway" ; fi
-if grep -q ^ICAL_ENABLED=yes /etc/kopano/default ; then K_SERVICES="$K_SERVICES kopano-ical" ; fi
-W_SERVICES="nginx php${PHP_VER}-fpm"
-if grep -q ^PRESENCE_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES kopano-presence" ; fi
-if grep -q ^WEBMEETINGS_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES kopano-webmeetings" ; fi
-if grep -q ^COTURN_ENABLED=yes /etc/kopano/default ; then W_SERVICES="$W_SERVICES coturn" ; fi
-M_SERVICES="postfix"
-if grep -q ^POSTGREY_ENABLED=yes /etc/kopano/default ; then M_SERVICES="$M_SERVICES postgrey" ; fi
-if grep -q ^CLAMAVD_ENABLED=yes /etc/kopano/default ; then M_SERVICES="$M_SERVICES clamav-daemon" ; fi
-if grep -q ^AMAVISD_ENABLED=yes /etc/kopano/default ; then M_SERVICES="$M_SERVICES amavis" ; fi
-if grep -q ^SPAMD_ENABLED=yes /etc/kopano/default ; then M_SERVICES="$M_SERVICES kopano-spamd" ; fi
-if grep -q ^FETCHMAIL_ENABLED=yes /etc/kopano/default ; then M_SERVICES="$M_SERVICES fetchmail" ; fi
-if grep -q ^COURIER_IMAP_ENABLED=yes /etc/kopano/default ; then M_SERVICES="$M_SERVICES courier-imap" ; fi
-S_SERVICES="rsyslog cron"
+# (c) 2018-19 vbettag initialisation for Kopano4Syno in Docker container
+W_SERVICES="kopano-webmeetings rsyslog"
 # run as user-id, group-id to access cfg and log files from synology: default=100=users changed at build time
 if [ -e /etc/kopano/kuid ]
 then
@@ -34,24 +13,8 @@ else
 	RUN_GID=65540
 fi
 RUN_GROUP="kopano"
-KSVRPID="/var/run/kopano/server.pid"
-KSPLPID="/var/run/kopano/spooler.pid"
-KDAGPID="/var/run/kopano/dagent.pid"
-KSEAPID="/var/run/kopano/search.pid"
-KGWYPID="/var/run/kopano/gateway.pid"
-KICLPID="/var/run/kopano/ical.pid"
-KMONPID="/var/run/kopano/monitor.pid"
-KPRESPID="/var/run/kopano/presence.pid"
 WEBMPID="/var/run/kopano-webmeetings.pid"
-AMAVPID="/var/run/amavis/amavis.pid"
-CLAMPID="/var/run/clamav/clamav.pid"
-PFIXPID="/var/spool/postfix/pid/master.pid"
-PGRYPID="/var/run/postgrey.pid"
-FEMLPID="/var/run/fetchmail/fetchmail.pid"
-PHPFPMPID="/var/run/php/php${PHP_VER}-fpm.pid"
 SYSLPID="/var/run/rsyslogd.pid"
-NGINXPID="/var/run/nginx.pid"
-IMAPDPID="/var/run/courier/imapd.pid"
 
 mysql_sock_on()
 {

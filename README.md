@@ -5,7 +5,7 @@
 Kopano is an open e-mail and groupware platform that can be used as an alternative for MS Exchange. It comes via Docker using pre-packaged binaries (e.g. Debian/Ubuntu DPKG) to ease installation. With Webmeetings and Mattermost Kopano enters into Unified Communications.
 
 Kopano4S is available as free community beta edition based on nightly builds or two types of tested versions which are easier to use with less surprises than the beta: an also free default edition which is 3-9 months old or the up to date supported edition. The latter requires a subscription serial-number (SNR).
-The signed package is available via [Community Package Hub](https://www.cphub.net/?p=k4s) which can be linked into Synology Package Center for automatci updates etc. There is no need to git-clone and build the package unless contributing and testing is planned.
+The signed package is available via [Community Package Hub](https://www.cphub.net/?p=k4s) which can be linked into Synology Package Center for automatic updates etc. There is no need to git-clone and build the package unless contributing and testing is planned.
 A project overview incl. FAQ's, package center integration, installation, Zarafa migration advise, screenshots etc are found on [Z-Hub.io](https://wiki.z-hub.io/display/K4S).
 
 ## Contributing: How to Clone, Test & Collaborate

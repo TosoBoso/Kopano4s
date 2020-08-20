@@ -28,7 +28,7 @@ get_file_envs() {
 			VAR_ENV=${FILE_ENV%%"_FILE"*}
 			# get value from secret file and export it must use ${!VAR}
 			# shellcheck disable=SC2016
-			local VAR_VALUE="$(< "${!FILE_ENV}")"
+			VAR_VALUE="$(< "${!FILE_ENV}")"
 			export "$VAR_ENV"="$VAR_VALUE"
 		fi
 	done
@@ -68,7 +68,7 @@ set_env_to_php_cfg() {
 	local CFG
 	local VAR_ENV
 	local SEPARATOR
-	for CFG_ENV in $(env | grep _CFG_ | grep -v _FILE | cut -f1 -d"=") ; do
+	for CFG_ENV in $(env | grep _CFGPHP_ | grep -v _FILE | cut -f1 -d"=") ; do
 		# get service SRV as left-hand-side and VAR as right hand side to CFG_ENV
 
 	done

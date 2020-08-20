@@ -22,7 +22,15 @@ UPG="OFF"
 SRV="ON"
 PORT="ON"
 IMG="OFF"
-DNW="bridge"
+
+# get docker-nw setting from package.cfg and change it if paramater was posted
+if [ $# -gt 1 ] && ( [ $2 = "host" ] || [ $2 = "bridge" ] )
+then
+	DNW="$2"
+	sed -i -e "s~DOCKER_NW=.*~DOCKER_NW=\"${DNW}\"~" /var/packages/Kopano4s/etc/package.cfg
+else
+	DNW=$($SUDO /bin/get_key_value /var/packages/Kopano4s/etc/package.cfg DOCKER_NW)
+fi
 
 case "$1" in
 	reset)
@@ -157,16 +165,6 @@ case "$1" in
 		;;
 esac
 
-if [ $# -gt 1 ] && [ $2 = "host" ]
-then
-	DNW="host"
-fi
-if [ "$DOCKER_NW" != "$DNW" ]
-then
-	# set docker_network as parameter changed
-	sed -i -e "s~DOCKER_NW=.*~DOCKER_NW=\"${DNW}\"~" /var/packages/Kopano4s/etc/package.cfg
-	DOCKER_NW="$DNW"
-fi
 if [ "$MOB" = "ON" ]
 then
 	# remove legacy z-push incl. state in kopano-etc and backup area

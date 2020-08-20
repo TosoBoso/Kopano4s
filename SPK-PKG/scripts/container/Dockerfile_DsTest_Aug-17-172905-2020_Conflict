@@ -26,44 +26,54 @@ ENV EDITION=${EDITION:-${MIGRATION_BUILD:+Migration}}
 ENV EDITION=${EDITION:-${SUPPORTED_BUILD:+Supported}}
 ENV EDITION=${EDITION:-Community}
 ENV URL_Z_PUSH=${MIGRATION_BUILD:+http://repo.z-hub.io/z-push:/old-final/Debian_9.0/all/}
-ENV URL_Z_PUSH=${URL_Z_PUSH:-http://repo.z-hub.io/z-push:/final/Debian_10/all/}
+ENV URL_Z_PUSH=${URL_Z_PUSH:-${COMMUNITY_BUILD:+http://repo.z-hub.io/z-push:/final/Debian_10/all/}}
+ENV URL_Z_PUSH=${URL_Z_PUSH:-http://repo.z-hub.io/z-push:/final/Debian_9.0/all/}
 ENV	URL_CORE=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/}
 ENV URL_CORE=${URL_CORE:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/}}
 ENV URL_CORE=${URL_CORE:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/}}
 ENV URL_CORE=${URL_CORE:-https://download.kopano.io/community/core:/}
-ENV NAME_CORE=${DEFAULT_BUILD:+8.7.14.0_0+38.de6b961-Debian_10-amd64.tar.gz}
+ENV NAME_CORE=${DEFAULT_BUILD:+8.7.7.0_0+11.d8a1f01-Debian_9.0-amd64.tar.gz}
 ENV NAME_CORE=${NAME_CORE:-${MIGRATION_BUILD:+8.4.5.0_0+33-Debian_9.0-amd64.tar.gz}}
 ENV NAME_CORE=${NAME_CORE:-${COMMUNITY_BUILD:+Debian_10-amd64.tar.gz}}
-ENV NAME_CORE=${NAME_CORE:-Debian_10-amd64.tar.gz}
+ENV NAME_CORE=${NAME_CORE:-Debian_9.0-amd64.tar.gz}
 ENV URL_WEBAPP=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/archives/}
 ENV URL_WEBAPP=${URL_WEBAPP:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/archives/}}
 ENV URL_WEBAPP=${URL_WEBAPP:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/}}
 ENV URL_WEBAPP=${URL_WEBAPP:-https://download.kopano.io/community/webapp:/}
-ENV NAME_WEBAPP=${DEFAULT_BUILD:+4.1.2835+114.1.587e21d-Debian_10-all.tar.gz}
+ENV NAME_WEBAPP=${DEFAULT_BUILD:+3.5.12.2482+108.4fb788c-Debian_9.0-all.tar.gz}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-${MIGRATION_BUILD:+3.4.24.1929+84-Debian_9.0-all.tar.gz}}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-${COMMUNITY_BUILD:+Debian_10-all.tar.gz}}
-ENV NAME_WEBAPP=${NAME_WEBAPP:-Debian_10-all.tar.gz}
+ENV NAME_WEBAPP=${NAME_WEBAPP:-Debian_9.0-all.tar.gz}
 ENV URL_MDM=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/mdm:/final/tarballs/}
 ENV URL_MDM=${URL_MDM:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/mdm:/final/tarballs/}}
 ENV URL_MDM=${URL_MDM:-https://download.kopano.io/community/mdm:/}
-ENV NAME_MDM=${MIGRATION_BUILD:+Debian_9.0-all.tar.gz}
-ENV NAME_MDM=${NAME_MDM:-Debian_10-all.tar.gz}
+ENV NAME_MDM=${COMMUNITY_BUILD:+Debian_10-all.tar.gz}
+ENV NAME_MDM=${NAME_MDM:-Debian_9.0-all.tar.gz}
 ENV URL_SMIME=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/smime:/final/tarballs/}
 ENV URL_SMIME=${URL_SMIME:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/smime:/final/tarballs/}}
 ENV URL_SMIME=${URL_SMIME:-https://download.kopano.io/community/smime:/}
-ENV NAME_SMIME=${MIGRATION_BUILD:+Debian_9.0-amd64.tar.gz}
-ENV NAME_SMIME=${NAME_SMIME:-Debian_10-amd64.tar.gz}
+ENV NAME_SMIME=${COMMUNITY_BUILD:+Debian_10-amd64.tar.gz}
+ENV NAME_SMIME=${NAME_SMIME:-Debian_9.0-amd64.tar.gz}
+ENV	URL_UBCORE=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/}
+ENV URL_UBCORE=${URL_UBCORE:-${URL_CORE:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/}}}
+ENV URL_UBCORE=${URL_UBCORE:-https://download.kopano.io/community/core:/}
+ENV NAME_UBCORE=${DEFAULT_BUILD:+8.6.9.0_0+24-Ubuntu_18.04-amd64.tar.gz}
+ENV NAME_UBCORE=${NAME_UBCORE:-Ubuntu_18.04-amd64.tar.gz}
+ENV URL_UBSMIME=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/smime:/final/tarballs/}
+ENV URL_UBSMIME=${URL_UBSMIME:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/smime:/final/tarballs/}}
+ENV URL_UBSMIME=${URL_UBSMIME:-https://download.kopano.io/community/smime:/}
+ENV NAME_UBSMIME="Ubuntu_18.04-all.tar.gz"
 ENV URL_WEBMEET=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webmeetings:/final/tarballs/}
 ENV URL_WEBMEET=${URL_WEBMEET:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webmeetings:/final/tarballs/}}
 ENV URL_WEBMEET=${URL_WEBMEET:-https://download.kopano.io/community/webmeetings:/}
-ENV NAME_WEBMEET=${MIGRATION_BUILD:+Debian_10-all.tar.gz}
+ENV NAME_WEBMEET=${COMMUNITY_BUILD:+Debian_10-all.tar.gz}
 ENV NAME_WEBMEET=${NAME_WEBMEET:-Debian_9.0-amd64.tar.gz}
-ENV URL_FILES=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/files:/pre-final/tarballs/}
-ENV URL_FILES=${URL_FILES:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/files:/pre-final/tarballs/}}
+ENV URL_FILES=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/files:/final/tarballs/archives/}
+ENV URL_FILES=${URL_FILES:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/files:/final/tarballs/}}
 ENV URL_FILES=${URL_FILES:-https://download.kopano.io/community/files:/}
-ENV NAME_FILES=${DEFAULT_BUILD:+Debian_10-all.tar.gz}
+ENV NAME_FILES=${DEFAULT_BUILD:+2.1.4.293-Debian_9.0-all.tar.gz}
 ENV NAME_FILES=${NAME_FILES:-${COMMUNITY_BUILD:+Debian_10-all.tar.gz}}
-ENV NAME_FILES=${NAME_FILES:-Debian_10-all.tar.gz}
+ENV NAME_FILES=${NAME_FILES:-Debian_9.0-all.tar.gz}
 ENV URL_MATMOST=""
 ENV NAME_MATMOST=""
 ENV URL_DOCED=""
@@ -107,6 +117,12 @@ RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet
 	tar -zxvf *.gz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && rm *.gz ; fi
 RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_SMIME $URL_SMIME && \
 	tar -zxvf *.gz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && rm *.gz ; fi
+RUN if [ "$ENV_BUILD" != "web-repo" ] && [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_UBCORE $URL_UBCORE && \
+	tar -zxvf *.gz -C /root/repo/dists --strip-components=1 && rm *.gz ; fi
+RUN if [ "$ENV_BUILD" != "web-repo" ] && [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/php7-mapi* && cp /root/repo/dists/php7-mapi* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi
+RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_SMIME $URL_SMIME && \
+	tar -zxvf *.gz -C /root/repo/dists --strip-components=1 && rm *.gz  ; fi
+RUN if [ "$ENV_BUILD" != "web-repo" ] && [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then rm /root/repo/dists/kopano/main/binary-amd64/*plugin-smime* && cp /root/repo/dists/*plugin-smime* /root/repo/dists/kopano/main/binary-amd64 && rm /root/repo/dists/*.deb ; fi
 RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_WEBMEET $URL_WEBMEET && \
 	tar -zxvf *.gz -C /root/repo/dists/kopano/main/binary-amd64 --strip-components=1 && rm *.gz ; fi
 RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet -p -r -nc -nd -l 1 -e robots=off -A $NAME_FILES $URL_FILES && \
@@ -138,13 +154,14 @@ RUN tar -zcvf k4s-${EDITION}-repo.tgz repo/
 RUN	echo "** completed interim build for ${EDITION} edition **"
 
 # Two different containers as baseline for main container: 1st one uses copy from intermediate other uses web-repo which saves ~50MB
+ARG EDITION
 ARG DEBIAN_VER
 FROM debian:${DEBIAN_VER}-slim as k4s-copy-repo
-ARG EDITION
 ENV EDITION=${EDITION:-Community}
 ONBUILD COPY --from=k4s-intermediate /root/k4s-${EDITION}-repo.tgz /root/k4s-${EDITION}-repo.tgz
 
 FROM debian:${DEBIAN_VER}-slim as k4s-web-repo
+ARG EDITION
 ONBUILD RUN echo "No copy of repo from intermediate container but using web-repo"
 
 # now the main container in which we copy the local repo from interim container
@@ -179,10 +196,12 @@ RUN PASSWD="openssl rand -base64 32"
 # layer 2 step 16 or 17: merging run layers to save space in nested docker file system
 RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetchmail, amavisd, spamassassin, clamav, postgrey...." && \ 
 	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends --assume-yes \ 
-	wget locales rsyslog dialog apt-utils apt-transport-https ssl-cert ca-certificates nginx-light && \
-	# remove nginx files
+	wget locales rsyslog dialog apt-transport-https ssl-cert ca-certificates nginx-light && \
+	# remove nginx files and prepare for php7.x-fpm instead of php-fpm which is 7.0 EOL
 	rm /etc/nginx/sites-enabled/default && rm /var/www/html/index.nginx-debian.html && \
-	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends php${PHP_VER}-fpm php-curl && \
+	if [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then wget -O /etc/apt/trusted.gpg.d/php.gpg https://packages.sury.org/php/apt.gpg ; fi  && \
+	if [ "$PHP_VER" != "7.0" ] && [ "$EDITION" != "Community" ] ; then echo "deb https://packages.sury.org/php/ stretch main" > /etc/apt/sources.list.d/php.list ; fi && \
+	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends php${PHP_VER}-fpm && \
 	# set locales GB/US UTF-8 and DE plus CET timezone plus optional other locale at build time
 	sed -i -e "s~# en_GB.UTF-8~en_GB.UTF-8~" /etc/locale.gen && sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && \
 	sed -i -e "s~# de_DE.UTF-8~de_DE.UTF-8~" /etc/locale.gen && \
@@ -234,12 +253,12 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	kopano-webapp-plugin-quickitems \
 	kopano-webapp-plugin-titlecounter \
 	kopano-webapp-plugin-webappmanual && \
-# issues community edition with presence, plugins smime, removed kopano-webapp-plugin-meetings python3-flexmock
+# issues community edition with presence, plugins smime and spell-checker
 	if [ "$EDITION" != "Community" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-smime  ; fi && \
+	if [ "$EDITION" != "Community" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-spell-en kopano-webapp-plugin-spell-de-de kopano-webapp-plugin-spell-es kopano-webapp-plugin-spell-fr kopano-webapp-plugin-spell-it kopano-webapp-plugin-spell-nl ; fi && \
 	if [ "$EDITION" != "Community" ] && [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-presence ; fi && \
-	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-htmleditor-minimal-tinymce whatsapp4deskapp ; fi && \
 # full package installs not part of migration package incl. python3-flexmock; removed kopano-webmeetings
-	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-spamd ; fi && \
+	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-spamd kopano-webapp-plugin-meetings python3-flexmock ; fi && \
 # 4later mattermost-server kopano-webapp-plugin-mattermost \
 	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-files kopano-webapp-plugin-filesbackend-smb kopano-webapp-plugin-filesbackend-owncloud ; fi && \
 # copy over non core kopano plugins
@@ -247,13 +266,14 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 # layer 3 upgrade and cleanup: remove obsolete packages and config, autoremove, move and softlink stuff
 	apt-get upgrade --no-install-recommends --allow-unauthenticated --assume-yes && \
 	rm -rf /var/lib/apt/lists/* /root/repo && \
+	#if [ "$PHP_VER" != "7.0" ] ; then dpkg-query -Wf '${Package}\n' | grep php7.0 >> dpkg-remove ; fi && \
 	apt-get remove -y --assume-yes $(grep -vE "^\s*#" dpkg-remove | tr "\n" " ") && \
 	apt-get autoremove -y  && \
 	dpkg --list | grep "^rc" | cut -d " " -f 3 | xargs --no-run-if-empty dpkg --purge && apt-get clean && \
 	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /etc/apt/sources.list.d/kopano.list /root/dpkg-remove && \
 # ensure python3 is used in init.d-services files unless for Migration version
 	if [ "$EDITION" != "Migration" ] ; then K_SRVS="kopano-search kopano-presence kopano-spamd" && for S in $K_SRVS; do sed -i -e "s~/python ~/python3 ~" /etc/init.d/$S ; done ; fi && \
-# new 'feature' community / supported edition 8.7.7+: spooler etc hang unless -b = background is used in init.d file have to remove -d flag for dagent in default
+# new 'feature' community / supported edition 8.7.7+: spooler etc hang unless -b = background is used in init.d file have to remoce -d flag for dagent in default
 #if [ "$EDITION" = "Community" ] || [ "$EDITION" = "Supported" ] ;
 	if [ "$EDITION" = "Community" ] ; then K_SRVS=$(ls /etc/init.d/kopano-*) && for S in $K_SRVS; do sed -i -e "s~start-stop-daemon --start~start-stop-daemon --start -b~" $S && \ 
     sed -i -e "s~start-stop-daemon --stop \$QUIETDAEMON.*~start-stop-daemon --stop \$QUIETDAEMON --pidfile \$PIDFILE --name \$NAME --retry TERM/15/KILL >/dev/null~g" $S ; done ; fi && \
@@ -265,9 +285,9 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 # convert clamav-daemon to run in bg mode as it takes awfull long (1-2m) to load and blocks other services
 	sed -i -e "s~start-stop-daemon --start~start-stop-daemon --start -b~" /etc/init.d/clamav-daemon && \ 
 # exclude userscripts from exposed mountpoint in synology softlink it instead,
-	if [ -e /etc/kopano/userscripts ] ; then mv /etc/kopano/userscripts /etc/kopano/k-userscripts ; fi && \
-	if [ -e /etc/kopano/k-userscripts ] ; then cp -R /etc/kopano/k-userscripts /etc && rm -R /etc/kopano/k-userscripts ; fi && \
-	if [ -e /etc/kopano/k-userscripts ] ; then ln -sf /etc/k-userscripts /etc/kopano/userscripts ; fi && \
+	mv /etc/kopano/userscripts /etc/kopano/k-userscripts && \
+	cp -R /etc/kopano/k-userscripts /etc && rm -R /etc/kopano/k-userscripts && \
+	ln -sf /etc/k-userscripts /etc/kopano/userscripts && \
 # robot for got lost, softlink webapp and z-push fron /usr area into html area so no alias is needed
 	mv /root/robot.png /var/www/html && ln -sf /usr/share/kopano-webapp /var/www/html/webapp && ln -sf /usr/share/z-push /var/www/html/z-push && \
 # more softlink stuff copying over etc and etc-default files
@@ -329,8 +349,6 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	sed -i -e 's/^\(POLICYHELPER=\).*/\1/' /usr/sbin/invoke-rc.d && \
 	sed -i -e "s~/etc/init.d/~/etc/init.d/clamav-daemon status > /dev/null \&\& /etc/init.d/~" /etc/logrotate.d/clamav-daemon && \
 	sed -i -e "s~/etc/init.d/~/etc/init.d/clamav-freshclam status > /dev/null \&\& /etc/init.d/~" /etc/logrotate.d/clamav-freshclam && \
-# disable logrotate mail warnings
-	sed -i -e "s~test~MAILTO=\"\"\ntest~" /etc/cron.daily/logrotate && \
 # copy and softlink for webapp and all plugins by plugin-dir/config.php to /etc/kopano/webapp/plg.conf-pluginname.php
 	if [ -e /usr/share/kopano-webapp/config.php ] && [ ! -e /etc/kopano/webapp/webapp.conf.php ] ; then cp /usr/share/kopano-webapp/config.php /etc/kopano/webapp/webapp.conf.php ; fi && \
 	if [ -e /etc/kopano/webapp/webapp.conf.php ] ; then ln -sf /etc/kopano/webapp/webapp.conf.php /usr/share/kopano-webapp/config.php ; fi && \
