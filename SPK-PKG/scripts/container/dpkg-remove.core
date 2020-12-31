@@ -1,0 +1,15 @@
+# inspected via dpkg-query -Wf '${Installed-Size}\t${Package}\n' | sort -n
+# spooled into apt-get remove -y --allow-unauthenticated --force-yes
+# now part of interim container apt-utils
+# keep utils linked to gcc gcc-4.9 sa-compile keep gcc-6-base, cpp
+# keep catdoc cpp dash
+# only listed exim4 exim4-base exim4-config exim4-daemon-light
+# keep expect tcl-expect gnupg gpgv; javascript-common not in slim pkg
+# keep libx11-6 libx11-data linked to zarafa pkgs
+mawk
+apt-utils
+# keep python2.7-minimal libpython2.7-stdlib for filesbackend-smb php-smbclient
+# keep mysql-common php-pear php-mail php-mail-mime php-net-dime php-net-smtp poppler
+# keep w3m xterm same as catdoc linked to zarafa pkgs
+# only listed tk8.6 x11-common x11-utils xterm
+# wget needed to verify snr

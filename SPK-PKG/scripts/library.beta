@@ -1,9 +1,9 @@
 # ** (c) 2017-20 TosoBoso - common libs library for Kopano-4-Synology in Docker container
 # Image tags: Migration is from 15.12./15.12.2017
 MIGRATION_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
-COMMUNITY_TAG="Core-10.0.3_Webapp-4.0.2696_Z-Push-2.5.2"
+COMMUNITY_TAG="Core-10.0.6_Webapp-5.0_Z-Push-2.6.0"
 MIGRATION_SIZE=133
-COMMUNITY_SIZE=150
+COMMUNITY_SIZE=147
 RELEASE="Beta"
 PHP_VER="7.3"
 PKG_NAME=Kopano4s

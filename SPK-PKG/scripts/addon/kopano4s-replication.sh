@@ -465,6 +465,7 @@ then
 	sed -i -e "s~relay-log = mysql-relay-bin~~" "$MYETC"/my.cnf
 	sed -i -e "s~log-slave-updates = 1~~" "$MYETC"/my.cnf
 	sed -i -e "s~log-slave-updates = 1~~" "$MYETC"/my.cnf
+	sed -i -e "s~read-only = 1~~" "$MYETC"/my.cnf
 	sed -i -e "s~;read-only = 1~~" "$MYETC"/my.cnf
 	sed -i '/^$/d' "$MYETC"/my.cnf
 	sed -i -e "s~K_REPLICATION=\"$K_REPLICATION\"~K_REPLICATION=\"OFF\"~" "$CFG"

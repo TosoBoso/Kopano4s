@@ -14,7 +14,8 @@
 		&nbsp;Fetch<input type="checkbox" name="active" value="on"/<!--:chkactive:-->>on
 		&nbsp;cycle:&nbsp;<input type="text" name="cycle" size="1" value="<!--:cycle:-->"/>&nbsp;m
 		&nbsp;<input type="checkbox" name="keep" value="on"/<!--:chkkeep:-->>keep remote
-		&nbsp;<input type="checkbox" name="mda" value="on"/<!--:chkmda:-->>mda
+		&nbsp;<input type="checkbox" name="mda" value="on"/<!--:chkmda:-->>MDA 
+		&nbsp;<input type="checkbox" name="stls" value="on"/<!--:chkstls:-->>STLS 
 		&nbsp;<input type="submit" name="action" value="Save">
 		&nbsp;Fetch accounts:&nbsp;<button type="button" onclick="addFetch()">Add</button>&nbsp;<button type="button" onclick="deleteFetch()">Delete</button>
 		&nbsp;Smarthost relay:&nbsp;<button type="button" disabled onclick="addShost()">Add</button>&nbsp;<button type="button" type="button" disabled onclick="deleteShost()">Delete</button>
@@ -49,9 +50,9 @@
 		</tr>
 		<!--:fetchtbl:-->
 	</table>
-	<p><b><u>Tips:</u></b>&nbsp;Collect your server and (SSL) port settings for fetching with impa/pop3 from you provider. Default SSL-ports are: imap-993, pop3-995.
-							In mda mode provide k-user otherwise provide k-email to pass postfix incl. spam/av. Select keep remote to not purge mails on remote server
-							Smarthost relay for remote smtp mailer sending under different accounts will be implemented later (hence grayed out).</p>
+	<p><b><u>Tips:</u></b>&nbsp;Collect your server and (SSL) port settings for imap/pop3 from you provider. Default SSL-ports are: imap-993, pop3-995. Set STLS in case of login issues.
+							In mda mode provide k-user otherwise k-email to pass postfix incl. spam/av. Select keep remote to not purge mails on remote server. Smarthost relay for 
+							sending relayed under different accounts will be implemented later (aka grayed out).</p>
 	<!-- end of style and section main body right hand side to navigation -->
 	</div>
 	<!--:debug:-->

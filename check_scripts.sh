@@ -14,7 +14,7 @@ then
 	echo "Starting shellcheck for container scripts.."
 	echo "$(date '+%Y.%m.%d-%H:%M:%S') Starting shellcheck for container scripts.." > check_scripts.out
 #	SCRIPTS=$(ls -p ~/repo/Kopano4s/SPK-PKG/scripts/container/ | grep -v /)
-	SCRIPTS="init_new.sh"
+	SCRIPTS="init.sh"
 	for S in $SCRIPTS ; do echo "chk $(basename $S)" >> check_scripts.out && sudo docker run -it -v ~/repo/Kopano4s/SPK-PKG/scripts/container:/mnt -e SHELLCHECK_OPTS="-e SC1090 -e SC2039 -e SC2034 -e SC2004" --rm koalaman/shellcheck $(basename $S) >> check_scripts.out ; done
 	echo "$(date '+%Y.%m.%d-%H:%M:%S') Starting shellcheck for synology spk scripts.." 
 	echo "$(date '+%Y.%m.%d-%H:%M:%S') Starting shellcheck for synology spk scripts.." >> check_scripts.out

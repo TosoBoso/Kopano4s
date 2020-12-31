@@ -34,7 +34,7 @@ case "$1" in
 				LOG_MESSAGE "Warning $MSG"
 			fi
 			echo "$MSG"
-			if [ "$NOTIFY" -gt 0 ]
+			if [ "$NOTIFY" = "ON" ]
 			then
 				/usr/syno/bin/synodsmnotify "$NOTIFYTARGET" Kopano "$MSG"
 			fi
@@ -132,6 +132,11 @@ case "$1" in
 		$SUDO docker exec -it kopano4s bash
 		;;
 	stop)
+		if ! ($SUDO docker ps | grep -q kopano4s)
+		then
+			echo "Kopano services not running; nothing to stop"
+			exit 1
+		fi
 		# disable admin and web icons
 		DISABLE_UI
 		# stop services and sleep 10s for graceful shutdown (container waits 15s) switch off maintain just in case

@@ -1,0 +1,504 @@
+#!/usr/bin/perl -CS # CS is for dealing with UTF-8 prints
+#-------------------------------------------------------
+# Convert postfix mail log file into list for common log analyzer
+# Checks for Subject included when set in header_check and converts utf-8
+#-------------------------------------------------------
+# Tool built from maillogconvert.pl of awsstats removing non
+# postfix code. Original work of Odd-Jarle Kristoffersen
+#
+# A mail received to 2 different receivers, report 2 records.
+# A mail received to a forwarded account is reported as to the original receiver, not the "forwarded to".
+# A mail locally sent to a local alias is reported as n mails to all addresses of alias.
+#-------------------------------------------------------
+use strict;no strict "refs";
+use Encode qw(decode);
+
+#-------------------------------------------------------
+# Defines
+#-------------------------------------------------------
+use vars qw/ $REVISION $VERSION /;
+$REVISION='$Revision: 1.44 $'; $REVISION =~ /\s(.*)\s/; $REVISION=$1;
+$VERSION="1.4 (build $REVISION)";
+
+use vars qw/
+$DIR $PROG $Extension
+$Debug
+%mail %qmaildelivery
+$help
+$mode $header $year $day $lastmon $Debug
+$NBOFENTRYFOFLUSH
+$MailType
+%MonthNum
+@MonthNames
+/;
+$Debug=0;
+$NBOFENTRYFOFLUSH=16384;	# Nb or records for flush of %entry (Must be a power of 2)
+$MailType='';				# Mail server family (postfix, sendmail, qmail)
+%MonthNum = (
+'Jan'=>1,
+'Feb'=>2,
+'Mar'=>3,
+'Apr'=>4,
+'May'=>5,
+'Jun'=>6,
+'Jul'=>7,
+'Aug'=>8,
+'Sep'=>9,
+'Oct'=>10,
+'Nov'=>11,
+'Dec'=>12
+);
+@MonthNames = (
+'Jan',
+'Feb',
+'Mar',
+'Apr',
+'May',
+'Jun',
+'Jul',
+'Aug',
+'Sep',
+'Oct',
+'Nov',
+'Dec'
+);
+
+
+#-------------------------------------------------------
+# Functions
+#-------------------------------------------------------
+
+sub error {
+	print STDERR "Error: $_[0].\n";
+    exit 1;
+}
+
+sub debug {
+	my $level = $_[1] || 1;
+	if ($Debug >= $level) { 
+		my $debugstring = $_[0];
+		if ($ENV{"GATEWAY_INTERFACE"}) { $debugstring =~ s/^ /&nbsp&nbsp /; $debugstring .= "<br />"; }
+		print localtime(time)." - DEBUG $level - $. - : $debugstring\n";
+		}
+	0;
+}
+
+sub CleanEmail { $_=shift||'';
+	s/[#<|>\[\]]//g;	# Remove unwanted characters first
+	return $_;
+}
+
+# Clean host addresses
+# Input:  "servername[123.123.123.123]", "servername [123.123.123.123]"
+#         "root@servername", "[123.123.123.123]"
+# Return: servername or 123.123.123.123 if servername is 'unknown'
+sub CleanHost {
+	$_=shift||'';
+	if (/^\[(.*)\]$/) { $_=$1; }						# If [ip] we keep ip
+	if (/^unknown\s*\[/) { $_ =~ /\[(.*)\]/; $_=$1; }	# If unknown [ip], we keep ip
+	else { $_ =~ s/\s*\[.*$//; }
+	$_ =~ s/^.*\@//;									# If x@y, we keep y
+	return $_;
+}
+
+# Return domain
+# Input:	host.domain.com, <user@domain.com>, <>
+#
+sub CleanDomain { $_=shift;
+	s/>.*$//; s/[<>]//g;
+	s/^.*@//; 
+	if (! $_) { $_ = 'localhost'; }
+	return $_;
+}
+
+# Return string without starting and ending space
+#
+sub trim { $_=shift;
+	s/^\s+//; s/\s+$//;
+	return $_;
+}
+
+# Return UTF-8 string with converted special chars e.g. umlaute
+#
+sub utf8spchar { $_=shift;
+	s/=C3=84/Ae/; # replace Ae snipped
+	s/=C3=A4/ae/; # replace ae snipped
+	s/=C3=96/Oe/; # replace Oe snipped
+	s/=C3=B6/oe/; # replace oe snipped
+	s/=C3=9C/Ue/; # replace Ue snipped
+	s/=C3=BC/ue/; # replace ue snipped
+	s/=C3=9F/ss/; # replace ss snipped
+	s/=E2=82=AC/EUR/; # replace EUR snipped
+	s/=C2=A9/(CR)/; # replace (CR) snipped
+	s/=C2=AE/(R)/; # replace (R) snipped
+	#s/\?=? //; # remove UTF-8 pre-snipped
+	return $_;
+}
+
+# Return UTF-8 string decoded respectively for binary encoding
+#
+sub utf8decode { $_=shift;
+	return decode("MIME-Header", $_);
+}
+
+# Return UTF-8 string without control characters (replaced by utf8decode)
+#
+sub utf8trim { $_=shift;
+	s/=\?\w+-8\?\w\?//; # remove UTF-8 snipped
+	s/\?=\s+=\?\w+-8\?\w\?//; # remove UTF-8 snipped
+	s/\?\w+-8\?\w\?//; # remove UTF-8 snipped
+	s/\?=//; # remove end of UTF-8 snipped
+	return $_;
+}
+
+# Write a record
+#
+sub OutputRecord {
+	my $year=shift;
+	my $month=shift;    # Jan,Feb,... or 1,2,3...
+	my $day=shift;
+	my $time=shift;
+	my $from=shift;
+	my $to=shift;
+	my $relay_s=shift;
+	my $relay_r=shift;
+	my $code=shift;
+	my $size=shift||0;
+	my $forwardto=shift;
+	my $extinfo=shift||'-';
+	my $subject=shift||'-';
+
+	# Clean day and month
+	$day=sprintf("%02d",$day);
+    $month=sprintf("%02d",$MonthNum{$month}||$month);
+
+	# Clean from
+	$from=&CleanEmail($from);
+	$from||='<>';
+	
+	# Clean to
+	{ $to=&CleanEmail($to); }
+	$to||='<>';
+
+	# Clean relay_s
+	$relay_s=&CleanHost($relay_s);
+	$relay_s||=&CleanDomain($from);
+	$relay_s=~s/\.$//;
+	if ($relay_s eq 'local' || $relay_s eq 'localhost.localdomain') { $relay_s='localhost'; }
+
+	# Clean relay_r
+	$relay_r=&CleanHost($relay_r);
+	$relay_r||="-";
+	$relay_r=~s/\.$//;
+	if ($relay_r eq 'local' || $relay_r eq 'localhost.localdomain') { $relay_r='localhost'; }
+	#if we don't have info for relay_s, we keep it unknown, awstats might then guess it
+	
+	# Write line
+	if ( $mode eq 'csv' ) {
+		print "$year-$month-$day,$time,$from,$to,$relay_s,$relay_r,SMTP,$extinfo,$code,$size,'$subject'\n";	
+	}
+	else {
+		print "$year-$month-$day $time $from $to $relay_s $relay_r SMTP $extinfo $code $size '$subject'\n";
+	}
+	# If there was a redirect
+	if ($forwardto) {
+		# Redirect to local address
+		# TODO
+		# Redirect to external address
+		# TODO
+	}
+}
+
+#-------------------------------------------------------
+# MAIN
+#-------------------------------------------------------
+
+# Prepare QueryString
+my %param=();
+if ( ! @ARGV >= 1 ) { $help = 1; }
+for (0..@ARGV-1) { $param{$_}=$ARGV[$_]; }
+foreach my $key (sort keys %param) {
+	if ($param{$key} =~ /(^|-|&)debug=([^&]+)/i) { $Debug=$2; shift; next; }
+	if ($param{$key} =~ /^(help)$/i) { $help=1; shift; next; }
+	if ($param{$key} =~ /^(\d+)$/) { $year=$1; shift; next; }
+	if ($param{$key} =~ /^(today|yesterday)$/i) { $day=$1; shift; next; }
+	if ($param{$key} =~ /^(csv)$/i) { $mode=$1; shift; next; }
+	if ($param{$key} =~ /^(header)$/i) { $header=1; shift; next; }
+	if ($param{$key} =~ /^(stdin)$/i) { shift; next; }
+}
+
+($DIR=$0) =~ s/([^\/\\]*)$//; ($PROG=$1) =~ s/\.([^\.]*)$//; $Extension=$1;
+
+my $starttime=time();
+my ($nowsec,$nowmin,$nowhour,$nowday,$nowmonth,$nowyear,$nowwday,$nowyday) = localtime($starttime);
+$year||=($nowyear+1900);
+if ( $day eq 'today' ) { $day = sprintf("%s %2d", $MonthNames[$nowmonth], $nowday); }
+if ( $day eq 'yesterday' ) { 
+	my $time = time();
+	$time -= ((localtime($time))[2] + 2) * 3600;
+	my ($yday, $ydmonth) = (localtime($time))[3,4];
+	$day = sprintf("%s %2d", $MonthNames[$ydmonth], $yday); 
+}
+
+# Show usage help
+if ($help) {
+	print "----- $PROG $VERSION -----\n";
+	print <<HELPTEXT;
+$PROG is mail log preprocessor that convert a postfix mail log file into a human readable format.
+The subject can be included optionally and requires in header_checks enabled stating '/^Subject:/ INFO'.
+
+Usage:
+  pfloglist [csv] [header] [year] logfile | stdin < logfile [> output]
+
+The first parameter specifies output as comma seperated (csv) instead of spaces. 
+The second parameter specifies if header printed to output. 
+The third parameter specifies what year to timestamp logfile with, if current
+year is not the correct one (ie. 2002). Always use 4 digits. If not specified,
+current year is used.
+
+If no output is specified, it goes to the console (stdout).
+
+HELPTEXT
+	sleep 1;
+	exit;
+}
+
+#
+# Start Processing Input Logfile
+#
+$lastmon=0;
+my $numrecord=0;
+my $numrecordforflush=0;
+if ($header) {
+	# Write header line
+	if ( $mode eq 'csv' ) {
+		print "year-month-day,time,from,to,relay_s,relay_r,proto,extinfo,code,size,subject\n";	
+	}
+	else {
+		print "year-month-day time from to relay_s relay_r proto extinfo code, size, subject\n";	
+	}
+}
+while (<>) {
+	# filter for dates today / yesterday
+    next if(defined($day) && ! /^$day/o);
+	chomp $_; s/\r//;
+	$numrecord++;
+	$numrecordforflush++;
+
+	my $mailid=0;
+
+	if (/^__BREAKPOINT__/) { last; }	# For debug only
+
+	### <CJK> ###
+	my ($mon)=m/(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s/;
+	if ($mon) {
+	    $mon = $MonthNum{$mon};
+		if ($mon==12 && $lastmon==1 ){$year--;}
+		if ($mon==1 && $lastmon==12){$year++;}
+		$lastmon=$mon;
+	}
+	### </CJK> ###
+
+	if (/^#/) {
+		debug("Comment record");
+		next;
+	}
+	
+	#
+	# Get info: header Subject for postfix (extention to original mailmaillogconvert.pl)
+	#
+	elsif ( /: info|warning: header S|subject:/ ) {
+		$MailType||='postfix';
+		# Example PF: Jan 01 07:27:32 apollon.com postfix/cleanup[6114]: 31164BE028F: (?:info|warning): header Subject: Hello there from outside.com[10.10.10.10]; ...
+		my ($id,$subject)=m/\w+\s+\d+\s+\d+:\d+:\d+\s+[\w\-\.\@]+\s+(?:postfix\/(?:cleanup|local|lmtp|smtpd|smtp|virtual|pipe))\[\d+\]:\s+(.*?):\s+info: header Subject: (.*?) from \S+\[\S+\];/;
+		$mailid=$id;
+		if ( $subject =~ /(?:UTF|utf)-8/) {
+			$subject=&utf8spchar($subject);
+			$subject=&utf8decode($subject);
+		}
+		$mail{$id}{'subject'}=$subject;		
+		debug("For id=$id, found subject on a 'info-header' line: $mail{$id}{'subject'}");
+	}
+	
+	#
+	# Get sender host for postfix
+	#
+	elsif (/: client=/) {
+		$MailType||='postfix';
+		# Example:
+		# postfix:  Jan 01 07:27:32 apollon.com postfix/smtpd[1684]: 2BC793B8A4: client=remt30.cluster1.abcde.net[209.225.8.40]
+		my ($id,$relay_s)=m/\w+\s+\d+\s+\d+:\d+:\d+\s+[\w\-\.\@]+\s+(?:postfix\/(?:local|lmtp|smtpd|smtp|virtual|pipe))\[\d+\]:\s+(.*?):\s+client=(.*)/;
+		$mailid=$id;
+		$mail{$id}{'relay_s'}=$relay_s;
+		debug("For id=$id, found host sender on a 'client' line: $mail{$id}{'relay_s'}");
+	}
+
+	#
+	# See if we received postfix email reject error
+	#
+	elsif (/: reject/) {
+		$MailType||='postfix';
+		# Example: 
+		# postfix ?.? :  Jan 01 12:00:00 halley postfix/smtpd[9245]: reject: RCPT from unknown[203.156.32.33]: 554 <userx@yahoo.com>: Recipient address rejected: Relay access denied; from=<sender@aol.com> to=<userx@yahoo.com>
+        # postfix 2.1+:  Jan 01 12:00:00 localhost postfix/smtpd[11120]: NOQUEUE: reject: RCPT from unknown[62.205.124.145]: 450 Client host rejected: cannot find your hostname, [62.205.124.145]; from=<sender@msn.com> to=<usery@yahoo.com> proto=ESMTP helo=<xxx.com>
+		# postfix ?.? :  Jan 01 12:00:00 apollon postfix/smtpd[26553]: 1954F3B8A4: reject: RCPT from unknown[80.245.33.2]: 450 <usery@yahoo.com>: User unknown in local recipient table; from=<sender@msn.com> to=<usery@yahoo.com> proto=ESMTP helo=<xxx.com>
+		my ($mon,$day,$time,$id,$code,$from,$to)=m/(\w+)\s+(\d+)\s+(\d+:\d+:\d+)\s+[\w\-\.\@]+\s+(?:postfix\/(?:local|lmtp|smtpd|smtp|virtual|pipe))\[\d+\]:\s+(.*?):\s+(.*)\s+from=([^\s,]*)\s+to=([^\s,]*)/;
+		# postfix:	Jan 01 14:10:16 juni postfix/smtpd[2568]: C34ED1432B: reject: RCPT from relay2.tp2rc.edu.tw[163.28.32.177]: 450 <linda@trieger.org>: User unknown in local recipient table; from=<> proto=ESMTP helo=<rmail.nccu.edu.tw>
+		if (! $mon) { ($mon,$day,$time,$id,$code,$from)=m/(\w+)\s+(\d+)\s+(\d+:\d+:\d+)\s+[\w\-\.\@]+\s+(?:postfix\/(?:local|lmtp|smtpd|smtp|virtual|pipe))\[\d+\]:\s+(.*?):\s+(.*)\s+from=([^\s,]*)/; }
+		$mailid=($id eq 'reject' || $id eq 'NOQUEUE'?'999':$id);	# id not provided in log, we take '999'
+		if ($mailid) {
+			# $code='reject: RCPT from unknown[203.156.32.33]: 554 <userx@yahoo.com>: Recipient address rejected: Relay access denied;'
+		    #    or 'reject: RCPT from unknown[62.205.124.145]: 450 Client host rejected: cannot find your hostname, [62.205.124.145]; from=<sender@msn.com> to=<usery@yahoo.com> proto=ESMTP helo=<xxx.com>'
+			#    or 'reject: RCPT from unknown[80.245.33.2]: 450 <usery@yahoo.com>: User unknown in local recipient table;'
+			if ($code =~ /\s+(\d\d\d)\s+/) { $mail{$mailid}{'code'}=$1; }
+			else { $mail{$mailid}{'code'}=999; }	# Unkown error
+			if (! $mail{$mailid}{'relay_s'} && $code =~ /from\s+([^\s]+)\s+/) {
+				$mail{$mailid}{'relay_s'}=&trim($1);
+			}
+			$mail{$mailid}{'from'}=&trim($from);
+			if ($to) { 
+				$mail{$mailid}{'to'}=&trim($to);
+			}
+			elsif ($code =~ /<(.*)>/) {
+				$mail{$mailid}{'to'}=&trim($1);
+			}
+			$mail{$mailid}{'year'}=$year; ### <CJK>###
+			$mail{$mailid}{'mon'}=$mon;
+			$mail{$mailid}{'day'}=$day;
+			$mail{$mailid}{'time'}=$time;
+			if (! defined($mail{$mailid}{'size'})) { $mail{$mailid}{'size'}='?'; }
+			debug("For id=$mailid, found a postfix error incoming message: code=$mail{$mailid}{'code'} from=$mail{$mailid}{'from'} to=$mail{$mailid}{'to'} time=$mail{$mailid}{'time'}");
+		}
+	}
+
+	#
+	# See if we received postfix email bounced error
+	#
+	elsif (/stat(us)?=bounced/) {
+		$MailType||='postfix';
+		# Example: 
+		# postfix:  Sep  9 18:24:23 halley postfix/local[22003]: 12C6413EC9: to=<etavidian@partenor.com>, relay=local, delay=0, status=bounced (unknown user: "etavidian")
+		my ($mon,$day,$time,$id,$to,$relay_r)=m/(\w+)\s+(\d+)\s+(\d+:\d+:\d+)\s+[\w\-\.\@]+\s+(?:postfix\/(?:local|lmtp|smtpd|smtp|virtual|pipe))\[\d+\]:\s+(.*?):\s+to=([^\s,]*)[\s,]+relay=([^\s,]*)/;
+		$mailid=($id eq 'reject'?'999':$id);	# id not provided in log, we take '999'
+		if ($mailid) {
+			$mail{$mailid}{'code'}=999;	# Unkown error (bounced)
+			$mail{$mailid}{'to'}=&trim($to);
+			$mail{$mailid}{'relay_r'}=&trim($relay_r);
+			$mail{$mailid}{'year'}=$year; ### <CJK>###
+			$mail{$mailid}{'mon'}=$mon;
+			$mail{$mailid}{'day'}=$day;
+			$mail{$mailid}{'time'}=$time;
+			if (! defined($mail{$mailid}{'size'})) { $mail{$mailid}{'size'}='?'; }
+			debug("For id=$mailid, found a postfix bounced incoming message: code=$mail{$mailid}{'code'} to=$mail{$mailid}{'to'} relay_r=$mail{$mailid}{'relay_r'}");
+		}
+	}
+
+	#
+	# Matched incoming postfix message
+	#
+	elsif (/: from=/) {
+		# sm-mta:  Jul 28 06:55:13 androneda sm-mta[28877]: h6SDtCtg028877: from=<xxx@mysite.net>, size=2556, class=0, nrcpts=1, msgid=<w1$kqj-9-o2m45@0h2i38.4.m0.5u>, proto=ESMTP, daemon=MTA, relay=smtp.easydns.com [205.210.42.50]
+		# postfix: Jul  3 15:32:26 apollon postfix/qmgr[13860]: 08FB63B8A4: from=<nobody@ns3744.ovh.net>, size=3302, nrcpt=1 (queue active)
+		# postfix: Sep 24 14:45:15 wideboy postfix/qmgr[22331]: 7E0E6196: from=<xxx@hotmail.com>, size=1141 (queue active)
+		my ($id,$from,$size)=m/\w+\s+\d+\s+\d+:\d+:\d+\s+[\w\-\.\@]+\s+(?:postfix\/qmgr|postfix\/nqmgr)\[\d+\]:\s+(.*?):\s+from=(.*?),\s+size=(\d+)/;
+		$mailid=$id;
+		if (! $mail{$id}{'code'}) { $mail{$id}{'code'}=1; }	# If not already defined, we define it
+		if (! $mail{$id}{'from'} || $mail{$id}{'from'} ne '<>') { $mail{$id}{'from'}=$from; }
+		$mail{$id}{'size'}=$size;
+		if (m/\s+relay=([^\,]+)[\s\,]/ || m/\s+relay=([^\s\,]+)$/) { $mail{$id}{'relay_s'}=$1; }
+		debug("For id=$id, found a sendmail/postfix incoming message: from=$mail{$id}{'from'} size=$mail{$id}{'size'} relay_s=".($mail{$id}{'relay_s'}||''));
+	}
+
+	#
+	# Matched postfix "to" message
+	#
+	elsif (/: to=.*stat(us)?=sent/i) {
+		# Example:
+		# postfix:  Jan 01 07:27:38 apollon postfix/local[1689]: 2BC793B8A4: to=<jo@jo.com>, orig_to=<webmaster@toto.com>, relay=local, delay=6, status=sent ("|/usr/bin/procmail")
+		my ($mon,$day,$time,$id,$to)=m/(\w+)\s+(\d+)\s+(\d+:\d+:\d+)\s+[\w\-\.\@]+\s+(?:postfix\/(?:local|lmtp|smtpd|smtp|virtual|pipe))\[.*?\]:\s+(.*?):\s+to=(.*?),/;
+		$mailid=$id;
+		$mail{$id}{'code'}='1';
+		if (m/\s+relay=([^\s,]*)[\s,]/) { $mail{$id}{'relay_r'}=$1; }
+		elsif (m/\s+mailer=local/) { $mail{$id}{'relay_r'}='localhost'; }
+		if (m/forwarded as/) {
+			# If 'forwarded as idnewmail' is found, we discard this mail to avoid counting it twice
+			debug("For id=$id, mail was forwarded to other id, we discard it");
+			delete $mail{$id};
+		}
+		else {
+			if (m/\s+orig_to=([^\s,]*)[\s,]/) {
+				# If we have a orig_to, we used it as receiver
+				$mail{$id}{'to'}=&trim($1);
+				$mail{$id}{'forwardedto'}=&trim($to);
+			}
+			else {
+				$mail{$id}{'to'}=&trim($to);
+			}
+			$mail{$mailid}{'year'}=$year; ### <CJK>###
+			$mail{$id}{'mon'}=$mon;
+			$mail{$id}{'day'}=$day;
+			$mail{$id}{'time'}=$time;
+			debug("For id=$id, found a sendmail/postfix record: mon=$mail{$id}{'mon'} day=$mail{$id}{'day'} time=$mail{$id}{'time'} to=$mail{$id}{'to'} relay_r=$mail{$id}{'relay_r'}");
+		}
+	}
+
+	#
+	# Write record if all required data were found
+	#
+	if ($mailid) {
+		my $code; my $to;
+		my $delivery=0;
+		my $canoutput=0;
+		
+		debug("ID:$mailid RELAY_S:".($mail{$mailid}{'relay_s'}||'')." RELAY_R:".($mail{$mailid}{'relay_r'}||'')." FROM:".($mail{$mailid}{'from'}||'')." TO:".($mail{$mailid}{'to'}||'')." CODE:".($mail{$mailid}{'code'}||''));
+
+		# Check if we can output a mail line
+		if ($MailType eq 'postfix') {
+			$code=$mail{$mailid}{'code'};
+			$to=$mail{$mailid}{'to'};
+			if ($mail{$mailid}{'from'} && $mail{$mailid}{'to'}) { $canoutput=1; }
+			if ($mail{$mailid}{'from'} && $mail{$mailid}{'code'} > 1) { $canoutput=1; }
+			if ($mailid && $mail{$mailid}{'code'} > 1) { $canoutput=1; }
+		}
+
+		# If we can
+		if ($canoutput) {
+			&OutputRecord($mail{$mailid}{'year'}?$mail{$mailid}{'year'}:$year,$mail{$mailid}{'mon'},$mail{$mailid}{'day'},$mail{$mailid}{'time'},$mail{$mailid}{'from'},$to,$mail{$mailid}{'relay_s'},$mail{$mailid}{'relay_r'},$code,$mail{$mailid}{'size'},$mail{$mailid}{'forwardto'},$mail{$mailid}{'extinfo'},$mail{$mailid}{'subject'});
+			# Delete mail with generic unknown id (This id can by used by another mail)
+			if ($mailid eq '999') {
+				debug(" Delete mail for id=$mailid",3);
+				delete $mail{$mailid};
+			}
+			# Delete delivery instance for id if qmail (qmail can use same id for several mails with multiple delivery)
+			elsif ($MailType eq 'qmail') {
+				debug(" Delete delivery instances for mail id=$mailid and delivery id=$delivery",3);
+				if ($delivery) {
+					delete $mail{$mailid}{'to'}{$delivery};
+					delete $mail{$mailid}{'code'}{$delivery};
+				}
+			}
+
+			# We flush %mail if too large
+			if (scalar keys %mail > $NBOFENTRYFOFLUSH) {
+				debug("We reach $NBOFENTRYFOFLUSH records in %mail, so we flush mail hash array");
+				#foreach my $id (keys %mail) {
+				#	debug(" Delete mail for id=$id",3);
+				#	delete $mail{$id};
+				#}
+				%mail=();
+				%qmaildelivery=();
+			}
+
+		}
+	}
+	else {
+		debug("Not interesting row");
+	}
+
+}
+
+#foreach my $key (keys %mail) {
+#	print ".$key.$mail{$key}{'to'}.\n";
+#}
+
+0;

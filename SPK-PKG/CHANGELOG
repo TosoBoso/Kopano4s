@@ -1,3 +1,5 @@
+[2020-11-08 v.1.15  [Fetchmail and Postfix features: Subject to mail.log, pfloglist: csv output, mail.hist]
+[2020-10-30 v.1.14  [Minor fix in init and startup, updated Containers, mail logrotate weekly & pf-restart]
 [2020-08-18 v.1.13  [Switch to Debian 10 buster, php-7.3 and core Default on 8.7.14, Supported on 8.7.16]
 [2020-03-29 v.1.12  [Upgrade to Default, Fix mount timeout default, filter for logs, logrotate error]
 [2020-03-22 v.1.11  [Enhancements Container init, SpamAV, kopano-folderlist, pubfolders, gab-sync]

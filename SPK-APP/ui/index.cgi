@@ -1,6 +1,7 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -CS # CS is for dealing with UTF-8 prints
 use Time::Local;
 use MIME::Base64; # for obfuscation decode_base64 eq atb in JS
+use Encode qw(decode); # for UTF-8 decoding
 use strict;
 use warnings;
 require "syno_cgi.pl"; # base cgi functions incl. get params
@@ -90,6 +91,29 @@ sub setComment { # set comments on / off for pattern via sed utility
     }
     chomp($ret);
     return $ret;
+}
+sub trimSubject { # remove snippets incl. UTF-8 converted special chars e.g. umlaute
+    $_=shift;
+    s/mail postfix\/cleanup//; # remove cleanup snipped
+    s/\[\d+\]: //; # remove [digits] snipped
+    s/: info: header / /; # remove info header snipped
+    $_ =~ s/from \w+\[\S+\]; //; # remove from xyz[ip]; snipped
+    $_ =~ s/proto=ESMTP //; # remove proto snipped
+    #$_ =~ s/helo=<\w+.+>//; # remove helo snipped
+    s/Subject: /Subject:'/; # add bracket open at subject
+    s/ from=/' from=/; # add bracket close post subject pre from=
+    s/=C3=84/Ae/; # replace Ae snipped
+    s/=C3=A4/ae/; # replace ae snipped
+    s/=C3=96/Oe/; # replace Oe snipped
+    s/=C3=B6/oe/; # replace oe snipped
+    s/=C3=9C/Ue/; # replace Ue snipped
+    s/=C3=BC/ue/; # replace ue snipped
+    s/=C3=9F/ss/; # replace ss snipped
+    s/=E2=82=AC/EUR/; # replace EUR snipped
+    s/=C2=A9/(CR)/; # replace (CR) snipped
+    s/=C2=AE/(R)/; # replace (R) snipped
+    #s/\?=? //; # remove UTF-8 pre-snipped
+    return $_;
 }
 
 my $isDebug = 1; # debug modus
@@ -214,6 +238,7 @@ if ($page eq 'user')
     my $usrtbl = ''; # collect the k-user table tr commands
     my $grptbl = ''; # collect the k-group table tr commands
     my $pkgcfg = '/var/packages/Kopano4s/etc/package.cfg'; # package cfg file location
+    my $edition = getCfgValue($pkgcfg, 'K_EDITION');
 
     # process request to add, update, delete user first considering the input forms
     $form = param('form');
@@ -234,15 +259,18 @@ if ($page eq 'user')
         }
         else {
             my $locale = getCfgValue($pkgcfg, 'LOCALE');
-            my $edition = getCfgValue($pkgcfg, 'K_EDITION');
             my $admflag = $admin eq "on" ? 1 : 0;
             $status = "Adding $kuser with pwd $passwd.. ";
-            # migration edition fails when create-strore is used
-            if ($edition eq 'Migration') {
-                $cmdline = "kopano-cli --create --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";                
+            if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -c $kuser -p '$passwd' -f '$name' -e '$email'";
+                $cmdline .= " -a y" if $admin eq "on";
+                $cmdline .= " |";
             }
             else {
-                $cmdline = "kopano-cli --create --create-store --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";
+                # todo: kopano-cli --create-store to be run before initial user (=kopano-admin -s) hence find out if there was no user
+                $cmdline = "kopano-cli --create --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";                
+                # create-strore is no longer used
+                # $cmdline = "kopano-cli --create --create-store --user '$kuser' --fullname '$name' --email '$email' --password '$passwd' --admin-level $admflag --lang '$locale' |";
             }
             #$status = $cmdline;
             if (open(DAT, $cmdline)) {
@@ -254,7 +282,9 @@ if ($page eq 'user')
                 }
                 $status .= ". ";
                 # add another kopano-localize-folders just in case
-                system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-localize-folders.sh -u $kuser --lang '$locale' > /dev/null");				
+                if ($edition ne 'Community' && $edition ne 'Migration' ) {
+                    system("/bin/sh /var/packages/Kopano4s/scripts/wrapper/kopano-localize-folders.sh -u $kuser --lang '$locale' > /dev/null");				
+                }
             }
             else {
                 close(DAT);
@@ -278,12 +308,23 @@ if ($page eq 'user')
         else {
             $admin = "off" if ! $admin;
             $status = "Updating $kuser.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser";
-            $cmdline .= " --fullname='$name'" if $name;
-            $cmdline .= " --email='$email'" if $email;
-            $cmdline .= " --password='$passwd'" if $passwd;
-            $cmdline .= " --admin-level=1" if $admin eq "on";
-            $cmdline .= " |";
+            if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser";
+                $cmdline .= " -f '$name'" if $name;
+                $cmdline .= " -e '$email'" if $email;
+                $cmdline .= " -p '$passwd'" if $passwd;
+                $cmdline .= " -a n" if $admin eq "off";
+                $cmdline .= " -a y" if $admin eq "on";
+                $cmdline .= " |";
+            } 
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser";
+                $cmdline .= " --fullname='$name'" if $name;
+                $cmdline .= " --email='$email'" if $email;
+                $cmdline .= " --password='$passwd'" if $passwd;
+                $cmdline .= " --admin-level=1" if $admin eq "on";
+                $cmdline .= " |";
+            } 
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -305,12 +346,23 @@ if ($page eq 'user')
         $imap = "off" if ! $imap;
         my $pop3 = param ('pop3');
         $pop3 = "off" if ! $pop3;
-        $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser";
-        if ($imap eq 'on') {
-            $cmdline .= " --add-feature imap |";
+        if ($edition eq 'Community' || $edition eq 'Migration' ) {
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser";
+            if ($imap eq 'on') {
+                $cmdline .= " --enable imap |";
+            }
+            else {
+                $cmdline .= " --disable imap |";
+            }
         }
         else {
-            $cmdline .= " --remove-feature imap |";
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser";
+            if ($imap eq 'on') {
+                $cmdline .= " --add-feature imap |";
+            }
+            else {
+                $cmdline .= " --remove-feature imap |";
+            }
         }
         if (open(DAT, $cmdline)) {
             @rawDataCmd = <DAT>;
@@ -324,12 +376,23 @@ if ($page eq 'user')
         else {
             close(DAT);
         }
-        $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser";
-        if ($pop3 eq 'on') {
-            $cmdline .= " --add-feature pop3 |";
+        if ($edition eq 'Community' || $edition eq 'Migration' ) {
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser";
+            if ($imap eq 'on') {
+                $cmdline .= " --enable pop3 |";
+            }
+            else {
+                $cmdline .= " --disable pop3 |";
+            }
         }
         else {
-            $cmdline .= " --remove-feature pop3 |";
+            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser";
+            if ($pop3 eq 'on') {
+                $cmdline .= " --add-feature pop3 |";
+            }
+            else {
+                $cmdline .= " --remove-feature pop3 |";
+            }
         }
         if (open(DAT, $cmdline)) {
             @rawDataCmd = <DAT>;
@@ -351,7 +414,13 @@ if ($page eq 'user')
         }
         else {
             $status = "Deleting $kuser.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser --delete |";
+            if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -d $kuser |";
+            }
+            else {
+                # todo: remove orphaned store to user kopano-cli --list-orphans & --remove-store <store-guid>
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser --delete |";
+            }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -374,9 +443,16 @@ if ($page eq 'user')
         }
         else {
             $status = "Adding $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --create --group $kgroup";
-            $cmdline .= " --email '$email'" if $email;
-            $cmdline .= " |";
+            if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -g $kgroup";
+                $cmdline .= " -e '$email'" if $email;
+                $cmdline .= " |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --create --group $kgroup";
+                $cmdline .= " --email '$email'" if $email;
+                $cmdline .= " |";
+            }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -399,9 +475,16 @@ if ($page eq 'user')
         }
         else {
             $status = "Updating $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup";
-            $cmdline .= " --email='$email'" if $email;
-            $cmdline .= " |";
+            if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh --update-group $kgroup";
+                $cmdline .= " -e '$email'" if $email;
+                $cmdline .= " |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup";
+                $cmdline .= " --email='$email'" if $email;
+                $cmdline .= " |";
+            }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -424,7 +507,12 @@ if ($page eq 'user')
         }
         else {
             $status = "Deleting $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --delete |";
+            if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -G $kgroup |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --delete |";
+            }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -448,7 +536,12 @@ if ($page eq 'user')
         }
         else {
             $status = "Adding $kuser to $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --add-user $kuser |";
+            if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -b $kuser -i $kgroup |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --add-user $kuser |";
+            }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -472,7 +565,12 @@ if ($page eq 'user')
         }
         else {
             $status = "Removing $kuser off from $kgroup.. ";
-            $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --remove-user $kuser |";
+            if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -B $kuser -i $kgroup |";
+            }
+            else {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --remove-user $kuser |";
+            }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
@@ -498,11 +596,21 @@ if ($page eq 'user')
         else {
             if ($kuser) {
                 $status = "Adding $kuser the send-as delegate $delegate.. ";
-                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser --add-sendas $delegate |";
+                if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                    $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser --add-sendas $delegate |";
+                }
+                else {
+                    $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser --add-sendas $delegate |";
+                }
             }
             if ($kgroup) {
                 $status = "Adding $kgroup the send-as delegate $delegate.. ";
-                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --add-sendas $delegate |";
+                if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                    $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh --update-group $kgroup --add-sendas $delegate |";
+                }
+                else {
+                    $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --add-sendas $delegate |";
+                }
             }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
@@ -528,11 +636,21 @@ if ($page eq 'user')
         else {
             if ($kuser) {
                 $status = "Deleting $kuser the send-as delegate $delegate.. ";
-                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser --remove-sendas $delegate |";
+                if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                    $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh -u $kuser --del-sendas $delegate |";
+                }
+                else {
+                    $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --user $kuser --remove-sendas $delegate |";
+                }
             }
             if ($kgroup) {
                 $status = "Deleting $kgroup the send-as delegate $delegate.. ";
-                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --remove-sendas $delegate |";
+                if ($edition eq 'Community' || $edition eq 'Migration' ) {
+                $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-admin.sh --update-group $kgroup --del-sendas $delegate |";
+                }
+                else {
+                    $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-cli.sh --group $kgroup --remove-sendas $delegate |";
+                }
             }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
@@ -1043,6 +1161,7 @@ if ($page eq 'fetch')
     my $chkactive = getCfgValue($fetchdef, 'START_DAEMON') eq 'yes' ? 'checked' : ''; # enabled?
     my $chkkeep = getPatternValue($fetchcfg, 'keep') =~ /#/ ? '' : 'checked'; # no commented out is keep true
     my $chkmda = getPatternValue($fetchcfg, '#mda=') =~ /on/ ? 'checked' : ''; # mda modus on?
+    my $chkstls = getPatternValue($fetchcfg, '#stls=') =~ /on/ ? 'checked' : ''; # stls modus on?
     my ($c1, $cycle, $c3) = split("	",getPatternValue($fetchcfg, 'set daemon')); # tab seperated
 	$cycle = $cycle / 60;
     # process request to add, update, delete entries first considering the input forms
@@ -1090,6 +1209,16 @@ if ($page eq 'fetch')
             }
             else {
                 setPatternValue($fetchcfg, '#mda=', 'off', 'shell');
+            }
+        }
+        my $new_chkstls = param('stls') eq 'on' ? 'checked' : '';
+        if ( $new_chkstls ne $chkstls ) {
+            $chkstls = $new_chkstls;
+            if ( $new_chkstls eq 'checked' ) {
+                setPatternValue($fetchcfg, '#stls=', 'on', 'shell');
+            }
+            else {
+                setPatternValue($fetchcfg, '#stls=', 'off', 'shell');
             }
         }
     }
@@ -1204,6 +1333,7 @@ if ($page eq 'fetch')
     $tmplhtml{'cycle'} = $cycle;
     $tmplhtml{'chkkeep'} = $chkkeep;
     $tmplhtml{'chkmda'} = $chkmda;
+    $tmplhtml{'chkstls'} = $chkstls;
     $tmplhtml{'fetchtbl'} = $fetchtbl;
     $tmplhtml{'status'} = $status;
     #$debug .= "\n\n" if $isDebug;
@@ -1446,13 +1576,15 @@ if ($page eq 'report')
 {
     my $rptcmb='';
     my $rselect='';
+    my $reptype='';
     my $params='';
     my @trange = ('today', 'yesterday', 'full week');
     if ( $action ne '' ) {
         $rselect = param ('range');
+        $reptype = param ('reptype');
         $params = param('params');
     }
-    $tmplhtml{'status'} = '';
+    $tmplhtml{'status'} = "Rep: $reptype";
     $tmplhtml{'params'} = $params;
     
     foreach my $entry (@trange) {
@@ -1461,11 +1593,18 @@ if ($page eq 'report')
         $rptcmb .= ">$entry</option>\n";
     }
     $tmplhtml{'rptcmb'} = $rptcmb;
-
+    if ( $reptype eq 'loglist' ) {
+        $tmplhtml{'rptlogl'} = "checked";
+    }
+    else {
+        $tmplhtml{'rptlogs'} = "checked";
+    }
     if ( $action eq 'Run' ) {
-        $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh logsumm $params";
+        $cmdline = "/var/packages/Kopano4s/scripts/wrapper/kopano-postfix.sh $reptype $params";
         if ( $rselect eq 'today' || $rselect eq 'yesterday' ) {
-            $cmdline .= " -d $rselect /var/log/mail.log |";
+            $cmdline .= " header" if ( $reptype eq 'loglist' );
+            $cmdline .= " -d" if ( $reptype eq 'logsumm' );
+            $cmdline .= " $rselect /var/log/mail.log |";
         }
         else {
             # todo: add the week-x rotated logs
@@ -2106,7 +2245,7 @@ if ($page eq 'log')
     my $buppath = getCfgValue($pkgcfg, "K_BACKUP_PATH");
     my $logcmb = '';
     my $mode = param('mode'); # last 100 entries or all
-    my @logfiles = ('server.log','spooler.log','dagent.log','mail.log','mail.info','mail.warn','mail.err',
+    my @logfiles = ('server.log','spooler.log','dagent.log','mail.log','mail.hist','mail.info','mail.warn','mail.err',
                     'amavis.log','clamav.log','freshclam.log','razor-agent.log','spamassassin.log','spamd.log',
                     'fetchmail.log','monitor.log','search.log','gateway.log','ical.log','presence.log','webmeetings.log',
                     'z-push.log','z-push-error.log','nginx-error.log','nginx-access.log','php-fpm.log',
@@ -2135,24 +2274,43 @@ if ($page eq 'log')
         $logpath = '/var/log/kopano';
         $logpath .= '/z-push' if ($slog =~ /z-push/);
         $logpath = $buppath if ($slog =~ /-user.log/) || ($slog =~ /mySqlDump.log/);
-        if ( $mode eq 'all' && $lfilter eq '') {
+        if ( $mode eq 'all' ) {
             if (open(IN,"$logpath/$slog")) 
             {
                 while (<IN>) {
                     chomp;
-                    $logtxt .= "$_\n " if ($lfilter eq '' || $_ =~ /$lfilter/);
+                    if ($lfilter eq 'Subject:' && $_ =~ /$lfilter/) { #special case trim line with subject
+						$_ = trimSubject($_);
+						$_ = decode("MIME-Header", $_) if ($_ =~ /(?:UTF|utf)-8/);
+                        $logtxt .= "$_\n ";
+                    }
+                    else {
+                        $logtxt .= "$_\n " if ($lfilter eq '' || $_ =~ /$lfilter/);
+                    }
                 }
                 close(IN);
             }
         }
-        else { # only tail -100
-            $cmdline = "tail -100 $logpath/$slog |";
+        else { # only tail -100 / -880 for Subject filter
+            if ( $lfilter eq 'Subject:' ) {
+                $cmdline = "tail -880 $logpath/$slog |";
+            }
+            else {
+                $cmdline = "tail -100 $logpath/$slog |";
+            }
             if (open(DAT, $cmdline)) {
                 @rawDataCmd = <DAT>;
                 close(DAT);
                 foreach my $reply (@rawDataCmd) {
                     chomp($reply);
-                    $logtxt .= "$reply\n " if ($lfilter eq '' || $reply =~ /$lfilter/);
+                    if ($lfilter eq 'Subject:' && $reply =~ /$lfilter/) { #special case trim line with subject
+						$reply = trimSubject($reply);
+						$reply = decode("MIME-Header", $reply) if ($reply =~ /(?:UTF|utf)-8/);
+                        $logtxt .= "$reply\n ";
+                    }
+                    else {
+                        $logtxt .= "$reply\n " if ($lfilter eq '' || $reply =~ /$lfilter/);
+                    }
                 }
             }
         }

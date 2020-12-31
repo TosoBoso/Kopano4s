@@ -4,7 +4,7 @@
 LOGIN=$(whoami)
 if [ $# -eq 0 ]
 then
-	echo "Usage: build_docker.sh all | core | wmeet | help, get-repo | web-repo, clean."
+	echo "Usage: build_docker.sh all | old | core | wmeet | help, get-repo | web-repo, clean."
 	exit 1
 fi
 if [ $# -gt 0 ] && [ "$1" = "help" ]
@@ -21,8 +21,13 @@ then
 else
 	SUDO=""
 fi
+B_OLD=0
 B_CORE=0
 B_WMEET=0
+if [ $# -gt 0 ] && [ "$1" = "old" ]
+then
+	B_OLD=1
+fi
 if [ $# -gt 0 ] && [ "$1" = "all" ]
 then
 	B_CORE=1
@@ -71,8 +76,9 @@ fi
 "$SUDO" mkdir -p "$DOCKER_PATH"/kopano4s/container
 # copy over dockerfile and cfg for packages to remove post build, then conatiner init, robot.png 
 "$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/Dockerfile* "$DOCKER_PATH/kopano4s"
+"$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/init* "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/*.sh "$DOCKER_PATH/kopano4s/container"
-"$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/*.sh.* "$DOCKER_PATH/kopano4s/container"
+"$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/pfloglist "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-PKG/scripts/container/dpkg-remove* "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-APP/merge/kopano-cfg.tgz "$DOCKER_PATH/kopano4s/container"
 "$SUDO" cp -f "$MYDIR"/SPK-APP/merge/kinit.tgz "$DOCKER_PATH/kopano4s/container"
@@ -131,7 +137,9 @@ then
 	fi	
 	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}"
 	VER_TAG="C-${IMG_TAG}"
-	WM_IMG_TAG="Webmeetings-${TAG4}"
+	C_IMG_TAG="$TAG1"
+	C_VER_TAG="C-${C_IMG_TAG}"
+	WM_IMG_TAG="$TAG4"
 	WM_VER_TAG="C-${WM_IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg COMMUNITY_BUILD=1"
 fi
@@ -167,15 +175,17 @@ then
 	fi	
 	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}"
 	VER_TAG="S-${IMG_TAG}"
-	WM_IMG_TAG="Webmeetings-${TAG4}"
+	C_IMG_TAG="$TAG1"
+	C_VER_TAG="S-${C_IMG_TAG}"
+	WM_IMG_TAG="$TAG4"
 	WM_VER_TAG="S-${WM_IMG_TAG}"
 	# passing SNR for download via arg http_proxy not found in docker history.
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg SUPPORTED_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
 if [ "$K_EDITION" = "Default" ]
 then
-	TAG1="8.7.14"
-	TAG2="4.1"
+	TAG1="8.7.16"
+	TAG2="4.4"
 	TAG3=$( GET_K_DOWNLOAD_RELEASE_TAG "https://repo.z-hub.io/z-push:/final/Debian_10/all/" "z-push-kopano_" )
 	if [ -z "$TAG3" ]
 	then
@@ -184,24 +194,29 @@ then
 	fi
 	IMG_TAG="Core-${TAG1}_Webapp-${TAG2}_Z-Push-${TAG3}"
 	VER_TAG="D-${IMG_TAG}"
+	C_IMG_TAG="$TAG1"
+	C_VER_TAG="D-${C_IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg DEFAULT_BUILD=1 --build-arg K_SNR=${K_SNR}"
 fi
 if [ "$K_EDITION" = "Migration" ]
 then
 	IMG_TAG="Core-8.4.5.0_Webapp-3.4.2_Z-Push-2.4.5"
 	VER_TAG="M-${IMG_TAG}"
+	C_IMG_TAG="8.4.5.0"
+	C_VER_TAG="M-${C_IMG_TAG}"
 	BUILD_PARAMS="$BUILD_PARAMS --build-arg MIGRATION_BUILD=1 --build-arg K_SNR=${K_SNR}"
-	B_WMEET=0
 fi
 DATE_BUILD=$(date "+%Y-%m-%d")
 # in get repo mode only run the k4s-intermediate build and extract repo from container
 if [ $# -gt 1 ] && [ "$2" = "get-repo" ]
 then
 	# get the repo from intermediate image aka stop at the stage and copy from container
-	C_BUILD_PARAMS="$BUILD_PARAMS --target k4s-intermediate --tag tosoboso/k4s-repo:${VER_TAG}"
+	O_BUILD_PARAMS="$BUILD_PARAMS --target k4s-intermediate --tag tosoboso/k4s-repo:${VER_TAG}"
+	C_BUILD_PARAMS="$BUILD_PARAMS --target k4s-intermediate --tag tosoboso/k4s-repo:${C_VER_TAG}"
 	WM_BUILD_PARAMS="$BUILD_PARAMS --target k4s-intermediate --tag tosoboso/k4s-repo:${WM_VER_TAG}"
 else
-	C_BUILD_PARAMS="$BUILD_PARAMS --build-arg PARENT=${DOCKER_HOST} --build-arg BUILD=${DATE_BUILD} --build-arg TAG=${IMG_TAG} --tag tosoboso/kopano4s:${VER_TAG}"
+	O_BUILD_PARAMS="$BUILD_PARAMS --build-arg PARENT=${DOCKER_HOST} --build-arg BUILD=${DATE_BUILD} --build-arg TAG=${IMG_TAG} --tag tosoboso/kopano4s:${VER_TAG}"
+	C_BUILD_PARAMS="$BUILD_PARAMS --build-arg PARENT=${DOCKER_HOST} --build-arg BUILD=${DATE_BUILD} --build-arg TAG=${C_IMG_TAG} --tag tosoboso/kopano4s:${C_VER_TAG}"
 	WM_BUILD_PARAMS="$BUILD_PARAMS --build-arg PARENT=${DOCKER_HOST} --build-arg BUILD=${DATE_BUILD} --build-arg TAG=${WM_IMG_TAG} --tag tosoboso/kopano4s:${WM_VER_TAG}"
 fi
 # in use repo mode only run the k4-main build and use extracted repo from local webserver
@@ -211,6 +226,7 @@ then
 	echo "Building from web-repo $WEBREPO assuming you did run get-repo before and put the artifacts to this location.."
 	# in Dockerfile we comment of the copy from interactive which is skipped anyway via target k4s-main
 	#sed -i -e 's~^COPY --from=k4s-intermediate~#COPY --from=k4s-intermediate'~  "$DOCKER_PATH"/kopano4s/Dockerfile
+	O_BUILD_PARAMS="$O_BUILD_PARAMS --build-arg ENV_BUILD=web-repo --build-arg WEBREPO=${WEBREPO}"
 	C_BUILD_PARAMS="$C_BUILD_PARAMS --build-arg ENV_BUILD=web-repo --build-arg WEBREPO=${WEBREPO}"
 	WM_BUILD_PARAMS="$WM_BUILD_PARAMS --build-arg ENV_BUILD=web-repo --build-arg WEBREPO=${WEBREPO}"
 fi
@@ -229,13 +245,19 @@ then
 	# searching and deleting images with none as name
 	LIST=`$SUDO docker images | grep none | grep -o [0-f][0-f][0-f][0-f][0-f][0-f][0-f][0-f][0-f][0-f][0-f][0-f]`
 	for L in $LIST ; do "$SUDO" docker rmi -f $L ; done
+	O_BUILD_PARAMS="$O_BUILD_PARAMS --no-cache"
 	C_BUILD_PARAMS="$C_BUILD_PARAMS --no-cache"
 	WM_BUILD_PARAMS="$WM_BUILD_PARAMS --no-cache"
+fi
+if [ $B_OLD -gt 0 ]
+then
+	echo "Build-Args Old: ${O_BUILD_PARAMS}"
+	"$SUDO" docker build ${DOCKER_PATH}/kopano4s ${O_BUILD_PARAMS}
 fi
 if [ $B_CORE -gt 0 ]
 then
 	echo "Build-Args Core: ${C_BUILD_PARAMS}"
-	"$SUDO" docker build ${DOCKER_PATH}/kopano4s ${C_BUILD_PARAMS}
+	"$SUDO" docker build ${DOCKER_PATH}/kopano4s -f ${DOCKER_PATH}/kopano4s/Dockerfile.core ${C_BUILD_PARAMS}
 fi
 if [ $B_WMEET -gt 0 ]
 then
@@ -246,9 +268,15 @@ fi
 # if we created image with repo copy it over to place it on a webserver e.g. for wget $PARENT/repo/k4s-${K_EDITION}-repo.tgz
 if [ $# -gt 1 ] && [ "$2" = "get-repo" ]
 then
-	if [ $B_CORE -gt 0 ]
+	if [ $B_OLD -gt 0 ]
 	then
 		"$SUDO" docker create -ti --name k4s-repo tosoboso/k4s-repo:${VER_TAG} bash
+		"$SUDO" docker cp k4s-repo:/root/k4s-${K_EDITION}-repo.tgz .
+		"$SUDO" docker rm -fv k4s-repo
+	fi
+	if [ $B_CORE -gt 0 ]
+	then
+		"$SUDO" docker create -ti --name k4s-repo tosoboso/k4s-repo:${C_VER_TAG} bash
 		"$SUDO" docker cp k4s-repo:/root/k4s-${K_EDITION}-repo.tgz .
 		"$SUDO" docker rm -fv k4s-repo
 	fi

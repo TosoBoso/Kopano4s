@@ -31,7 +31,7 @@ ENV	URL_CORE=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/support
 ENV URL_CORE=${URL_CORE:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/archives/}}
 ENV URL_CORE=${URL_CORE:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/core:/final/tarballs/}}
 ENV URL_CORE=${URL_CORE:-https://download.kopano.io/community/core:/}
-ENV NAME_CORE=${DEFAULT_BUILD:+8.7.14.0_0+38.de6b961-Debian_10-amd64.tar.gz}
+ENV NAME_CORE=${DEFAULT_BUILD:+8.7.16.0_0+40.b1ba577-Debian_10-amd64.tar.gz}
 ENV NAME_CORE=${NAME_CORE:-${MIGRATION_BUILD:+8.4.5.0_0+33-Debian_9.0-amd64.tar.gz}}
 ENV NAME_CORE=${NAME_CORE:-${COMMUNITY_BUILD:+Debian_10-amd64.tar.gz}}
 ENV NAME_CORE=${NAME_CORE:-Debian_10-amd64.tar.gz}
@@ -39,7 +39,7 @@ ENV URL_WEBAPP=${DEFAULT_BUILD:+https://serial:${K_SNR}@download.kopano.io/suppo
 ENV URL_WEBAPP=${URL_WEBAPP:-${MIGRATION_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/archives/}}
 ENV URL_WEBAPP=${URL_WEBAPP:-${SUPPORTED_BUILD:+https://serial:${K_SNR}@download.kopano.io/supported/webapp:/final/tarballs/}}
 ENV URL_WEBAPP=${URL_WEBAPP:-https://download.kopano.io/community/webapp:/}
-ENV NAME_WEBAPP=${DEFAULT_BUILD:+4.1.2835+114.1.587e21d-Debian_10-all.tar.gz}
+ENV NAME_WEBAPP=${DEFAULT_BUILD:+4.4.2953+145.1.5f0de4e-Debian_10-all.tar.gz}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-${MIGRATION_BUILD:+3.4.24.1929+84-Debian_9.0-all.tar.gz}}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-${COMMUNITY_BUILD:+Debian_10-all.tar.gz}}
 ENV NAME_WEBAPP=${NAME_WEBAPP:-Debian_10-all.tar.gz}
@@ -69,7 +69,6 @@ ENV NAME_MATMOST=""
 ENV URL_DOCED=""
 ENV NAME_DOCED=""
 ENV URL_PASSWD="https://github.com/dducret/kopano-webapp-passwd/raw/master/builds/passwd-1.5.zip"
-ENV URL_G2FA="https://www.familiethimm.de/download/2525/"
 ENV URL_PFETCHM="https://github.com/olia-dev/kopano-webapp-fetchmail/raw/master/builds/fetchmail-1.0.2.zip"
 
 # layer 1 steps 3-18 or 19: create trusted local kopano repository
@@ -115,11 +114,6 @@ RUN if [ "$ENV_BUILD" != "web-repo" ] ; then mv -f *.deb /root/repo/dists/kopano
 # now get non core kopano plugins from github and familiethimm.de: passwd, fetchmail, google2fa
 RUN if [ "$ENV_BUILD" != "web-repo" ] ; then mkdir -p /root/repo/plugins && wget --no-check-certificate --quiet $URL_PASSWD -O /root/repo/plugins/passwd.zip && \
 	unzip /root/repo/plugins/passwd.zip -d /root/repo/plugins/passwd && sed -i -e "s~>1.3~>1.5~" /root/repo/plugins/passwd/manifest.xml && rm /root/repo/plugins/passwd.zip ; fi
-RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet $URL_G2FA -O /root/repo/plugins/google2fa.zip && \
-	unzip /root/repo/plugins/google2fa.zip -d /root/repo/plugins && rm /root/repo/plugins/google2fa.zip && \
-	mv /root/repo/plugins/google2fa/config_default.php /root/repo/plugins/google2fa/config.php && \
-	#sed -i -e "s~define('PLUGIN_GOOGLE2FA_ENABLE'.*~define('PLUGIN_GOOGLE2FA_ENABLE', false);"~ /root/repo/plugins/google2fa/config.php && \
-	sed -i -e "s~define('PLUGIN_GOOGLE2FA_WHITELIST'.*~define('PLUGIN_GOOGLE2FA_WHITELIST', '192.168.0.0/16,127.0.0.1');"~ /root/repo/plugins/google2fa/config.php ; fi
 RUN if [ "$ENV_BUILD" != "web-repo" ] ; then wget --no-check-certificate --quiet $URL_PFETCHM -O /root/repo/plugins/fetchmail.zip && \
 	unzip /root/repo/plugins/fetchmail.zip -d /root/repo/plugins && rm /root/repo/plugins/fetchmail.zip && \
 	mv /root/repo/plugins/fetchmail/example.config.php /root/repo/plugins/fetchmail/config.php && \
@@ -165,9 +159,10 @@ ENV BUILD=${Build} \
 	PHP_VER=${PHP_VER:-7.0} \
 	PARENT="$PARENT" \
 	WEBREPO="$WEBREPO" \
-	LANG="en_GB.UTF-8" \
-	LANGUAGE="en_GB.UTF-8" \
-	LC_ALL="en_GB.UTF-8" \
+#	LANG="en_GB.UTF-8" \
+#	LANGUAGE=${LANG} \
+#	LC_ALL=${LANG} \
+	LC_CTYPE=en_GB.UTF-8 \
 	TIMEZONE="CET" \
 	TERM=ansi \
 	DEBIAN_FRONTEND=noninteractive
@@ -175,14 +170,15 @@ WORKDIR /root
 COPY /container/dpkg-remove /root/dpkg-remove
 COPY /container/*.png /root/
 COPY /container/*.sh /usr/local/bin/
+COPY /container/pfloglist /usr/local/bin/
 RUN PASSWD="openssl rand -base64 32"
 # layer 2 step 16 or 17: merging run layers to save space in nested docker file system
-RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetchmail, amavisd, spamassassin, clamav, postgrey...." && \ 
+RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then telnet, postfix, fetchmail, amavisd, spamassassin, clamav, postgrey...." && \ 
 	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends --assume-yes \ 
 	wget locales rsyslog dialog apt-utils apt-transport-https ssl-cert ca-certificates nginx-light && \
 	# remove nginx files
 	rm /etc/nginx/sites-enabled/default && rm /var/www/html/index.nginx-debian.html && \
-	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends php${PHP_VER}-fpm php-curl && \
+	apt-get update -y > /etc/update.list && apt-get install -y --no-install-recommends php${PHP_VER}-fpm php-curl telnet && \
 	# set locales GB/US UTF-8 and DE plus CET timezone plus optional other locale at build time
 	sed -i -e "s~# en_GB.UTF-8~en_GB.UTF-8~" /etc/locale.gen && sed -i -e "s~# en_US.UTF-8~en_US.UTF-8~" /etc/locale.gen && \
 	sed -i -e "s~# de_DE.UTF-8~de_DE.UTF-8~" /etc/locale.gen && \
@@ -191,7 +187,7 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	if echo $EDITION | grep -q "Supported" ; then touch /etc/K_SUPPORTED ; else touch /etc/K_COMMUNITY ; fi && \
 	groupmod -g 1023 www-data && usermod -u 1023 -g 1023 www-data && mkdir -p /var/lib/postgrey/ && \ 
 	apt-get install -y --allow-unauthenticated --no-install-recommends --assume-yes \
-	postfix pflogsumm libsasl2-modules fetchmail amavisd-new spamassassin postgrey clamav-daemon clamav-freshclam \
+	postfix postfix-ldap pflogsumm libsasl2-modules fetchmail amavisd-new spamassassin postgrey clamav-daemon clamav-freshclam \
 	# more perl and zip libraries for scanning - removed zoo as it does not work on buster
 	libnet-dns-perl libmail-spf-perl pyzor razor arj bzip2 cabextract cpio file gzip nomarch pax unzip zip && rm -rf /var/lib/apt/lists/* && \
 # if web-repo arg is provided do wget instead of copying from interactive container which is saving ~100MB image size
@@ -213,14 +209,15 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 # install kopano, z-push, webapp and plugins using pepo from interim build incl. kopano.mo locales for localized mail-folders
 	chmod 711 /root && echo "deb [trusted=yes] file:/root/repo kopano main" > /etc/apt/sources.list.d/kopano.list && \
 	tar -zxvf /root/k4s-${EDITION}-repo.tgz -C /root && rm /root/k4s-${EDITION}-repo.tgz && \
-# copy config and init.d files as on latest versions they are missing (KC-681); dual-cfg triggers error so not for old Migration
-	if [ "$EDITION" != "Migration" ] ; then cp /root/repo/kinit.d/* /etc/init.d/ && chmod 755 /etc/init.d/kopano-* && mkdir -p /etc/kopano && cp /root/repo/kopano.cfg/* /etc/kopano ; fi && \
+# copy config and init.d files as on latest versions they are missing (KC-681); dual-cfg triggers error so not for old Migration and new Community
+	if [ "$EDITION" != "Migration" ] ; then cp /root/repo/kinit.d/* /etc/init.d/ && chmod 755 /etc/init.d/kopano-* ; fi && \
+	if [ "$EDITION" != "Migration" ] && [ "$EDITION" != "Community" ] ; then mkdir -p /etc/kopano && cp /root/repo/kopano.cfg/* /etc/kopano ; fi && \
 # webmeetings still has cfg and init shiped so delete them, for search as default version also delete it
 	if [ -e /etc/init.d/kopano-webmeetings ] ; then rm /etc/init.d/kopano-webmeetings ; fi && \
 	if [ -e /etc/kopano/webmeetings.cfg ] ; then rm /etc/kopano/webmeetings.cfg ; fi && \
 	if [ -e /root/repo/locale/de ] ; then cp -R /root/repo/locale/* /usr/share/locale ; fi && \
 	apt-get update -y > /etc/update.list && apt-get install --no-install-recommends --allow-unauthenticated --assume-yes \ 
-	kopano-server-packages kopano-migration-imap kopano-migration-pst \
+	kopano-server-packages kopano-migration-imap \
 	z-push-kopano z-push-kopano-gabsync z-push-kopano-gab2contacts z-push-autodiscover \
 	kopano-webapp \
 	kopano-webapp-plugin-contactfax \
@@ -234,8 +231,8 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	kopano-webapp-plugin-quickitems \
 	kopano-webapp-plugin-titlecounter \
 	kopano-webapp-plugin-webappmanual && \
-# issues community edition with presence, plugins smime, removed kopano-webapp-plugin-meetings python3-flexmock
-	if [ "$EDITION" != "Community" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-smime  ; fi && \
+# issues community edition with presence, plugins migration-pst, smime, removed kopano-webapp-plugin-meetings python3-flexmock
+	if [ "$EDITION" != "Community" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-migration-pst kopano-webapp-plugin-smime  ; fi && \
 	if [ "$EDITION" != "Community" ] && [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-presence ; fi && \
 	if [ "$EDITION" != "Migration" ] ; then apt-get install --no-install-recommends --allow-unauthenticated --assume-yes kopano-webapp-plugin-htmleditor-minimal-tinymce whatsapp4deskapp ; fi && \
 # full package installs not part of migration package incl. python3-flexmock; removed kopano-webmeetings
@@ -250,7 +247,7 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	apt-get remove -y --assume-yes $(grep -vE "^\s*#" dpkg-remove | tr "\n" " ") && \
 	apt-get autoremove -y  && \
 	dpkg --list | grep "^rc" | cut -d " " -f 3 | xargs --no-run-if-empty dpkg --purge && apt-get clean && \
-	rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /etc/apt/sources.list.d/kopano.list /root/dpkg-remove && \
+	rm -rf /var/lib/apt/lists/lock /tmp/* /var/tmp/* /etc/apt/sources.list.d/kopano.list /root/dpkg-remove && \
 # ensure python3 is used in init.d-services files unless for Migration version
 	if [ "$EDITION" != "Migration" ] ; then K_SRVS="kopano-search kopano-presence kopano-spamd" && for S in $K_SRVS; do sed -i -e "s~/python ~/python3 ~" /etc/init.d/$S ; done ; fi && \
 # new 'feature' community / supported edition 8.7.7+: spooler etc hang unless -b = background is used in init.d file have to remove -d flag for dagent in default
@@ -262,6 +259,8 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$SEARCH_CONFIG~-C \$SEARCH_CONFIG~" /etc/init.d/kopano-search ; fi && \
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$SPAMD_CONFIG~-C \$SPAMD_CONFIG~" /etc/init.d/kopano-spamd ; fi && \
 	if [ "$EDITION" = "Community" ] ; then sed -i -e "s~-c \$PRESENCE_CONFIG~-C \$PRESENCE_CONFIG~" /etc/init.d/kopano-presence ; fi && \
+# new 'feature' Community 10 no longer supporting pid file so we have to add pgrep to init.d file
+	if [ "$EDITION" = "Community" ] ; then K_SRVS="kopano-server kopano-dagent kopano-spooler" && for S in $K_SRVS; do sed -i -e "s~unset LC_ALL~pgrep \$NAME >\$PIDFILE\n\tunset LC_ALL~" /etc/init.d/$S ; done ; fi && \
 # convert clamav-daemon to run in bg mode as it takes awfull long (1-2m) to load and blocks other services
 	sed -i -e "s~start-stop-daemon --start~start-stop-daemon --start -b~" /etc/init.d/clamav-daemon && \ 
 # exclude userscripts from exposed mountpoint in synology softlink it instead,
@@ -298,7 +297,7 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	cp /etc/kopano/custom/cron.hourly /etc/kopano/custom/cron.daily && cp /etc/kopano/custom/cron.daily /etc/kopano/custom/cron.weekly && chmod 750 /etc/kopano/custom/cron.* && chown root.kopano /etc/kopano/custom/cron.* && \
 	ln -sf /etc/kopano/custom/cron.hourly /etc/cron.hourly/kopano && ln -sf /etc/kopano/custom/cron.daily /etc/cron.daily/kopano && ln -sf /etc/kopano/custom/cron.weekly /etc/cron.weekly/kopano && \
 # expose postfix, nginx and other log files to kopano folder
-	ln -sf /var/log/kopano/mail.log /var/log/mail.log && ln -sf /var/log/kopano/mail.info /var/log/mail.info  && \
+	ln -sf /var/log/kopano/mail.log /var/log/mail.log && ln -sf /var/log/kopano/mail.hist /var/log/mail.hist && ln -sf /var/log/kopano/mail.info /var/log/mail.info  && \
 	ln -sf /var/log/kopano/mail.warn /var/log/mail.warn && ln -sf /var/log/kopano/mail.err /var/log/mail.err && \
 	if [ -e /var/log/clamav ] ; then rm -R /var/log/clamav ; fi && ln -sf /var/log/kopano /var/log/clamav && \
 	ln -sf /var/log/kopano /var/log/amavis && ln -sf /var/log/kopano /var/log/spamassassin && \
@@ -324,6 +323,14 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	sed -i -e "s~/var/log/daemon~/var/log/kopano/daemon~" /etc/logrotate.d/rsyslog && \
 	sed -i -e "s~/var/log/messages~/var/log/kopano/messages~" /etc/logrotate.d/rsyslog && \
 	sed -i -e "s~/var/log/mail~/var/log/kopano/mail~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~rotate 7~rotate 15~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~rotate 4~rotate 14~" /etc/logrotate.d/rsyslog && \
+	sed -i -e "s~daily~weekly~g" /etc/logrotate.d/rsyslog && \
+# add to rsyslog post-rotate to restart postfix to avoid empty logs and building mail.hist
+	mkdir -p /usr/lib/rsyslog && \
+	if [ -e /usr/lib/rsyslog/rsyslog-rotate ] ; then echo "service rsyslog restart \n service postfix restart" >> /usr/lib/rsyslog/rsyslog-rotate ; fi && \
+	sed -i -e "s~sharedscripts~sharedscripts\nprerotate\n/usr/lib/rsyslog/pre-rsyslog-rotate\nendscript\n~" /etc/logrotate.d/rsyslog && \
+	echo '#!/bin/sh' > /usr/lib/rsyslog/pre-rsyslog-rotate && echo 'pfloglist csv /var/log/mail.log >>/var/log/mail.hist' >> /usr/lib/rsyslog/pre-rsyslog-rotate && chmod 750 /usr/lib/rsyslog/pre-rsyslog-rotate && \
 # prevent syslog and clamav logrotate warnings 
 	sed -i -e 's/\(printerror "could not determine current runlevel"\)/#\1/' /usr/sbin/invoke-rc.d && \
 	sed -i -e 's/^\(POLICYHELPER=\).*/\1/' /usr/sbin/invoke-rc.d && \
@@ -361,6 +368,7 @@ RUN echo "** setup system basics incl. nginx, php-${PHP_VER} then postfix, fetch
 	chmod 700 /usr/local/bin/init.sh && \
 	chmod 700 /usr/local/bin/kopano-postfix.sh && \
 	chmod 700 /usr/local/bin/kopano-fetchmail.sh && \
+	chmod 700 /usr/local/bin/pfloglist && \
 	echo "** completed building ${EDITION}-${TAG} **"
 # layer 4 steps 17,18 or 18,19: set workdir for backups later, entrypoint and expose ports
 WORKDIR /var/lib/kopano/backup

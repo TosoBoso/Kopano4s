@@ -11,7 +11,7 @@
 	<form action="index.cgi" method="get">
 		<input type="hidden" name="page" value="cfg"/>
 		&nbsp;Share:<input type="text" name="kshare" size="13" value="<!--:kshare:-->"/>
-		&nbsp;Backup:<input type="text" name="kbackup" size="21" value="<!--:kbackup:-->"/>
+		&nbsp;Backup:<input type="text" name="kbackup" size="23" value="<!--:kbackup:-->"/>
 		&nbsp;<input type="checkbox" name="kfsattach" value="on"/<!--:chkfsattach:-->>Attachments on FileS.
 		<input type="checkbox" name="kgateway" value="on"/<!--:chkgateway:-->>Gateway
 		&nbsp;<input type="checkbox" name="kical" value="on"/<!--:chkical:-->>ICAL
@@ -19,7 +19,7 @@
 		&nbsp;<input type="checkbox" name="kmonitor" value="on"/<!--:chkmonitor:-->>Monitor
 		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Save"/><br>
 		&nbsp;Db-Name:&nbsp;<input type="text" name="dbname" size="8" value="<!--:dbname:-->"/>&nbsp;
-		&nbsp;Db-User:&nbsp;<input type="text" name="dbuser" size="8" value="<!--:dbuser:-->"/>
+		&nbsp;Db-User:&nbsp;<input type="text" name="dbuser" size="7" value="<!--:dbuser:-->"/>
 		&nbsp;Http(s):&nbsp;<input type="text" name="http" size="1" value="<!--:http:-->"/>
 		/&nbsp;<input type="text" name="https" size="1" value="<!--:https:-->"/>
 		&nbsp;Ical(s):&nbsp;<input type="text" name="ical" size="1" value="<!--:ical:-->"/>
@@ -49,17 +49,17 @@
 		&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Show"/>
 		&nbsp;<input type="submit" name="action" value="Reset"/>
 		&nbsp;<input type="submit" name="action" value="Update"/>
-		&nbsp;CFG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="cfgentry" size="54" value="<!--:cfgentry:-->"/>
+		&nbsp;CFG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="cfgentry" size="55" value="<!--:cfgentry:-->"/>
 	</form>
 	<form action="index.cgi" method="get">
 		<input type="hidden" name="page" value="cfg"/> <input type="hidden" name="section" value="plg"/>
 		&nbsp;Plugins:&nbsp;<select name="splg"><!--:plgcmb:--></select>
-		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Show"/>
+		&nbsp;&nbsp;&nbsp;<input type="submit" name="action" value="Show"/>
 		&nbsp;<input type="submit" name="action" value="Reset"/>
 		&nbsp;<input type="submit" name="action" value="Update"/>
-		&nbsp;&nbsp;PLG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="plgentry" size="54" value="<!--:plgentry:-->"/>
+		&nbsp;&nbsp;PLG-Entry:&nbsp;&nbsp;&nbsp;<input type="text" name="plgentry" size="55" value="<!--:plgentry:-->"/>
 	</form>
-	<div class="mono"><textarea name="cfgtxt" rows="14" cols="130"> <!--:cfgtxt:--></textarea></div>
+	<div class="mono"><textarea name="cfgtxt" rows="14" cols="135"> <!--:cfgtxt:--></textarea></div>
 	<p><b><u>Tips:</u></b>&nbsp;To update select respective entry using key=value (e.g. KOPANO_LOCALE="C") or use full line to be replaced for php-define entries. 
 								For active sync with email address instead of kopano userid switch in z-push.conf.php define-entry 'USE_FULLEMAIL_FOR_LOGIN' to true.</p>
 	<!-- style for bottom position -->

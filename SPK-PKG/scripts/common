@@ -182,17 +182,17 @@ SAVE_LOG_ETC()
 {
 	# ** save backup of istall-log, kopano-etc for reset option
 	cp "$LOG" /tmp/k4spackage.log
-	mkdir -p "$K_SHARE/backup/etc"
-	cp -R -f "$ETC_PATH/kopano" "$K_SHARE/backup/etc"
+	mkdir -p "$K_SHARE/etc-bup"
+	cp -R -f "$ETC_PATH/kopano" "$K_SHARE/etc-bup"
 	# remove legacy z-push in kopano-etc
-	if [ -e "$K_SHARE/backup/etc/kopano/z-push" ] ; then rm -R "$K_SHARE/backup/etc/kopano/z-push" ; fi
+	if [ -e "$K_SHARE/etc-bup/kopano/z-push" ] ; then rm -R "$K_SHARE/etc-bup/kopano/z-push" ; fi
 }
 RESTORE_LOG_ETC()
 {
 	if [ -e /tmp/k4spackage.log ] ; then cp /tmp/k4spackage.log "$LOG" ; fi
 	if [ ! -e "$ETC_PATH/kopano" ]
 	then
-		cp -R -f "$K_SHARE/backup/etc/kopano" "$ETC_PATH"
+		cp -R -f "$K_SHARE/etc-bup/kopano" "$ETC_PATH"
 	fi
 }
 # en/disable 3rdparty admin ui and web icons and remove the cycle softlink
@@ -279,6 +279,7 @@ GET_BETA_STABLE()
 			K_RELEASE="Stable"
 		fi
 	else
+		# shellcheck disable=SC2153
 		K_RELEASE="$RELEASE"
 	fi
 }
@@ -702,7 +703,7 @@ GET_MEM_INFO()
 	MEM_FREE=$(grep -i memfree /proc/meminfo | grep -o "[0-9]*")
 	MEM_CACHED=$(grep -i cached /proc/meminfo | grep -v SwapCached | grep -o "[0-9]*")
 	# if captured other cached values like SwapCached cut them off by 1st space to prevent race condition
-	if $(echo $MEM_CACHED | grep -q " ")
+	if echo $MEM_CACHED | grep -q " "
 	then
 		MEM_CACHED=$(echo $MEM_CACHED  | cut -d ' ' -f1)
 	fi
@@ -1166,6 +1167,16 @@ INIT_UPDATE()
 	# update to postgrey in postfix main.cf for check_policy_service
 	sed -i -e 's~check_policy_service.*~check_policy_service { inet:[127.0.0.1]:10023 timeout=10s default_action=DUNNO policy_context=submission }~' /etc/kopano/postfix/main.cf
 	if [ -e /etc/kopano/postfix/main.init ] ; then sed -i -e 's~check_policy_service.*~check_policy_service { inet:[127.0.0.1]:10023 timeout=10s default_action=DUNNO policy_context=submission }~' /etc/kopano/postfix/main.init ; fi
+	# add subject logging vi headers and stls option to fetchmailrc
+	if ! grep -q Subject: "$ETC_PATH"/kopano/postfix/header_checks
+	then
+		sed -i -e "s~/^X-Originating-IP~/^subject:/ INFO\n/^X-Originating-IP~" "$ETC_PATH"/kopano/postfix/header_checks
+		sed -i -e "s~/^subject~/^Subject:/ INFO\n/^subject~" "$ETC_PATH"/kopano/postfix/header_checks
+	fi
+	if ! grep -q "#stls=" "$ETC_PATH"/kopano/fetchmailrc
+	then
+		sed -i -e "s~^#mda=~#stls=off\n#mda=~" "$ETC_PATH"/kopano/fetchmailrc
+	fi
 }
 # ** create kopano share with synotool if not exists plus and set specific acls
 INIT_SHARE_ETC()
@@ -1796,6 +1807,7 @@ SET_DOCKER_ENV()
 		DOCKER_PORTS="$DOCKER_PORTS -p 3478:3478"
 	fi
 	# we use --init for tiny fi we are on DSM 6 plus then pass and overwrite the image LANG, TZ with our locale via -e
+	# shellcheck disable=SC2155
 	local MAJOR_VERSION=$(grep majorversion /etc.defaults/VERSION | grep -o [0-9])
 	if [ $MAJOR_VERSION -gt 5 ]
 	then

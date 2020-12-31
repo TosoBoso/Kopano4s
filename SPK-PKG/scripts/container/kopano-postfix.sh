@@ -4,7 +4,7 @@
 case "$1" in
 	help)
 	echo "kopano-postfix (c) TosoBoso: script and postconf wrapper for postfix integration with kopano4s"
-	echo "Usage: kopano-postfix plus config, edit, relay, tls, stop, (re)start, reset, loglines, logsumm, map, queue, queuemsgs, show, requeue, release, resend, delete, flush, refresh-av, sync-/stats-/reset-/export-/import-/baseline-spamdb, train-spam/ham, test-smtp/amavis/spam/smail, help"
+	echo "Usage: kopano-postfix plus config, edit, relay, tls, stop, (re)start, reset, loglines, loglist, logsumm, logtotate, map, queue, queuemsgs, show, requeue, release, resend, delete, flush, refresh-av, sync-/stats-/reset-/export-/import-/baseline-spamdb, train-spam/ham, test-smtp/amavis/spam/smail, help"
 	echo "config shows the current setting incl health check (postconf -n && postfix check)"
 	echo "edit plus argument changes main.cf entry (e.g. edit 'mynetworks = 127.0.0.0/8')"
 	echo "relay plus server, user, password arguments creates a relay server entry; off disables it"
@@ -12,7 +12,7 @@ case "$1" in
 	echo "stop, (re)start to change and let new settings being effective; use it after your set of changes via edit"
 	echo "resets gets back to original configuration from install for main.cf and master.cf"
 	echo "loglines plus number shows no of rows (default 5) to mail.log, .err, .warn, .info files"
-	echo "logsumm calls utility pflogsumm with default paramaters for daily summary; call logsumm --help for details."
+	echo "logsumm / list calls pflogsumm/list with default paramater (see --help); logrotate cleans the log."
 	echo "map plus file-name runs postmap on it; reset goes back to initial configuration at install"
 	echo "queue shows the status of active (*), hold (!) defer queues and queuemsgs the messages inside"
 	echo "show, requeue, release, resend, delete manipulates respective mailqueue-ids whil flush is for all"
@@ -144,15 +144,34 @@ case "$1" in
 	INFO=`tail -$LINES /var/log/mail.info`
 	CMD="echo last $LINES log lines: $LOG , err: $ERR , warn: $WARN, info: $INFO"
 	;;
+	loglist)
+	if [ $# -gt 1 ]
+	then
+		PAR="$2 $3 $4 $5 $6 $7 $8 $9"
+	else
+		echo "using pfloglist today /var/log/mail.log call loglist help for details"
+		PAR="today /var/log/mail.log"
+	fi	
+	CMD="pfloglist $PAR"
+	;;
 	logsumm)
 	if [ $# -gt 1 ]
 	then
 		PAR="$2 $3 $4 $5 $6 $7 $8 $9"
 	else
-		echo "using pflogsumm default -d today /var/log/mail.log call logsumm --help for details"
+		echo "using pflogsumm -d today /var/log/mail.log call logsumm --help for details"
 		PAR="-d today /var/log/mail.log"
 	fi	
 	CMD="pflogsumm $PAR"
+	;;
+	logrotate)
+	if grep -q "^maillog_file" /etc/kopano/postfix/main.cf
+	then
+		CMD="postfix logrotate"
+	else
+		echo "postfix logrotate disabled running it via rsyslog"
+		CMD="/usr/sbin/logrotate -f /etc/logrotate.d/rsyslog"
+	fi
 	;;	
 	edit)
 	if [ $# -gt 1 ]
@@ -347,7 +366,7 @@ case "$1" in
 		else
 			RCP="postmaster@$DOMAIN"
 		fi
-		echo "running test into telnet session to smpd on port 25 with ehelo $DOMAIN to $RCP Subject: testmail.."
+		echo "running test into telnet session to smpd on port 25 with ehelo $DOMAIN to $RCP Subject: test-mail.."
 		(
 		echo "EHLO $DOMAIN";
 		sleep 1;
@@ -357,7 +376,7 @@ case "$1" in
 		sleep 1;
 		echo "data";
 		sleep 1;
-		echo "subject: testmail";
+		echo "Subject: testmail";
 		echo "for kopano4s.";
 		echo ".";
 		echo "quit";
@@ -481,7 +500,7 @@ case "$1" in
 		exit 0
 	;;
 	*)
-	echo "Usage: kopano-postfix plus config, edit, relay, tls, stop, (re)start, reset, loglines, logsumm, map, queue, queuemsgs, show, requeue, release, resend, delete, flush, refresh-av, sync-/stats-/reset-/export-/import-/baseline-spamdb, train-spam/ham, test-smtp/amavis/spam/smail, help"
+	echo "Usage: kopano-postfix plus config, edit, relay, tls, stop, (re)start, reset, loglines, loglist, logsumm, logrotate, map, queue, queuemsgs, show, requeue, release, resend, delete, flush, refresh-av, sync-/stats-/reset-/export-/import-/baseline-spamdb, train-spam/ham, test-smtp/amavis/spam/smail, help"
 	exit 1
 	;;
 esac
